@@ -1,0 +1,58 @@
+name: Build iOS IPA (Unsigned)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "ios/**"
+      - "pubspec.*"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Apply iOS OAuth configuration when secrets are present
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_REVERSED_CLIENT_ID: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID }}
+        run: |
+          if [[ -n "$GOOGLE_IOS_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :GIDClientID $GOOGLE_IOS_CLIENT_ID" ios/Runner/Info.plist
+          fi
+          if [[ -n "$GOOGLE_REVERSED_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 $GOOGLE_REVERSED_CLIENT_ID" ios/Runner/Info.plist
+          fi
+      - name: Build unsigned Runner.app
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: >-
+          flutter build ios --release --no-codesign
+          --dart-define=GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID"
+          --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
+      - name: Package unsigned IPA and checksum
+        run: |
+          mkdir -p dist/Payload
+          ditto build/ios/iphoneos/Runner.app dist/Payload/Runner.app
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent Payload phakphum-calendar-unsigned.ipa
+          shasum -a 256 phakphum-calendar-unsigned.ipa > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: phakphum-calendar-ios-unsigned-ipa
+          path: |
+            dist/phakphum-calendar-unsigned.ipa
+            dist/SHA256SUMS.txt
+          if-no-files-found: error

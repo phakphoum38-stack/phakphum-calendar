@@ -1,0 +1,37 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:phakphum_calendar/app.dart';
+import 'package:phakphum_calendar/controller/app_controller.dart';
+
+void main() {
+  testWidgets('desktop layout shows the full navigation and dashboard', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      PhakphumCalendarApp(controller: AppController.demo()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Shift Calendar'), findsOneWidget);
+    expect(find.text('แหล่งข้อมูลเวร'), findsOneWidget);
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.text('รีเฟรช/อ่านใหม่ตอนนี้'), findsOneWidget);
+  });
+
+  testWidgets('phone layout remains usable', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      PhakphumCalendarApp(controller: AppController.demo()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Auto refresh'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
