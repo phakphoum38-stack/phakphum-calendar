@@ -7,6 +7,7 @@ class AppSettings {
     required this.archiveOriginal,
     required this.autoRefresh,
     required this.refreshSeconds,
+    required this.googleWebClientId,
   });
 
   static const defaultSourceUrl =
@@ -21,6 +22,7 @@ class AppSettings {
     archiveOriginal: true,
     autoRefresh: false,
     refreshSeconds: 5,
+    googleWebClientId: '',
   );
 
   final String sourceUrl;
@@ -30,6 +32,7 @@ class AppSettings {
   final bool archiveOriginal;
   final bool autoRefresh;
   final int refreshSeconds;
+  final String googleWebClientId;
 
   AppSettings copyWith({
     String? sourceUrl,
@@ -39,6 +42,7 @@ class AppSettings {
     bool? archiveOriginal,
     bool? autoRefresh,
     int? refreshSeconds,
+    String? googleWebClientId,
   }) => AppSettings(
     sourceUrl: sourceUrl ?? this.sourceUrl,
     targetName: targetName ?? this.targetName,
@@ -47,5 +51,6 @@ class AppSettings {
     archiveOriginal: archiveOriginal ?? this.archiveOriginal,
     autoRefresh: autoRefresh ?? this.autoRefresh,
     refreshSeconds: refreshSeconds ?? this.refreshSeconds,
+    googleWebClientId: googleWebClientId ?? this.googleWebClientId,
   );
 }

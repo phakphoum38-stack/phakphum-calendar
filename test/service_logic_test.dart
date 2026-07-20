@@ -1,0 +1,84 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:phakphum_calendar/models/app_settings.dart';
+import 'package:phakphum_calendar/models/shift.dart';
+import 'package:phakphum_calendar/services/calendar_service.dart';
+import 'package:phakphum_calendar/services/drive_archive_service.dart';
+import 'package:phakphum_calendar/services/google_auth_service.dart';
+import 'package:phakphum_calendar/services/sheets_service.dart';
+
+void main() {
+  test('validates Google Web OAuth client IDs', () {
+    expect(
+      GoogleAuthService.isValidWebClientId(
+        '123456789012-abcDEF_123.apps.googleusercontent.com',
+      ),
+      isTrue,
+    );
+    expect(GoogleAuthService.isValidWebClientId('YOUR_WEB_CLIENT_ID'), isFalse);
+    expect(
+      GoogleAuthService.isValidWebClientId('123.apps.googleusercontent.com'),
+      isFalse,
+    );
+  });
+
+  test('keeps the web OAuth client ID in app settings copies', () {
+    final settings = AppSettings.defaults().copyWith(
+      googleWebClientId: '123456789012-abcDEF_123.apps.googleusercontent.com',
+    );
+
+    expect(
+      settings.copyWith(month: 9).googleWebClientId,
+      settings.googleWebClientId,
+    );
+  });
+
+  test('parses Sheets URLs and raw spreadsheet IDs', () {
+    const id = '1kppXtjpD6Vm5MIf58bIiQa5dQ0SDpC1xVnz-CrAwpSE';
+    expect(
+      SheetsService.spreadsheetIdFromUrl(
+        'https://docs.google.com/spreadsheets/d/$id/edit?gid=1',
+      ),
+      id,
+    );
+    expect(SheetsService.spreadsheetIdFromUrl(id), id);
+    expect(
+      () => SheetsService.spreadsheetIdFromUrl('not-a-sheet'),
+      throwsFormatException,
+    );
+  });
+
+  test('calendar duplicate keys match created shifts', () {
+    final shift = Shift(
+      code: 'UP1',
+      rowLabel: 'P1 เช้า',
+      assignedName: 'ภาคภูมิ',
+      start: DateTime(2026, 8, 3, 8),
+      end: DateTime(2026, 8, 3, 16),
+      sheetTitle: 'สิงหาคม 2569',
+      cell: 'D5',
+      category: ShiftCategory.own,
+    );
+
+    expect(
+      CalendarService.matchesExisting(shift, {CalendarService.keyFor(shift)}),
+      isTrue,
+    );
+    expect(
+      CalendarService.matchesExisting(shift, {
+        CalendarService.legacyKeyFor(shift),
+      }),
+      isTrue,
+    );
+  });
+
+  test('Drive archive lookup is scoped to source file and month', () {
+    final query = DriveArchiveService.archiveLookupQuery(
+      sourceFileId: 'source-sheet-123',
+      period: '2026-08',
+    );
+
+    expect(query, contains("key='sourceFileId'"));
+    expect(query, contains("value='source-sheet-123'"));
+    expect(query, contains("value='2026-08'"));
+  });
+}

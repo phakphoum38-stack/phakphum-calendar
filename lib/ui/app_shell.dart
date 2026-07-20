@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../controller/app_controller.dart';
 import '../models/shift.dart';
 import '../services/calendar_service.dart';
+import '../services/google_auth_service.dart';
 import 'google_sign_in_button.dart';
 
 class AppShell extends StatefulWidget {
@@ -49,12 +50,12 @@ class _AppShellState extends State<AppShell> {
               controller: controller,
               perform: _perform,
               sync: _sync,
+              configureGoogleOAuth: _configureGoogleOAuth,
             ),
             _PreviewPage(controller: controller),
             _AuditPage(controller: controller),
             _SettingsPage(
               controller: controller,
-              changePasskey: _changePasskey,
               createFutureSheet: _createFutureSheet,
             ),
           ];
@@ -146,91 +147,49 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  Future<void> _changePasskey() async {
-    final result = await _showNewPasskeyDialog();
-    if (result != null) {
-      await _perform(() => widget.controller.setPasskey(result));
-    }
-  }
-
   Future<void> _sync() async {
-    if (!widget.controller.hasPasskey) {
-      final created = await _showNewPasskeyDialog();
-      if (created == null) return;
-      await _perform(() => widget.controller.setPasskey(created));
-    }
-    if (!mounted) return;
-    final passkey = await _showConfirmPasskeyDialog();
-    if (passkey == null) return;
-    await _perform(() => widget.controller.syncCalendar(passkey));
+    final confirmed = await _showSyncConfirmationDialog();
+    if (confirmed != true) return;
+    await _perform(widget.controller.syncCalendar);
   }
 
-  Future<void> _createFutureSheet(String template, String newTitle) async {
-    if (!widget.controller.hasPasskey) {
-      final created = await _showNewPasskeyDialog();
-      if (created == null) return;
-      await _perform(() => widget.controller.setPasskey(created));
-    }
-    if (!mounted) return;
-    final passkey = await _showSimplePasskeyDialog(
-      title: 'ยืนยันสร้างแท็บใหม่',
-      message:
-          'จะทำสำเนาแท็บ “$template” เป็น “$newTitle” '
-          'โดยไม่แก้แท็บต้นแบบ',
+  Future<void> _configureGoogleOAuth() async {
+    final value = TextEditingController(
+      text: widget.controller.auth.webClientId,
     );
-    if (passkey == null) return;
-    await _perform(
-      () => widget.controller.createFutureSheet(
-        passkey: passkey,
-        templateTitle: template,
-        newTitle: newTitle,
-      ),
-    );
-  }
-
-  Future<String?> _showNewPasskeyDialog() {
-    final first = TextEditingController();
-    final second = TextEditingController();
-    String? error;
-    return showDialog<String>(
+    String? validationError;
+    final clientId = await showDialog<String>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('ตั้งค่า passkey ของแอป'),
+          title: const Text('ตั้งค่า Google OAuth สำหรับ Web'),
           content: SizedBox(
-            width: 420,
+            width: 520,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'ใช้ passkey นี้ยืนยันก่อนสร้างสำเนา Drive หรือเขียน Calendar '
-                  'ห้ามใช้รหัสผ่านบัญชี Google',
+                  'วาง Web OAuth Client ID จาก Google Cloud เพื่อเปิดปุ่มล็อกอิน '
+                  'Client ID เปิดเผยได้และไม่ใช่ Client Secret',
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: first,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Passkey (อย่างน้อย 6 ตัว)',
+                  controller: value,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Web OAuth Client ID',
+                    hintText: '123456789-abc.apps.googleusercontent.com',
+                    errorText: validationError,
+                    prefixIcon: const Icon(Icons.key_outlined),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: second,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'ยืนยัน passkey',
-                  ),
+                const SizedBox(height: 10),
+                Text(
+                  'Authorized JavaScript origin สำหรับหน้านี้ต้องมี '
+                  '${Uri.base.origin}',
+                  style: const TextStyle(fontSize: 12),
                 ),
-                if (error != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -241,26 +200,47 @@ class _AppShellState extends State<AppShell> {
             ),
             FilledButton(
               onPressed: () {
-                if (first.text.length < 6) {
-                  setDialogState(() => error = 'Passkey ต้องมีอย่างน้อย 6 ตัว');
-                } else if (first.text != second.text) {
-                  setDialogState(() => error = 'Passkey ทั้งสองช่องไม่ตรงกัน');
-                } else {
-                  Navigator.pop(context, first.text);
+                final text = value.text.trim();
+                if (!GoogleAuthService.isValidWebClientId(text)) {
+                  setDialogState(
+                    () => validationError = 'รูปแบบ Client ID ไม่ถูกต้อง',
+                  );
+                  return;
                 }
+                Navigator.pop(context, text);
               },
-              child: const Text('บันทึก'),
+              child: const Text('บันทึกและเปิด Google Login'),
             ),
           ],
         ),
       ),
     );
+    value.dispose();
+    if (clientId == null) return;
+    await _perform(
+      () => widget.controller.configureGoogleWebClientId(clientId),
+    );
   }
 
-  Future<String?> _showConfirmPasskeyDialog() {
-    final value = TextEditingController();
+  Future<void> _createFutureSheet(String template, String newTitle) async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'ยืนยันสร้างแท็บใหม่',
+      message:
+          'จะทำสำเนาแท็บ “$template” เป็น “$newTitle” '
+          'โดยไม่แก้แท็บต้นแบบ',
+    );
+    if (confirmed != true) return;
+    await _perform(
+      () => widget.controller.createFutureSheet(
+        templateTitle: template,
+        newTitle: newTitle,
+      ),
+    );
+  }
+
+  Future<bool?> _showSyncConfirmationDialog() {
     final controller = widget.controller;
-    return showDialog<String>(
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('ยืนยันการเขียนข้อมูล'),
@@ -279,14 +259,6 @@ class _AppShellState extends State<AppShell> {
               ),
               const SizedBox(height: 12),
               const Text('ไฟล์ต้นฉบับ Google Sheets จะไม่ถูกแก้ไข'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: value,
-                obscureText: true,
-                autofocus: true,
-                onSubmitted: (text) => Navigator.pop(context, text),
-                decoration: const InputDecoration(labelText: 'Passkey'),
-              ),
             ],
           ),
         ),
@@ -296,7 +268,7 @@ class _AppShellState extends State<AppShell> {
             child: const Text('ยกเลิก'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, value.text),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('ยืนยันและทำต่อ'),
           ),
         ],
@@ -304,40 +276,22 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Future<String?> _showSimplePasskeyDialog({
+  Future<bool?> _showConfirmationDialog({
     required String title,
     required String message,
   }) {
-    final value = TextEditingController();
-    return showDialog<String>(
+    return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(message),
-              const SizedBox(height: 16),
-              TextField(
-                controller: value,
-                obscureText: true,
-                autofocus: true,
-                onSubmitted: (text) => Navigator.pop(context, text),
-                decoration: const InputDecoration(labelText: 'Passkey'),
-              ),
-            ],
-          ),
-        ),
+        content: SizedBox(width: 420, child: Text(message)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('ยกเลิก'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, value.text),
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('ยืนยัน'),
           ),
         ],
@@ -351,11 +305,13 @@ class _DashboardPage extends StatefulWidget {
     required this.controller,
     required this.perform,
     required this.sync,
+    required this.configureGoogleOAuth,
   });
 
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
   final Future<void> Function() sync;
+  final Future<void> Function() configureGoogleOAuth;
 
   @override
   State<_DashboardPage> createState() => _DashboardPageState();
@@ -407,6 +363,7 @@ class _DashboardPageState extends State<_DashboardPage> {
               _GoogleAccountCard(
                 controller: controller,
                 perform: widget.perform,
+                configureGoogleOAuth: widget.configureGoogleOAuth,
               ),
               const SizedBox(height: 16),
               Card(
@@ -519,7 +476,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                           ),
                           OutlinedButton.icon(
                             onPressed:
-                                controller.shifts.isNotEmpty && !controller.busy
+                                controller.auth.isSignedIn &&
+                                    controller.shifts.isNotEmpty &&
+                                    !controller.busy
                                 ? () =>
                                       widget.perform(controller.compareCalendar)
                                 : null,
@@ -528,7 +487,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                           ),
                           FilledButton.tonalIcon(
                             onPressed:
-                                controller.shifts.isNotEmpty && !controller.busy
+                                controller.auth.isSignedIn &&
+                                    controller.shifts.isNotEmpty &&
+                                    !controller.busy
                                 ? widget.sync
                                 : null,
                             icon: const Icon(Icons.calendar_month),
@@ -564,7 +525,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                     'เก็บสำเนาต้นฉบับประจำเดือนใน Google Drive',
                   ),
                   subtitle: const Text(
-                    'สร้างครั้งเดียวต่อเดือนก่อนซิงก์ ต้องยืนยัน passkey; ไม่แก้ไฟล์ต้นฉบับ',
+                    'สร้างครั้งเดียวต่อเดือนก่อนซิงก์ และไม่แก้ไฟล์ต้นฉบับ',
                   ),
                   secondary: const Icon(Icons.content_copy_outlined),
                 ),
@@ -578,10 +539,15 @@ class _DashboardPageState extends State<_DashboardPage> {
 }
 
 class _GoogleAccountCard extends StatelessWidget {
-  const _GoogleAccountCard({required this.controller, required this.perform});
+  const _GoogleAccountCard({
+    required this.controller,
+    required this.perform,
+    required this.configureGoogleOAuth,
+  });
 
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
+  final Future<void> Function() configureGoogleOAuth;
 
   @override
   Widget build(BuildContext context) {
@@ -598,30 +564,62 @@ class _GoogleAccountCard extends StatelessWidget {
                 children: [
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
-                    child: const ListTile(
+                    child: ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
+                      leading: const CircleAvatar(
                         child: Icon(Icons.account_circle_outlined),
                       ),
-                      title: Text('เชื่อมต่อบัญชี Google'),
-                      subtitle: Text(
-                        'ล็อกอินก่อน แล้วค่อยอนุญาตสิทธิ์ตามปุ่มที่ใช้งาน',
+                      title: const Text('เชื่อมต่อบัญชี Google'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ล็อกอินก่อน แล้วค่อยอนุญาตสิทธิ์ตามปุ่มที่ใช้งาน',
+                          ),
+                          if (controller.auth.error != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              controller.auth.error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
                   if (controller.auth.oauthConfigured)
-                    GoogleLoginButton(
-                      enabled: controller.auth.initialized && !controller.busy,
-                      onPressed: () => perform(controller.signIn),
+                    if (controller.auth.initialized &&
+                        !controller.auth.signInReady)
+                      OutlinedButton.icon(
+                        onPressed: null,
+                        icon: const Icon(Icons.error_outline),
+                        label: const Text('Google Login ไม่พร้อม'),
+                      )
+                    else
+                      GoogleLoginButton(
+                        enabled:
+                            controller.auth.signInReady && !controller.busy,
+                        onPressed: () => perform(controller.signIn),
+                      )
+                  else if (controller.auth.canConfigureWebOAuth)
+                    OutlinedButton.icon(
+                      onPressed: controller.busy ? null : configureGoogleOAuth,
+                      icon: const Icon(Icons.settings_outlined),
+                      label: const Text('ตั้งค่า Google OAuth'),
                     )
                   else
                     Tooltip(
-                      message:
-                          'ตั้งค่า GOOGLE_WEB_CLIENT_ID แล้ว build เว็บใหม่',
+                      message: controller.auth.oauthUnavailableMessage ?? '',
                       child: OutlinedButton.icon(
                         onPressed: null,
                         icon: const Icon(Icons.key_off_outlined),
-                        label: Text('ยังไม่ได้ตั้งค่า Google OAuth'),
+                        label: Text(
+                          controller.auth.platformSupported
+                              ? 'ยังไม่ได้ตั้งค่า Google OAuth'
+                              : 'Google Login ใช้ผ่าน Web',
+                        ),
                       ),
                     ),
                 ],
@@ -962,11 +960,9 @@ class _AuditPage extends StatelessWidget {
 class _SettingsPage extends StatelessWidget {
   const _SettingsPage({
     required this.controller,
-    required this.changePasskey,
     required this.createFutureSheet,
   });
   final AppController controller;
-  final VoidCallback changePasskey;
   final Future<void> Function(String template, String newTitle)
   createFutureSheet;
 
@@ -974,25 +970,6 @@ class _SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
-      Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(20),
-          leading: const CircleAvatar(child: Icon(Icons.password)),
-          title: Text(
-            controller.hasPasskey
-                ? 'Passkey พร้อมใช้งาน'
-                : 'ยังไม่ได้ตั้ง passkey',
-          ),
-          subtitle: const Text(
-            'เก็บเฉพาะ SHA-256 ในเครื่อง ไม่ใช่รหัสผ่าน Google',
-          ),
-          trailing: FilledButton.tonal(
-            onPressed: changePasskey,
-            child: Text(controller.hasPasskey ? 'เปลี่ยน' : 'ตั้งค่า'),
-          ),
-        ),
-      ),
-      const SizedBox(height: 16),
       _FutureSheetCard(controller: controller, onCreate: createFutureSheet),
       const SizedBox(height: 16),
       Card(
@@ -1016,7 +993,7 @@ class _SettingsPage extends StatelessWidget {
               ),
               const _SafetyRow(
                 icon: Icons.verified_user_outlined,
-                text: 'สร้างสำเนา/เขียน Calendar ต้องผ่าน passkey',
+                text: 'สร้างสำเนา/เขียน Calendar ด้วยบัญชี Google ที่ล็อกอิน',
               ),
               const _SafetyRow(
                 icon: Icons.people_outline,
@@ -1077,6 +1054,15 @@ class _FutureSheetCardState extends State<_FutureSheetCard> {
   );
 
   @override
+  void didUpdateWidget(covariant _FutureSheetCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (template.text.trim().isEmpty &&
+        widget.controller.sheetTitles.isNotEmpty) {
+      template.text = widget.controller.sheetTitles.last;
+    }
+  }
+
+  @override
   void dispose() {
     template.dispose();
     newTitle.dispose();
@@ -1096,8 +1082,8 @@ class _FutureSheetCardState extends State<_FutureSheetCard> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'ทำสำเนาแท็บต้นแบบเป็นแท็บใหม่ ต้องยืนยัน passkey และอนุญาตสิทธิ์ '
-            'Sheets เฉพาะตอนกดสร้าง',
+            'ทำสำเนาแท็บต้นแบบเป็นแท็บใหม่ โดยอนุญาตสิทธิ์ Sheets '
+            'เฉพาะตอนกดสร้าง',
           ),
           const SizedBox(height: 14),
           TextField(

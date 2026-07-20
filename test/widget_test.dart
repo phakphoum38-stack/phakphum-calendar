@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/app.dart';
@@ -18,7 +19,14 @@ void main() {
     expect(find.text('Shift Calendar'), findsOneWidget);
     expect(find.text('แหล่งข้อมูลเวร'), findsOneWidget);
     expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.text('เข้าสู่ระบบด้วย Google'), findsOneWidget);
     expect(find.text('รีเฟรช/อ่านใหม่ตอนนี้'), findsOneWidget);
+
+    await tester.tap(find.text('ตั้งค่า'));
+    await tester.pumpAndSettle();
+    expect(find.text('สร้างชีตเดือนล่วงหน้า'), findsOneWidget);
+    expect(find.textContaining('Passkey'), findsNothing);
+    expect(find.textContaining('passkey'), findsNothing);
   });
 
   testWidgets('phone layout remains usable', (tester) async {
@@ -33,5 +41,25 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Auto refresh'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Windows explains that Google actions use the web app', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await tester.binding.setSurfaceSize(const Size(1280, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        PhakphumCalendarApp(controller: AppController.demo()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Google Login ใช้ผ่าน Web'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

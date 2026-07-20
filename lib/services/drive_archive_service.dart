@@ -21,6 +21,15 @@ class DriveArchiveService {
 
   static const sourceApp = 'phakphum_shift_calendar';
 
+  static String archiveLookupQuery({
+    required String sourceFileId,
+    required String period,
+  }) =>
+      "trashed = false and appProperties has { key='sourceApp' "
+      "and value='$sourceApp' } and appProperties has { key='sourceFileId' "
+      "and value='$sourceFileId' } and appProperties has { key='period' "
+      "and value='$period' }";
+
   Future<DriveArchiveResult> copyMonthlyOriginal(
     GoogleApiClient client, {
     required String sourceFileId,
@@ -35,10 +44,7 @@ class DriveArchiveService {
     final name =
         'ตารางเวร-ต้นฉบับ-$buddhistYear-${month.toString().padLeft(2, '0')}';
     final existing = await api.files.list(
-      q:
-          "trashed = false and appProperties has { key='sourceApp' "
-          "and value='$sourceApp' } and appProperties has { key='period' "
-          "and value='$period' }",
+      q: archiveLookupQuery(sourceFileId: sourceFileId, period: period),
       spaces: 'drive',
       pageSize: 1,
       $fields: 'files(id,name,webViewLink)',

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_settings.dart';
@@ -14,11 +13,12 @@ class SettingsService {
   static const _archiveKey = 'archive_original';
   static const _autoRefreshKey = 'auto_refresh';
   static const _refreshSecondsKey = 'refresh_seconds';
-  static const _passkeyHashKey = 'passkey_sha256';
+  static const _googleWebClientIdKey = 'google_web_client_id';
   static const _auditKey = 'audit_log';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('passkey_sha256');
     final defaults = AppSettings.defaults();
     return AppSettings(
       sourceUrl: prefs.getString(_sourceKey) ?? defaults.sourceUrl,
@@ -32,6 +32,8 @@ class SettingsService {
             1,
             10,
           ),
+      googleWebClientId:
+          prefs.getString(_googleWebClientIdKey) ?? defaults.googleWebClientId,
     );
   }
 
@@ -45,26 +47,8 @@ class SettingsService {
       prefs.setBool(_archiveKey, settings.archiveOriginal),
       prefs.setBool(_autoRefreshKey, settings.autoRefresh),
       prefs.setInt(_refreshSecondsKey, settings.refreshSeconds.clamp(1, 10)),
+      prefs.setString(_googleWebClientIdKey, settings.googleWebClientId),
     ]);
-  }
-
-  Future<bool> hasPasskey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return (prefs.getString(_passkeyHashKey) ?? '').isNotEmpty;
-  }
-
-  Future<void> setPasskey(String passkey) async {
-    if (passkey.trim().length < 6) {
-      throw ArgumentError('Passkey ต้องมีอย่างน้อย 6 ตัวอักษร');
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_passkeyHashKey, _hash(passkey));
-  }
-
-  Future<bool> verifyPasskey(String passkey) async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_passkeyHashKey);
-    return saved != null && saved == _hash(passkey);
   }
 
   Future<List<AuditEntry>> loadAudit() async {
@@ -91,6 +75,4 @@ class SettingsService {
     if (entries.length > 200) entries.removeRange(200, entries.length);
     await prefs.setStringList(_auditKey, entries);
   }
-
-  String _hash(String value) => sha256.convert(utf8.encode(value)).toString();
 }

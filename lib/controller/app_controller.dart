@@ -77,7 +77,6 @@ class AppController extends ChangeNotifier {
   List<String> sheetTitles = [];
   bool initialized = false;
   bool busy = false;
-  bool hasPasskey = false;
   String? status;
   String? error;
   DateTime? lastRefresh;
@@ -97,29 +96,53 @@ class AppController extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (initialized) return;
-    settings = await _settingsService.load();
-    auditEntries = await _settingsService.loadAudit();
-    hasPasskey = await _settingsService.hasPasskey();
+    try {
+      settings = await _settingsService.load();
+    } catch (caught) {
+      error = 'โหลดการตั้งค่าไม่สำเร็จ: $caught';
+    }
+    try {
+      auditEntries = await _settingsService.loadAudit();
+    } catch (caught) {
+      error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
+    }
     auth.addListener(_onAuthChanged);
-    await auth.initialize();
+    await auth.initialize(webClientId: settings.googleWebClientId);
     initialized = true;
     notifyListeners();
   }
 
   Future<void> signIn() => auth.signIn();
-  Future<void> signOut() => auth.signOut();
+  Future<void> signOut() async {
+    await auth.signOut();
+    _autoRefreshTimer?.cancel();
+    shifts = [];
+    existingKeys = {};
+    sheetTitles = [];
+    lastRefresh = null;
+    status = 'ออกจากระบบ Google แล้ว';
+    notifyListeners();
+  }
+
+  Future<void> configureGoogleWebClientId(String value) async {
+    final clientId = value.trim();
+    if (!GoogleAuthService.isValidWebClientId(clientId)) {
+      throw const FormatException(
+        'รูปแบบ Google Web OAuth Client ID ไม่ถูกต้อง',
+      );
+    }
+    settings = settings.copyWith(googleWebClientId: clientId);
+    await _settingsService.save(settings);
+    await auth.configureWebClientId(clientId);
+    status = 'ตั้งค่า Google OAuth สำหรับ Web สำเร็จ';
+    await _addAudit('auth.configure', status!, true);
+    notifyListeners();
+  }
 
   Future<void> updateSettings(AppSettings next) async {
     settings = next;
     await _settingsService.save(next);
     _scheduleAutoRefresh();
-    notifyListeners();
-  }
-
-  Future<void> setPasskey(String value) async {
-    await _settingsService.setPasskey(value);
-    hasPasskey = true;
-    await _addAudit('security', 'ตั้งค่าหรือเปลี่ยน passkey สำเร็จ', true);
     notifyListeners();
   }
 
@@ -185,12 +208,8 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<void> syncCalendar(String passkey) async {
+  Future<void> syncCalendar() async {
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
-    if (!await _settingsService.verifyPasskey(passkey)) {
-      await _addAudit('security', 'ปฏิเสธการเขียน: passkey ไม่ถูกต้อง', false);
-      throw StateError('Passkey ไม่ถูกต้อง');
-    }
     await _run('สร้างสำเนาและบันทึกปฏิทิน', () async {
       if (settings.archiveOriginal) {
         final driveClient = await auth.clientFor([drive.DriveApi.driveScope]);
@@ -242,18 +261,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> createFutureSheet({
-    required String passkey,
     required String templateTitle,
     required String newTitle,
   }) async {
-    if (!await _settingsService.verifyPasskey(passkey)) {
-      await _addAudit(
-        'security',
-        'ปฏิเสธการสร้างชีต: passkey ไม่ถูกต้อง',
-        false,
-      );
-      throw StateError('Passkey ไม่ถูกต้อง');
-    }
     if (templateTitle.trim().isEmpty || newTitle.trim().isEmpty) {
       throw StateError('กรุณาระบุแท็บต้นแบบและชื่อแท็บใหม่');
     }
@@ -316,7 +326,10 @@ class AppController extends ChangeNotifier {
     await _settingsService.appendAudit(entry);
   }
 
-  void _onAuthChanged() => notifyListeners();
+  void _onAuthChanged() {
+    if (!auth.isSignedIn) _autoRefreshTimer?.cancel();
+    notifyListeners();
+  }
 
   void _scheduleAutoRefresh() {
     _autoRefreshTimer?.cancel();
