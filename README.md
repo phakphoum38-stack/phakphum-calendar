@@ -92,4 +92,4 @@ Workflows:
 
 Android workflow ใช้ debug signing key ของ Flutter template จึงเหมาะกับการทดสอบ ไม่ใช่ Play Store release signing ส่วน IPA เป็น unsigned archive: ใช้ตรวจหรือส่งต่อไปขั้นตอน signing ได้ แต่ติดตั้งบน iPhone ปกติไม่ได้จนกว่าจะเซ็นด้วย Apple certificate/provisioning profile
 
-เปิด GitHub Pages ที่ **Settings → Pages → Source: GitHub Actions** ก่อนรัน Web workflow บนสาขา `main`
+สำหรับ Private repository บนแผนที่ไม่รองรับ Private Pages งาน Web จะสร้าง artifact ให้ดาวน์โหลดแต่ข้ามขั้น deploy โดยอัตโนมัติ หากเปลี่ยน repository เป็น Public หรือใช้แผนที่รองรับ Private Pages ให้เปิด **Settings → Pages → Source: GitHub Actions** แล้ว workflow จะ deploy จากสาขา `main`

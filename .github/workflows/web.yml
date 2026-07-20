@@ -1,4 +1,4 @@
-name: Build and Deploy Web
+name: Build Web and Optional Pages
 
 on:
   workflow_dispatch:
@@ -48,7 +48,12 @@ jobs:
           path: build/web
 
   deploy:
-    if: github.ref == 'refs/heads/main'
+    # GitHub Free does not provide Pages for private repositories. The build
+    # artifact remains available; deployment starts automatically if the
+    # repository is made public or the account plan supports private Pages.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.repository.visibility == 'public'
     needs: build
     runs-on: ubuntu-latest
     environment:
