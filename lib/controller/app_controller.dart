@@ -7,12 +7,15 @@ import 'package:googleapis/sheets/v4.dart' as sheets;
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
+import '../models/calendar_busy_period.dart';
 import '../models/shift.dart';
+import '../models/shift_alert.dart';
 import '../services/calendar_service.dart';
 import '../services/drive_archive_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/settings_service.dart';
 import '../services/sheets_service.dart';
+import '../services/shift_alert_service.dart';
 import '../services/shift_parser.dart';
 
 class AppController extends ChangeNotifier {
@@ -21,12 +24,14 @@ class AppController extends ChangeNotifier {
     SettingsService? settingsService,
     SheetsService? sheetsService,
     ShiftParser? parser,
+    ShiftAlertService? alertService,
     CalendarService? calendarService,
     DriveArchiveService? archiveService,
   }) : auth = auth ?? GoogleAuthService(),
        _settingsService = settingsService ?? SettingsService(),
        _sheetsService = sheetsService ?? SheetsService(),
        _parser = parser ?? const ShiftParser(),
+       _alertService = alertService ?? const ShiftAlertService(),
        _calendarService = calendarService ?? const CalendarService(),
        _archiveService = archiveService ?? const DriveArchiveService();
 
@@ -35,11 +40,12 @@ class AppController extends ChangeNotifier {
       _settingsService = SettingsService(),
       _sheetsService = SheetsService(),
       _parser = const ShiftParser(),
+      _alertService = const ShiftAlertService(),
       _calendarService = const CalendarService(),
       _archiveService = const DriveArchiveService() {
     initialized = true;
     settings = AppSettings.defaults();
-    shifts = [
+    final sourceShifts = [
       Shift(
         code: 'UP1',
         rowLabel: 'P1 เช้า',
@@ -60,18 +66,44 @@ class AppController extends ChangeNotifier {
         cell: 'I40',
         category: ShiftCategory.clinic,
       ),
+      Shift(
+        code: 'NP2',
+        rowLabel: 'P2 ดึก',
+        assignedName: 'ภาคภูมิ',
+        start: DateTime(2026, 8, 10),
+        end: DateTime(2026, 8, 10, 8),
+        sheetTitle: 'ตัวอย่าง',
+        cell: 'K7',
+        category: ShiftCategory.own,
+      ),
+      Shift(
+        code: 'UP3',
+        rowLabel: 'P3 เช้า',
+        assignedName: 'ภาคภูมิ',
+        start: DateTime(2026, 8, 10, 8),
+        end: DateTime(2026, 8, 10, 16),
+        sheetTitle: 'ตัวอย่าง',
+        cell: 'K9',
+        category: ShiftCategory.own,
+      ),
     ];
+    shifts = _alertService.addOffDutyPeriods(sourceShifts);
+    _rebuildAlerts();
   }
 
   final GoogleAuthService auth;
   final SettingsService _settingsService;
   final SheetsService _sheetsService;
   final ShiftParser _parser;
+  final ShiftAlertService _alertService;
   final CalendarService _calendarService;
   final DriveArchiveService _archiveService;
 
   AppSettings settings = AppSettings.defaults();
   List<Shift> shifts = [];
+  List<ShiftAlert> alerts = [];
+  List<CalendarBusyPeriod> calendarPeriods = [];
+  Map<String, ShiftAlertDecision> alertDecisions = {};
   List<AuditEntry> auditEntries = [];
   Set<String> existingKeys = {};
   List<String> sheetTitles = [];
@@ -94,11 +126,15 @@ class AppController extends ChangeNotifier {
             !CalendarService.matchesExisting(shift, existingKeys),
       )
       .length;
+  int get pendingAlertCount => alerts.where((alert) => alert.isPending).length;
+  int get conflictAlertCount =>
+      alerts.where((alert) => alert.isConflict).length;
 
   Future<void> initialize() async {
     if (initialized) return;
     settings = await _settingsService.load();
     auditEntries = await _settingsService.loadAudit();
+    alertDecisions = await _settingsService.loadAlertDecisions();
     hasPasskey = await _settingsService.hasPasskey();
     auth.addListener(_onAuthChanged);
     await auth.initialize();
@@ -110,6 +146,10 @@ class AppController extends ChangeNotifier {
   Future<void> signOut() => auth.signOut();
 
   Future<void> updateSettings(AppSettings next) async {
+    if (next.year != settings.year || next.month != settings.month) {
+      calendarPeriods = [];
+      existingKeys = {};
+    }
     settings = next;
     await _settingsService.save(next);
     _scheduleAutoRefresh();
@@ -133,19 +173,24 @@ class AppController extends ChangeNotifier {
           client,
           settings.sourceUrl,
         );
-        shifts = _parser.parse(
+        final parsed = _parser.parse(
           snapshots: snapshots,
           targetName: settings.targetName,
           year: settings.year,
           month: settings.month,
         );
+        shifts = _alertService.addOffDutyPeriods(parsed);
+        _rebuildAlerts(applyDecisions: true);
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
-        existingKeys = {};
         lastRefresh = DateTime.now();
-        status = 'พบเวรของ ${settings.targetName} ${shifts.length} รายการ';
+        status =
+            'พบ ${parsed.length} เวร และสร้างเวรออฟ '
+            '${shifts.length - parsed.length} รายการ; '
+            'มีแจ้งเตือนรอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'sheet.read',
-          'อ่าน ${snapshots.length} แท็บ พบ ${shifts.length} เวร; ไม่มีการแก้ไขชีต',
+          'อ่าน ${snapshots.length} แท็บ พบ ${parsed.length} เวร '
+              'และเวรออฟ ${shifts.length - parsed.length}; ไม่มีการแก้ไขชีต',
           true,
         );
       } finally {
@@ -168,15 +213,21 @@ class AppController extends ChangeNotifier {
         calendar.CalendarApi.calendarEventsReadonlyScope,
       ]);
       try {
-        existingKeys = await _calendarService.existingSourceKeys(
+        final snapshot = await _calendarService.readCalendar(
           client,
           year: settings.year,
           month: settings.month,
         );
-        status = 'มีแล้ว $existingCount รายการ • เตรียมเพิ่ม $newCount รายการ';
+        existingKeys = snapshot.sourceKeys;
+        calendarPeriods = snapshot.busyPeriods;
+        _rebuildAlerts();
+        status =
+            'มีแล้ว $existingCount รายการ • เตรียมเพิ่ม $newCount รายการ • '
+            'แจ้งเตือนรอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'calendar.compare',
-          'ตรวจแบบอ่านอย่างเดียว: มีแล้ว $existingCount, ใหม่ $newCount',
+          'ตรวจแบบอ่านอย่างเดียว: มีแล้ว $existingCount, ใหม่ $newCount, '
+              'กิจกรรมที่นำมาตรวจชน ${calendarPeriods.length}',
           true,
         );
       } finally {
@@ -187,6 +238,12 @@ class AppController extends ChangeNotifier {
 
   Future<void> syncCalendar(String passkey) async {
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
+    if (pendingAlertCount > 0) {
+      throw StateError(
+        'มีแจ้งเตือน $pendingAlertCount รายการที่ยังไม่ได้ตัดสินใจ '
+        'กรุณาเปิดแท็บแจ้งเตือนก่อนบันทึก Calendar',
+      );
+    }
     if (!await _settingsService.verifyPasskey(passkey)) {
       await _addAudit('security', 'ปฏิเสธการเขียน: passkey ไม่ถูกต้อง', false);
       throw StateError('Passkey ไม่ถูกต้อง');
@@ -285,6 +342,83 @@ class AppController extends ChangeNotifier {
       excluded: excluded,
     );
     notifyListeners();
+  }
+
+  Future<void> resolveAlert(String alertId, ShiftAlertDecision decision) async {
+    final alert = alerts.cast<ShiftAlert?>().firstWhere(
+      (item) => item?.id == alertId,
+      orElse: () => null,
+    );
+    if (alert == null) return;
+    alertDecisions[alertId] = decision;
+    await _settingsService.saveAlertDecision(alertId, decision);
+
+    if (decision == ShiftAlertDecision.accepted) {
+      if (alert.type == ShiftAlertType.offAfterNight) {
+        _setExcluded(alert.offShiftKey, true);
+      } else {
+        _setExcluded(alert.targetShiftKey, false);
+        if (alert.type == ShiftAlertType.offConflict) {
+          _setExcluded(alert.offShiftKey, true);
+        }
+      }
+    } else if (decision == ShiftAlertDecision.cancelled) {
+      _setExcluded(
+        alert.type == ShiftAlertType.offAfterNight
+            ? alert.offShiftKey
+            : alert.targetShiftKey,
+        true,
+      );
+    }
+
+    _rebuildAlerts();
+    status = switch (decision) {
+      ShiftAlertDecision.acknowledged => 'ยอมรับคำเตือนแล้ว',
+      ShiftAlertDecision.accepted => 'ยืนยันรับเวรและบันทึกการตัดสินใจแล้ว',
+      ShiftAlertDecision.cancelled => 'ยกเลิกรายการที่ชนแล้ว',
+      ShiftAlertDecision.pending => 'ตั้งเป็นรอตัดสินใจ',
+    };
+    await _addAudit('alert.${decision.name}', '${alert.title}: $status', true);
+    notifyListeners();
+  }
+
+  void _rebuildAlerts({bool applyDecisions = false}) {
+    alerts = _alertService.build(
+      shifts: shifts,
+      calendarPeriods: calendarPeriods,
+      decisions: alertDecisions,
+    );
+    if (!applyDecisions) return;
+    for (final alert in alerts) {
+      if (alert.decision == ShiftAlertDecision.cancelled) {
+        _setExcluded(
+          alert.type == ShiftAlertType.offAfterNight
+              ? alert.offShiftKey
+              : alert.targetShiftKey,
+          true,
+        );
+      } else if (alert.decision == ShiftAlertDecision.accepted) {
+        if (alert.type == ShiftAlertType.offAfterNight) {
+          _setExcluded(alert.offShiftKey, true);
+        } else {
+          _setExcluded(alert.targetShiftKey, false);
+          if (alert.type == ShiftAlertType.offConflict) {
+            _setExcluded(alert.offShiftKey, true);
+          }
+        }
+      }
+    }
+    alerts = _alertService.build(
+      shifts: shifts,
+      calendarPeriods: calendarPeriods,
+      decisions: alertDecisions,
+    );
+  }
+
+  void _setExcluded(String? sourceKey, bool excluded) {
+    if (sourceKey == null) return;
+    final index = shifts.indexWhere((shift) => shift.sourceKey == sourceKey);
+    if (index >= 0) shifts[index] = shifts[index].copyWith(excluded: excluded);
   }
 
   Future<void> _run(String action, Future<void> Function() body) async {

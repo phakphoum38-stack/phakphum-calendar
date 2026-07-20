@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
+import '../models/shift_alert.dart';
 
 class SettingsService {
   static const _sourceKey = 'source_url';
@@ -16,6 +17,7 @@ class SettingsService {
   static const _refreshSecondsKey = 'refresh_seconds';
   static const _passkeyHashKey = 'passkey_sha256';
   static const _auditKey = 'audit_log';
+  static const _alertDecisionsKey = 'shift_alert_decisions';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,6 +92,42 @@ class SettingsService {
     entries.insert(0, jsonEncode(entry.toJson()));
     if (entries.length > 200) entries.removeRange(200, entries.length);
     await prefs.setStringList(_auditKey, entries);
+  }
+
+  Future<Map<String, ShiftAlertDecision>> loadAlertDecisions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_alertDecisionsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final values = Map<String, Object?>.from(jsonDecode(raw) as Map);
+      return {
+        for (final entry in values.entries)
+          if (ShiftAlertDecision.values.any(
+            (decision) => decision.name == entry.value,
+          ))
+            entry.key: ShiftAlertDecision.values.byName('${entry.value}'),
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveAlertDecision(
+    String alertId,
+    ShiftAlertDecision decision,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final decisions = await loadAlertDecisions();
+    decisions[alertId] = decision;
+    if (decisions.length > 500) {
+      decisions.remove(decisions.keys.first);
+    }
+    await prefs.setString(
+      _alertDecisionsKey,
+      jsonEncode({
+        for (final entry in decisions.entries) entry.key: entry.value.name,
+      }),
+    );
   }
 
   String _hash(String value) => sha256.convert(utf8.encode(value)).toString();
