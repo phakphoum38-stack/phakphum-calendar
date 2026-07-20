@@ -1,6 +1,6 @@
-import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
 
 import '../models/shift.dart';

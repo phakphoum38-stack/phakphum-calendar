@@ -1,0 +1,106 @@
+name: Build Desktop Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "linux/**"
+      - "macos/**"
+      - "windows/**"
+      - "pubspec.*"
+      - ".github/workflows/desktop.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Package Windows app and checksum
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/phakphum-calendar-windows.zip
+          $hash = (Get-FileHash dist/phakphum-calendar-windows.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  phakphum-calendar-windows.zip" | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+      - uses: actions/upload-artifact@v6
+        with:
+          name: phakphum-calendar-windows
+          path: dist
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Package Linux app and checksum
+        run: |
+          mkdir -p dist
+          tar -C build/linux/x64/release -czf dist/phakphum-calendar-linux.tar.gz bundle
+          cd dist
+          sha256sum phakphum-calendar-linux.tar.gz > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: phakphum-calendar-linux
+          path: dist
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Apply macOS OAuth configuration when secrets are present
+        env:
+          GOOGLE_MACOS_CLIENT_ID: ${{ secrets.GOOGLE_MACOS_CLIENT_ID }}
+          GOOGLE_MACOS_REVERSED_CLIENT_ID: ${{ secrets.GOOGLE_MACOS_REVERSED_CLIENT_ID }}
+        run: |
+          if [[ -n "$GOOGLE_MACOS_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :GIDClientID $GOOGLE_MACOS_CLIENT_ID" macos/Runner/Info.plist
+          fi
+          if [[ -n "$GOOGLE_MACOS_REVERSED_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 $GOOGLE_MACOS_REVERSED_CLIENT_ID" macos/Runner/Info.plist
+          fi
+      - name: Build macOS app
+        env:
+          GOOGLE_MACOS_CLIENT_ID: ${{ secrets.GOOGLE_MACOS_CLIENT_ID }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: >-
+          flutter build macos --release
+          --dart-define=GOOGLE_MACOS_CLIENT_ID="$GOOGLE_MACOS_CLIENT_ID"
+          --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
+      - name: Package macOS app and checksum
+        run: |
+          mkdir -p dist
+          APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" dist/phakphum-calendar-macos.zip
+          cd dist
+          shasum -a 256 phakphum-calendar-macos.zip > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: phakphum-calendar-macos
+          path: dist
+          if-no-files-found: error
