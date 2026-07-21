@@ -75,6 +75,41 @@ void main() {
     expect(shifts[1].start, DateTime(2026, 8, 5, 16, 30));
     expect(shifts[2].end, DateTime(2026, 8, 6, 8));
   });
+
+  test('maps bare ER and CT rows in the daytime-duty section', () {
+    final days = <Object?>[
+      'วันที่',
+      ...List.generate(16, (i) => i + 16),
+      ...List.generate(15, (i) => i + 1),
+    ];
+    final er = _row('ER');
+    final ct = _row('CT');
+    er[8] = 'ผู้ใช้งานทดสอบ';
+    ct[9] = 'ผู้ใช้งานทดสอบ';
+
+    final shifts = parser.parse(
+      snapshots: [
+        SheetSnapshot(
+          title: '16 กรกฎาคม 2569 - 15 สิงหาคม 2569',
+          rows: [
+            days,
+            ['เวรกลางวัน'],
+            er,
+            ct,
+          ],
+        ),
+      ],
+      targetName: 'ผู้ใช้งานทดสอบ',
+      year: 2026,
+      month: 7,
+    );
+
+    expect(shifts.map((shift) => shift.code), ['UER', 'UCT']);
+    expect(shifts[0].start, DateTime(2026, 7, 23, 8));
+    expect(shifts[0].end, DateTime(2026, 7, 23, 16));
+    expect(shifts[1].start, DateTime(2026, 7, 24, 8));
+    expect(shifts[1].end, DateTime(2026, 7, 24, 16));
+  });
 }
 
 List<Object?> _row(String label) => <Object?>[label, ...List.filled(31, '')];

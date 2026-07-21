@@ -186,6 +186,15 @@ class ShiftParser {
 
   _ShiftRule? _ruleForLabel(String label) {
     final value = _normalizeLabel(label);
+    if (value == 'ER' || value == 'CT') {
+      return _ShiftRule(
+        code: 'U$value',
+        startHour: 8,
+        startMinute: 0,
+        endHour: 16,
+        endMinute: 0,
+      );
+    }
     if (value == 'GEN') {
       return const _ShiftRule(
         code: 'UG',
