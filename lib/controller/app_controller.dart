@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
+import '../models/saved_sheet.dart';
 import '../models/shift.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
@@ -75,6 +76,7 @@ class AppController extends ChangeNotifier {
   AppSettings settings = AppSettings.defaults();
   List<Shift> shifts = [];
   List<AuditEntry> auditEntries = [];
+  List<SavedSheet> savedSheets = [];
   Set<String> existingKeys = {};
   List<String> sheetTitles = [];
   Set<String> pinnedToolIds = {...defaultPinnedToolIds};
@@ -108,6 +110,11 @@ class AppController extends ChangeNotifier {
       auditEntries = await _settingsService.loadAudit();
     } catch (caught) {
       error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
+    }
+    try {
+      savedSheets = await _settingsService.loadSavedSheets();
+    } catch (caught) {
+      error ??= 'โหลดรายการชีตที่บันทึกไม่สำเร็จ: $caught';
     }
     try {
       pinnedToolIds = await _settingsService.loadPinnedToolIds();
@@ -167,6 +174,14 @@ class AppController extends ChangeNotifier {
   Iterable<ToolDefinition> get pinnedTools =>
       toolCatalog.where((tool) => pinnedToolIds.contains(tool.id));
 
+  List<SavedSheet> get savedSheetsForCurrentAccount {
+    final accountId = auth.account?.id;
+    if (accountId == null) return const [];
+    return savedSheets
+        .where((sheet) => sheet.ownerAccountId == accountId)
+        .toList();
+  }
+
   bool isToolPinned(String id) => pinnedToolIds.contains(id);
 
   Future<void> toggleToolPinned(ToolDefinition tool) async {
@@ -190,6 +205,66 @@ class AppController extends ChangeNotifier {
     if (!opened) throw StateError('ไม่สามารถเปิด ${tool.name} ได้');
     status = 'เปิด ${tool.name} แล้ว';
     notifyListeners();
+  }
+
+  Future<void> saveCurrentSheet() async {
+    final account = auth.account;
+    if (account == null) throw StateError('กรุณาล็อกอิน Google ก่อน');
+    if (settings.sourceUrl.trim().isEmpty) {
+      throw StateError('กรุณาวางลิงก์ Google Sheets ในหน้าแรกก่อน');
+    }
+    await _run('บันทึกชีตปัจจุบัน', () async {
+      final client = await auth.clientFor([
+        sheets.SheetsApi.spreadsheetsReadonlyScope,
+      ]);
+      try {
+        final reference = await _sheetsService.describeSpreadsheet(
+          client,
+          settings.sourceUrl,
+        );
+        final saved = await _saveSheetReference(account.id, reference);
+        status = 'บันทึก “${saved.displayTitle}” ไว้ในเครื่องแล้ว';
+        await _addAudit(
+          'sheet.reference.save',
+          'บันทึกลิงก์ชีต “${saved.displayTitle}” ไว้เฉพาะในเครื่อง',
+          true,
+        );
+      } finally {
+        client.close();
+      }
+    });
+  }
+
+  Future<void> openSavedSheet(SavedSheet sheet) async {
+    _requireSheetOwner(sheet);
+    await _run('เปิดชีตที่บันทึก', () async {
+      final opened = await launchUrl(
+        Uri.parse(sheet.url),
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank',
+      );
+      if (!opened) throw StateError('ไม่สามารถเปิดลิงก์ Google Sheets ได้');
+      status = 'เปิด “${sheet.displayTitle}” แล้ว';
+      await _addAudit(
+        'sheet.reference.open',
+        'เปิดชีตที่บันทึก “${sheet.displayTitle}”',
+        true,
+      );
+    });
+  }
+
+  Future<void> deleteSavedSheet(SavedSheet sheet) async {
+    _requireSheetOwner(sheet);
+    await _run('ลบชีตออกจากรายการบันทึก', () async {
+      savedSheets.removeWhere((item) => item.key == sheet.key);
+      await _settingsService.saveSavedSheets(savedSheets);
+      status = 'ลบ “${sheet.displayTitle}” ออกจากรายการแล้ว';
+      await _addAudit(
+        'sheet.reference.delete',
+        'ลบ “${sheet.displayTitle}” ออกจากรายการในเครื่อง; ไม่ได้ลบไฟล์ Google Sheets',
+        true,
+      );
+    });
   }
 
   Future<void> loadRoster({bool background = false}) async {
@@ -322,11 +397,18 @@ class AppController extends ChangeNotifier {
           templateTitle: templateTitle.trim(),
           newTitle: newTitle.trim(),
         );
-        if (!sheetTitles.contains(created)) sheetTitles.add(created);
-        status = 'สร้างแท็บ “$created” สำเร็จ';
+        final createdTitle = created.sheetTitle ?? newTitle.trim();
+        if (!sheetTitles.contains(createdTitle)) {
+          sheetTitles.add(createdTitle);
+        }
+        final accountId = auth.account?.id;
+        if (accountId != null) {
+          await _saveSheetReference(accountId, created);
+        }
+        status = 'สร้างและบันทึกแท็บ “$createdTitle” สำเร็จ';
         await _addAudit(
           'sheet.create',
-          'ทำสำเนาแท็บ “$templateTitle” เป็น “$created”; ไม่แก้แท็บต้นแบบ',
+          'ทำสำเนาแท็บ “$templateTitle” เป็น “$createdTitle”; ไม่แก้แท็บต้นแบบ',
           true,
         );
       } finally {
@@ -341,6 +423,33 @@ class AppController extends ChangeNotifier {
       excluded: excluded,
     );
     notifyListeners();
+  }
+
+  Future<SavedSheet> _saveSheetReference(
+    String accountId,
+    SheetReference reference,
+  ) async {
+    final saved = SavedSheet(
+      ownerAccountId: accountId,
+      spreadsheetId: reference.spreadsheetId,
+      spreadsheetTitle: reference.spreadsheetTitle,
+      sheetId: reference.sheetId,
+      sheetTitle: reference.sheetTitle,
+      url: reference.url,
+      savedAt: DateTime.now(),
+    );
+    savedSheets.removeWhere((item) => item.key == saved.key);
+    savedSheets.insert(0, saved);
+    await _settingsService.saveSavedSheets(savedSheets);
+    return saved;
+  }
+
+  void _requireSheetOwner(SavedSheet sheet) {
+    final accountId = auth.account?.id;
+    if (accountId == null) throw StateError('กรุณาล็อกอิน Google ก่อน');
+    if (accountId != sheet.ownerAccountId) {
+      throw StateError('รายการนี้เป็นของ Google อีกบัญชีหนึ่ง');
+    }
   }
 
   Future<void> _run(String action, Future<void> Function() body) async {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
+import '../models/saved_sheet.dart';
 import '../models/shift.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
@@ -90,7 +91,12 @@ class _AppShellState extends State<AppShell> {
               configureGoogleOAuth: _configureGoogleOAuth,
             ),
             _PreviewPage(controller: controller),
-            _AuditPage(controller: controller),
+            _AuditPage(
+              controller: controller,
+              saveCurrentSheet: _saveCurrentSheet,
+              openSavedSheet: _openSavedSheet,
+              deleteSavedSheet: _deleteSavedSheet,
+            ),
             _SettingsPage(
               controller: controller,
               createFutureSheet: _createFutureSheet,
@@ -263,6 +269,23 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _togglePinnedTool(ToolDefinition tool) =>
       _perform(() => widget.controller.toggleToolPinned(tool));
+
+  Future<void> _saveCurrentSheet() =>
+      _perform(widget.controller.saveCurrentSheet);
+
+  Future<void> _openSavedSheet(SavedSheet sheet) =>
+      _perform(() => widget.controller.openSavedSheet(sheet));
+
+  Future<void> _deleteSavedSheet(SavedSheet sheet) async {
+    final confirmed = await _showConfirmationDialog(
+      title: 'ลบออกจากรายการบันทึก',
+      message:
+          'จะลบ “${sheet.displayTitle}” ออกจากรายการในเครื่องนี้เท่านั้น '
+          'ไฟล์และแท็บจริงใน Google Sheets จะไม่ถูกลบ',
+    );
+    if (confirmed != true) return;
+    await _perform(() => widget.controller.deleteSavedSheet(sheet));
+  }
 
   Future<void> _sync() async {
     final confirmed = await _showSyncConfirmationDialog();
@@ -1359,41 +1382,248 @@ class _PreviewPage extends StatelessWidget {
 }
 
 class _AuditPage extends StatelessWidget {
-  const _AuditPage({required this.controller});
+  const _AuditPage({
+    required this.controller,
+    required this.saveCurrentSheet,
+    required this.openSavedSheet,
+    required this.deleteSavedSheet,
+  });
+
   final AppController controller;
+  final Future<void> Function() saveCurrentSheet;
+  final Future<void> Function(SavedSheet sheet) openSavedSheet;
+  final Future<void> Function(SavedSheet sheet) deleteSavedSheet;
 
   @override
   Widget build(BuildContext context) {
-    if (controller.auditEntries.isEmpty) {
-      return const _EmptyState(
-        icon: Icons.history_outlined,
-        title: 'ยังไม่มี Audit log',
-        message: 'การอ่าน สำเนา และการเขียนจะบันทึกไว้ในเครื่องนี้',
-      );
-    }
-    return ListView.builder(
+    final account = controller.auth.account;
+    final sheets = controller.savedSheetsForCurrentAccount;
+    final canSave =
+        account != null &&
+        controller.settings.sourceUrl.trim().isNotEmpty &&
+        !controller.busy;
+    return ListView(
       padding: const EdgeInsets.all(20),
-      itemCount: controller.auditEntries.length,
-      itemBuilder: (context, index) {
-        final entry = controller.auditEntries[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: entry.success
-                ? Colors.green.shade50
-                : Colors.red.shade50,
-            child: Icon(
-              entry.success ? Icons.check : Icons.error_outline,
-              color: entry.success ? Colors.green : Colors.red,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final heading = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ชีตที่บันทึก',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'เปิดดูชีตที่สร้างหรือบันทึกไว้ แยกตามบัญชี Google ที่ล็อกอิน',
+                        ),
+                      ],
+                    );
+                    final button = FilledButton.icon(
+                      onPressed: canSave
+                          ? () => unawaited(saveCurrentSheet())
+                          : null,
+                      icon: const Icon(Icons.bookmark_add_outlined),
+                      label: const Text('บันทึกชีตปัจจุบัน'),
+                    );
+                    if (constraints.maxWidth < 720) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          heading,
+                          const SizedBox(height: 12),
+                          Align(alignment: Alignment.centerLeft, child: button),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: heading),
+                        const SizedBox(width: 16),
+                        button,
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'เก็บเฉพาะลิงก์และชื่อชีตในเครื่องนี้ ไม่เก็บอีเมลหรือ token และไม่ส่งขึ้น GitHub',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                if (account == null)
+                  const _SavedSheetNotice(
+                    icon: Icons.account_circle_outlined,
+                    text: 'ล็อกอิน Google เพื่อดูรายการของบัญชีนี้',
+                  )
+                else if (sheets.isEmpty)
+                  _SavedSheetNotice(
+                    icon: controller.settings.sourceUrl.trim().isEmpty
+                        ? Icons.link_off_outlined
+                        : Icons.bookmarks_outlined,
+                    text: controller.settings.sourceUrl.trim().isEmpty
+                        ? 'วางลิงก์ Google Sheets ในหน้าแรก แล้วกดบันทึกชีตปัจจุบัน'
+                        : 'ยังไม่มีชีตที่บันทึก กดบันทึกชีตปัจจุบันหรือสร้างแท็บเดือนล่วงหน้า',
+                  )
+                else
+                  for (final sheet in sheets)
+                    _SavedSheetCard(
+                      sheet: sheet,
+                      disabled: controller.busy,
+                      open: openSavedSheet,
+                      delete: deleteSavedSheet,
+                    ),
+              ],
             ),
           ),
-          title: Text(entry.message),
-          subtitle: Text(
-            '${entry.action} • ${_thaiDate(entry.timestamp)} ${_clock(entry.timestamp)}',
-          ),
-        );
-      },
+        ),
+        const SizedBox(height: 20),
+        Text('ประวัติการทำงาน', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        if (controller.auditEntries.isEmpty)
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.history_outlined),
+              title: Text('ยังไม่มี Audit log'),
+              subtitle: Text(
+                'การอ่าน สำเนา และการเขียนจะบันทึกไว้ในเครื่องนี้',
+              ),
+            ),
+          )
+        else
+          for (final entry in controller.auditEntries)
+            Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: entry.success
+                      ? Colors.green.shade50
+                      : Colors.red.shade50,
+                  child: Icon(
+                    entry.success ? Icons.check : Icons.error_outline,
+                    color: entry.success ? Colors.green : Colors.red,
+                  ),
+                ),
+                title: Text(entry.message),
+                subtitle: Text(
+                  '${entry.action} • ${_thaiDate(entry.timestamp)} ${_clock(entry.timestamp)}',
+                ),
+              ),
+            ),
+      ],
     );
   }
+}
+
+class _SavedSheetNotice extends StatelessWidget {
+  const _SavedSheetNotice({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(icon),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _SavedSheetCard extends StatelessWidget {
+  const _SavedSheetCard({
+    required this.sheet,
+    required this.disabled,
+    required this.open,
+    required this.delete,
+  });
+
+  final SavedSheet sheet;
+  final bool disabled;
+  final Future<void> Function(SavedSheet sheet) open;
+  final Future<void> Function(SavedSheet sheet) delete;
+
+  @override
+  Widget build(BuildContext context) => Card.outlined(
+    margin: const EdgeInsets.only(bottom: 10),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final details = Row(
+                children: [
+                  const CircleAvatar(child: Icon(Icons.table_chart_outlined)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sheet.displayTitle,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${sheet.contextLabel} • บันทึก ${_thaiDate(sheet.savedAt)} ${_clock(sheet.savedAt)}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions = Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: disabled ? null : () => unawaited(open(sheet)),
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('เปิดดู'),
+                  ),
+                  TextButton.icon(
+                    onPressed: disabled ? null : () => unawaited(delete(sheet)),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('ลบ'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              );
+          if (constraints.maxWidth < 620) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [details, const SizedBox(height: 12), actions],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: details),
+              const SizedBox(width: 12),
+              actions,
+            ],
+          );
+        },
+      ),
+    ),
+  );
 }
 
 class _SettingsPage extends StatelessWidget {

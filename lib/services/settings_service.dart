@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
+import '../models/saved_sheet.dart';
 import '../models/tool_definition.dart';
 
 class SettingsService {
@@ -17,6 +18,7 @@ class SettingsService {
   static const _googleWebClientIdKey = 'google_web_client_id';
   static const _auditKey = 'audit_log';
   static const _pinnedToolIdsKey = 'pinned_tool_ids';
+  static const _savedSheetsKey = 'saved_sheets';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -90,5 +92,32 @@ class SettingsService {
     final validIds = ids.where((id) => toolById(id) != null).toSet().toList()
       ..sort();
     await prefs.setStringList(_pinnedToolIdsKey, validIds);
+  }
+
+  Future<List<SavedSheet>> loadSavedSheets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_savedSheetsKey) ?? const [];
+    return raw
+        .map((item) {
+          try {
+            return SavedSheet.fromJson(
+              Map<String, Object?>.from(jsonDecode(item) as Map),
+            );
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<SavedSheet>()
+        .toList();
+  }
+
+  Future<void> saveSavedSheets(Iterable<SavedSheet> sheets) async {
+    final prefs = await SharedPreferences.getInstance();
+    final records = sheets.toList()
+      ..sort((left, right) => right.savedAt.compareTo(left.savedAt));
+    await prefs.setStringList(
+      _savedSheetsKey,
+      records.take(100).map((sheet) => jsonEncode(sheet.toJson())).toList(),
+    );
   }
 }
