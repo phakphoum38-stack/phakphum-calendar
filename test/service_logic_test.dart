@@ -189,6 +189,50 @@ void main() {
     );
   });
 
+  test('builds recent Sheet history from owned Drive metadata only', () {
+    expect(
+      DriveOwnershipService.recentOwnedSheetsQuery,
+      allOf(
+        contains("mimeType = '${DriveOwnershipService.googleSheetMimeType}'"),
+        contains('trashed = false'),
+        contains("'me' in owners"),
+      ),
+    );
+
+    final modifiedAt = DateTime.utc(2026, 7, 21, 8, 30);
+    final recent = DriveOwnershipService.recentOwnedSheetsFromFiles([
+      drive.File(
+        id: 'owned-sheet-id',
+        name: 'ตารางเวรล่าสุด',
+        mimeType: DriveOwnershipService.googleSheetMimeType,
+        ownedByMe: true,
+        trashed: false,
+        modifiedByMeTime: modifiedAt,
+      ),
+      drive.File(
+        id: 'shared-sheet-id',
+        name: 'ไฟล์ของคนอื่น',
+        mimeType: DriveOwnershipService.googleSheetMimeType,
+        ownedByMe: false,
+      ),
+      drive.File(
+        id: 'trashed-sheet-id',
+        name: 'ไฟล์ในถังขยะ',
+        mimeType: DriveOwnershipService.googleSheetMimeType,
+        ownedByMe: true,
+        trashed: true,
+      ),
+    ]);
+
+    expect(recent, hasLength(1));
+    expect(recent.single.id, 'owned-sheet-id');
+    expect(recent.single.modifiedAt, modifiedAt);
+    expect(
+      recent.single.url,
+      'https://docs.google.com/spreadsheets/d/owned-sheet-id/edit',
+    );
+  });
+
   test('parses Sheets URLs and raw spreadsheet IDs', () {
     const id = '1TestSpreadsheetId_0123456789';
     expect(

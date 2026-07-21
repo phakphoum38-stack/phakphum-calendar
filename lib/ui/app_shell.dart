@@ -8,6 +8,7 @@ import '../models/shift.dart';
 import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
+import '../services/drive_ownership_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/shift_color_service.dart';
 import 'google_sign_in_button.dart';
@@ -981,6 +982,29 @@ class _DashboardPageState extends State<_DashboardPage> {
                           prefixIcon: Icon(Icons.table_chart_outlined),
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed:
+                            controller.auth.isSignedIn && !controller.busy
+                            ? () => widget.perform(
+                                controller.findRecentSourceSheets,
+                              )
+                            : null,
+                        icon: const Icon(Icons.manage_search_outlined),
+                        label: const Text('ค้นหาจากประวัติอัปเดต Sheets'),
+                      ),
+                      if (controller.recentSheetHistoryLoaded) ...[
+                        const SizedBox(height: 10),
+                        _RecentSheetHistory(
+                          files: controller.recentOwnedSheets,
+                          currentSpreadsheetId:
+                              controller.currentSourceSheet?.spreadsheetId,
+                          disabled: controller.busy,
+                          select: (file) => widget.perform(
+                            () => controller.selectRecentSourceSheet(file),
+                          ),
+                        ),
+                      ],
                       if (controller.currentSourceSheet != null) ...[
                         const SizedBox(height: 10),
                         Row(
@@ -1192,6 +1216,80 @@ class _DashboardPageState extends State<_DashboardPage> {
       ),
     );
   }
+}
+
+class _RecentSheetHistory extends StatelessWidget {
+  const _RecentSheetHistory({
+    required this.files,
+    required this.currentSpreadsheetId,
+    required this.disabled,
+    required this.select,
+  });
+
+  final List<RecentOwnedSheet> files;
+  final String? currentSpreadsheetId;
+  final bool disabled;
+  final Future<void> Function(RecentOwnedSheet file) select;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ไฟล์ที่คุณอัปเดตล่าสุด',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'เรียงตามประวัติการแก้ไขของบัญชีนี้จาก Google Drive',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          if (files.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('ไม่พบ Google Sheets ที่บัญชีนี้เป็นเจ้าของ'),
+            )
+          else
+            for (final file in files.take(10))
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(
+                  child: Icon(Icons.table_chart_outlined),
+                ),
+                title: Text(file.name, overflow: TextOverflow.ellipsis),
+                subtitle: Text(
+                  file.modifiedAt == null
+                      ? 'ไม่พบเวลาแก้ไขล่าสุด'
+                      : 'แก้ไขล่าสุด ${_thaiDate(file.modifiedAt!)} '
+                            '${_clock(file.modifiedAt!)}',
+                ),
+                trailing: IconButton.filledTonal(
+                  onPressed: disabled || currentSpreadsheetId == file.id
+                      ? null
+                      : () => unawaited(select(file)),
+                  tooltip: currentSpreadsheetId == file.id
+                      ? 'กำลังใช้เป็นไฟล์หลัก'
+                      : 'ใช้เป็นไฟล์หลัก',
+                  icon: Icon(
+                    currentSpreadsheetId == file.id
+                        ? Icons.check_circle
+                        : Icons.arrow_forward,
+                  ),
+                ),
+              ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _GoogleAccountCard extends StatelessWidget {

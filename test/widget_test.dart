@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/controller/app_controller.dart';
 import 'package:phakphum_calendar/models/shift_alert.dart';
+import 'package:phakphum_calendar/services/drive_ownership_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -49,6 +50,7 @@ void main() {
     expect(find.text('รีเฟรช/อ่านใหม่ตอนนี้'), findsOneWidget);
     expect(find.text('ชื่อที่ต้องค้นหา'), findsOneWidget);
     expect(find.text('กรอกชื่อให้ตรงกับชื่อในตารางเวร'), findsOneWidget);
+    expect(find.text('ค้นหาจากประวัติอัปเดต Sheets'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('${DateTime.now().year}'), findsNothing);
 
@@ -92,6 +94,30 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Auto refresh'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('recent Sheet history remains usable on a phone', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = AppController.demo()
+      ..recentSheetHistoryLoaded = true
+      ..recentOwnedSheets = [
+        RecentOwnedSheet(
+          id: 'recent-sheet-id',
+          name: 'ตารางเวรล่าสุด',
+          url: 'https://docs.google.com/spreadsheets/d/recent-sheet-id/edit',
+          modifiedAt: DateTime(2026, 7, 21, 8, 30),
+        ),
+      ];
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(PhakphumCalendarApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ไฟล์ที่คุณอัปเดตล่าสุด'), findsOneWidget);
+    expect(find.text('ตารางเวรล่าสุด'), findsOneWidget);
+    expect(find.byTooltip('ใช้เป็นไฟล์หลัก'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
