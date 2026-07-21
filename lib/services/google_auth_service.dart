@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
 
 import 'google_api_client.dart';
 
@@ -9,6 +10,7 @@ class GoogleAuthService extends ChangeNotifier {
   static const readAccessScopes = <String>[
     'https://www.googleapis.com/auth/spreadsheets.readonly',
     'https://www.googleapis.com/auth/calendar.events.readonly',
+    drive.DriveApi.driveMetadataReadonlyScope,
   ];
 
   static const _webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');

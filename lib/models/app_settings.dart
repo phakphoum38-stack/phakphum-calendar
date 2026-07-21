@@ -1,6 +1,5 @@
 class AppSettings {
   const AppSettings({
-    required this.sourceUrl,
     required this.targetName,
     required this.year,
     required this.month,
@@ -10,15 +9,11 @@ class AppSettings {
     required this.googleWebClientId,
   });
 
-  static const defaultSourceUrl = '';
-
-  factory AppSettings.defaults({DateTime? now}) {
-    final current = now ?? DateTime.now();
-    return AppSettings(
-      sourceUrl: defaultSourceUrl,
+  factory AppSettings.defaults() {
+    return const AppSettings(
       targetName: '',
-      year: current.year,
-      month: current.month,
+      year: null,
+      month: null,
       archiveOriginal: true,
       autoRefresh: false,
       refreshSeconds: 5,
@@ -26,17 +21,15 @@ class AppSettings {
     );
   }
 
-  final String sourceUrl;
   final String targetName;
-  final int year;
-  final int month;
+  final int? year;
+  final int? month;
   final bool archiveOriginal;
   final bool autoRefresh;
   final int refreshSeconds;
   final String googleWebClientId;
 
   AppSettings copyWith({
-    String? sourceUrl,
     String? targetName,
     int? year,
     int? month,
@@ -45,7 +38,6 @@ class AppSettings {
     int? refreshSeconds,
     String? googleWebClientId,
   }) => AppSettings(
-    sourceUrl: sourceUrl ?? this.sourceUrl,
     targetName: targetName ?? this.targetName,
     year: year ?? this.year,
     month: month ?? this.month,
@@ -53,5 +45,15 @@ class AppSettings {
     autoRefresh: autoRefresh ?? this.autoRefresh,
     refreshSeconds: refreshSeconds ?? this.refreshSeconds,
     googleWebClientId: googleWebClientId ?? this.googleWebClientId,
+  );
+
+  AppSettings clearRosterSelection() => AppSettings(
+    targetName: '',
+    year: null,
+    month: null,
+    archiveOriginal: archiveOriginal,
+    autoRefresh: autoRefresh,
+    refreshSeconds: refreshSeconds,
+    googleWebClientId: googleWebClientId,
   );
 }

@@ -119,6 +119,7 @@ class _AppShellState extends State<AppShell> {
             _AuditPage(
               controller: controller,
               saveCurrentSheet: _saveCurrentSheet,
+              activateSavedSheet: _activateSavedSheet,
               openSavedSheet: _openSavedSheet,
               deleteSavedSheet: _deleteSavedSheet,
             ),
@@ -269,6 +270,14 @@ class _AppShellState extends State<AppShell> {
                 title: Text('Google Calendar แบบอ่านอย่างเดียว'),
                 subtitle: Text('ใช้ตรวจรายการซ้ำก่อนบันทึก'),
               ),
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.badge_outlined),
+                title: Text(
+                  'ข้อมูลเจ้าของไฟล์ใน Google Drive แบบอ่านอย่างเดียว',
+                ),
+                subtitle: Text('ใช้ยืนยันว่าชีตหลักเป็นของบัญชีที่ล็อกอิน'),
+              ),
               const Text(
                 'สิทธิ์เขียน Calendar, Drive และ Sheets จะยังไม่ถูกขอในขั้นตอนนี้',
                 style: TextStyle(fontSize: 12),
@@ -303,6 +312,11 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _saveCurrentSheet() =>
       _perform(widget.controller.saveCurrentSheet);
+
+  Future<void> _activateSavedSheet(SavedSheet sheet) => _perform(() async {
+    await widget.controller.activateSavedSheet(sheet);
+    await widget.controller.loadRoster();
+  });
 
   Future<void> _openSavedSheet(SavedSheet sheet) =>
       _perform(() => widget.controller.openSavedSheet(sheet));
@@ -866,19 +880,38 @@ class _DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<_DashboardPage> {
   late final source = TextEditingController(
-    text: widget.controller.settings.sourceUrl,
+    text: widget.controller.currentSourceUrl,
   );
-  late int month = widget.controller.settings.month;
-  late int year = widget.controller.settings.year;
+  late String? sourceAccountId = widget.controller.auth.account?.id;
+  late String boundSourceUrl = widget.controller.currentSourceUrl;
+  late int? month = widget.controller.settings.month;
+  late int? year = widget.controller.settings.year;
 
   List<int> get selectableYears {
     final currentYear = DateTime.now().year;
     final values = <int>{
       for (var value = currentYear - 5; value <= currentYear + 10; value++)
         value,
-      year,
+      ?year,
     }.toList()..sort();
     return values;
+  }
+
+  @override
+  void didUpdateWidget(covariant _DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextAccountId = widget.controller.auth.account?.id;
+    final nextBoundSource = widget.controller.currentSourceUrl;
+    final accountChanged = nextAccountId != sourceAccountId;
+    if (accountChanged || nextBoundSource != boundSourceUrl) {
+      sourceAccountId = nextAccountId;
+      boundSourceUrl = nextBoundSource;
+      source.text = nextBoundSource;
+    }
+    if (accountChanged) {
+      month = widget.controller.settings.month;
+      year = widget.controller.settings.year;
+    }
   }
 
   @override
@@ -890,7 +923,6 @@ class _DashboardPageState extends State<_DashboardPage> {
   Future<void> _saveSettings({bool? autoRefresh, int? refreshSeconds}) =>
       widget.controller.updateSettings(
         widget.controller.settings.copyWith(
-          sourceUrl: source.text.trim(),
           year: year,
           month: month,
           autoRefresh: autoRefresh,
@@ -927,19 +959,38 @@ class _DashboardPageState extends State<_DashboardPage> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'ใช้ Sheets API แบบอ่านอย่างเดียว ไม่มีคำสั่งแก้ไขเซลล์',
+                        'ไฟล์หลักต้องเป็น Google Sheets ของบัญชีที่ล็อกอิน '
+                        'แอปอ่านเซลล์และสีแบบ read-only',
                       ),
                       const SizedBox(height: 16),
                       TextField(
                         controller: source,
+                        enabled: controller.auth.isSignedIn && !controller.busy,
                         decoration: const InputDecoration(
                           labelText: 'ลิงก์ Google Sheets ต้นฉบับ',
-                          hintText: 'วางลิงก์ Google Sheets ของคุณ',
+                          hintText:
+                              'วางลิงก์ Google Sheets ที่บัญชีนี้เป็นเจ้าของ',
                           helperText:
-                              'ลิงก์ที่บันทึกจะเก็บไว้เฉพาะในเครื่องนี้',
+                              'ตรวจเจ้าของผ่าน Drive แล้วเก็บแยกตามบัญชีในเครื่องนี้',
                           prefixIcon: Icon(Icons.table_chart_outlined),
                         ),
                       ),
+                      if (controller.currentSourceSheet != null) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.verified_user_outlined, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'ไฟล์หลักของบัญชีนี้: '
+                                '${controller.currentSourceSheet!.displayTitle}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -978,8 +1029,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                   ),
                                 ),
                             ],
-                            onChanged: (value) =>
-                                setState(() => month = value ?? month),
+                            onChanged: (value) => setState(() => month = value),
                           );
                           final yearField = DropdownButtonFormField<int>(
                             initialValue: year,
@@ -994,8 +1044,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                   child: Text('$value'),
                                 ),
                             ],
-                            onChanged: (value) =>
-                                setState(() => year = value ?? year),
+                            onChanged: (value) => setState(() => year = value),
                           );
                           if (narrow) {
                             return Column(
@@ -1037,6 +1086,10 @@ class _DashboardPageState extends State<_DashboardPage> {
                                 controller.auth.isSignedIn && !controller.busy
                                 ? () => widget.perform(() async {
                                     await _saveSettings();
+                                    await controller
+                                        .selectSourceForCurrentAccount(
+                                          source.text,
+                                        );
                                     await controller.loadRoster();
                                   })
                                 : null,
@@ -1737,12 +1790,14 @@ class _AuditPage extends StatelessWidget {
   const _AuditPage({
     required this.controller,
     required this.saveCurrentSheet,
+    required this.activateSavedSheet,
     required this.openSavedSheet,
     required this.deleteSavedSheet,
   });
 
   final AppController controller;
   final Future<void> Function() saveCurrentSheet;
+  final Future<void> Function(SavedSheet sheet) activateSavedSheet;
   final Future<void> Function(SavedSheet sheet) openSavedSheet;
   final Future<void> Function(SavedSheet sheet) deleteSavedSheet;
 
@@ -1752,7 +1807,7 @@ class _AuditPage extends StatelessWidget {
     final sheets = controller.savedSheetsForCurrentAccount;
     final canSave =
         account != null &&
-        controller.settings.sourceUrl.trim().isNotEmpty &&
+        controller.currentSourceUrl.isNotEmpty &&
         !controller.busy;
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -1816,19 +1871,19 @@ class _AuditPage extends StatelessWidget {
                     text: 'ล็อกอิน Google เพื่อดูรายการของบัญชีนี้',
                   )
                 else if (sheets.isEmpty)
-                  _SavedSheetNotice(
-                    icon: controller.settings.sourceUrl.trim().isEmpty
-                        ? Icons.link_off_outlined
-                        : Icons.bookmarks_outlined,
-                    text: controller.settings.sourceUrl.trim().isEmpty
-                        ? 'วางลิงก์ Google Sheets ในหน้าแรก แล้วกดบันทึกชีตปัจจุบัน'
-                        : 'ยังไม่มีชีตที่บันทึก กดบันทึกชีตปัจจุบันหรือสร้างแท็บเดือนล่วงหน้า',
+                  const _SavedSheetNotice(
+                    icon: Icons.link_off_outlined,
+                    text:
+                        'วางลิงก์ Google Sheets ที่บัญชีนี้เป็นเจ้าของในหน้าแรก '
+                        'แล้วกดรีเฟรชเพื่อยืนยันเป็นไฟล์หลัก',
                   )
                 else
                   for (final sheet in sheets)
                     _SavedSheetCard(
                       sheet: sheet,
+                      active: controller.currentSourceSheet?.key == sheet.key,
                       disabled: controller.busy,
+                      activate: activateSavedSheet,
                       open: openSavedSheet,
                       delete: deleteSavedSheet,
                     ),
@@ -1901,13 +1956,17 @@ class _SavedSheetNotice extends StatelessWidget {
 class _SavedSheetCard extends StatelessWidget {
   const _SavedSheetCard({
     required this.sheet,
+    required this.active,
     required this.disabled,
+    required this.activate,
     required this.open,
     required this.delete,
   });
 
   final SavedSheet sheet;
+  final bool active;
   final bool disabled;
+  final Future<void> Function(SavedSheet sheet) activate;
   final Future<void> Function(SavedSheet sheet) open;
   final Future<void> Function(SavedSheet sheet) delete;
 
@@ -1930,6 +1989,14 @@ class _SavedSheetCard extends StatelessWidget {
                           sheet.displayTitle,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
+                        if (active)
+                          Text(
+                            'ไฟล์หลักของบัญชีนี้',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         const SizedBox(height: 2),
                         Text(
                           '${sheet.contextLabel} • บันทึก ${_thaiDate(sheet.savedAt)} ${_clock(sheet.savedAt)}',
@@ -1944,6 +2011,13 @@ class _SavedSheetCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
+                  OutlinedButton.icon(
+                    onPressed: disabled || active
+                        ? null
+                        : () => unawaited(activate(sheet)),
+                    icon: Icon(active ? Icons.check_circle : Icons.swap_horiz),
+                    label: Text(active ? 'กำลังใช้งาน' : 'ใช้ไฟล์นี้'),
+                  ),
                   FilledButton.tonalIcon(
                     onPressed: disabled ? null : () => unawaited(open(sheet)),
                     icon: const Icon(Icons.open_in_new),
@@ -2069,9 +2143,7 @@ class _FutureSheetCardState extends State<_FutureSheetCard> {
     text: widget.controller.sheetTitles.lastOrNull ?? '',
   );
   late final newTitle = TextEditingController(
-    text:
-        'เวร ${_thaiMonths[widget.controller.settings.month - 1]} '
-        '${widget.controller.settings.year + 543}',
+    text: _suggestedFutureSheetTitle(widget.controller),
   );
 
   @override
@@ -2080,6 +2152,10 @@ class _FutureSheetCardState extends State<_FutureSheetCard> {
     if (template.text.trim().isEmpty &&
         widget.controller.sheetTitles.isNotEmpty) {
       template.text = widget.controller.sheetTitles.last;
+    }
+    final suggestedTitle = _suggestedFutureSheetTitle(widget.controller);
+    if (newTitle.text.trim().isEmpty && suggestedTitle.isNotEmpty) {
+      newTitle.text = suggestedTitle;
     }
   }
 
@@ -2235,3 +2311,10 @@ String _time(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 String _clock(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}:${value.second.toString().padLeft(2, '0')}';
+
+String _suggestedFutureSheetTitle(AppController controller) {
+  final month = controller.settings.month;
+  final year = controller.settings.year;
+  if (month == null || year == null) return '';
+  return 'เวร ${_thaiMonths[month - 1]} ${year + 543}';
+}
