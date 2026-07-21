@@ -30,7 +30,9 @@ jobs:
           flutter build apk --release
           --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
       - name: Create checksum
-        run: sha256sum build/app/outputs/flutter-apk/app-release.apk > build/app/outputs/flutter-apk/SHA256SUMS.txt
+        run: |
+          cd build/app/outputs/flutter-apk
+          sha256sum app-release.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v6
         with:
           name: phakphum-calendar-android-apk
