@@ -142,6 +142,8 @@ class AppController extends ChangeNotifier {
 
   List<String> get rosterSearchNames {
     final names = <String>{};
+    final enteredName = settings.targetName.trim();
+    if (enteredName.isNotEmpty) names.add(enteredName);
     final displayName = auth.account?.displayName?.trim() ?? '';
     if (displayName.isNotEmpty) {
       names.add(displayName);
@@ -152,8 +154,6 @@ class AppController extends ChangeNotifier {
             .where((part) => part.length >= 2),
       );
     }
-    final legacyName = settings.targetName.trim();
-    if (legacyName.isNotEmpty) names.add(legacyName);
     return names.toList(growable: false);
   }
 
@@ -380,7 +380,7 @@ class AppController extends ChangeNotifier {
       final searchNames = rosterSearchNames;
       if (searchNames.isEmpty) {
         throw const FormatException(
-          'บัญชี Google นี้ไม่มีชื่อที่ใช้ค้นหา กรุณาตรวจชื่อโปรไฟล์ Google',
+          'กรุณากรอกชื่อที่ต้องค้นหา หรือตรวจชื่อโปรไฟล์ Google',
         );
       }
       final client = await auth.clientFor([

@@ -882,6 +882,9 @@ class _DashboardPageState extends State<_DashboardPage> {
   late final source = TextEditingController(
     text: widget.controller.currentSourceUrl,
   );
+  late final searchName = TextEditingController(
+    text: widget.controller.settings.targetName,
+  );
   late String? sourceAccountId = widget.controller.auth.account?.id;
   late String boundSourceUrl = widget.controller.currentSourceUrl;
   late int? month = widget.controller.settings.month;
@@ -909,6 +912,7 @@ class _DashboardPageState extends State<_DashboardPage> {
       source.text = nextBoundSource;
     }
     if (accountChanged) {
+      searchName.text = widget.controller.settings.targetName;
       month = widget.controller.settings.month;
       year = widget.controller.settings.year;
     }
@@ -917,12 +921,14 @@ class _DashboardPageState extends State<_DashboardPage> {
   @override
   void dispose() {
     source.dispose();
+    searchName.dispose();
     super.dispose();
   }
 
   Future<void> _saveSettings({bool? autoRefresh, int? refreshSeconds}) =>
       widget.controller.updateSettings(
         widget.controller.settings.copyWith(
+          targetName: searchName.text.trim(),
           year: year,
           month: month,
           autoRefresh: autoRefresh,
@@ -992,6 +998,18 @@ class _DashboardPageState extends State<_DashboardPage> {
                         ),
                       ],
                       const SizedBox(height: 12),
+                      TextField(
+                        controller: searchName,
+                        enabled: controller.auth.isSignedIn && !controller.busy,
+                        decoration: const InputDecoration(
+                          labelText: 'ชื่อที่ต้องค้นหา',
+                          hintText: 'กรอกชื่อให้ตรงกับชื่อในตารางเวร',
+                          helperText:
+                              'เริ่มต้นว่าง ใช้เฉพาะรอบนี้; ถ้าไม่กรอกจะใช้ชื่อโปรไฟล์ Google',
+                          prefixIcon: Icon(Icons.person_search_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           const Icon(Icons.account_circle_outlined, size: 20),
@@ -1002,8 +1020,8 @@ class _DashboardPageState extends State<_DashboardPage> {
                                           ?.trim()
                                           .isNotEmpty ==
                                       true
-                                  ? 'ค้นหาเวรตามชื่อบัญชี Google: ${controller.auth.account!.displayName!.trim()}'
-                                  : 'ระบบจะค้นหาเวรตามชื่อบัญชี Google หลังลงชื่อเข้าใช้',
+                                  ? 'ชื่อสำรองจากบัญชี Google: ${controller.auth.account!.displayName!.trim()}'
+                                  : 'กรอกชื่อด้านบนเพื่อใช้ค้นหาเวรในชีต',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),

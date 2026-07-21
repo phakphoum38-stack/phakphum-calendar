@@ -47,7 +47,8 @@ void main() {
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.text('เข้าสู่ระบบด้วย Google'), findsOneWidget);
     expect(find.text('รีเฟรช/อ่านใหม่ตอนนี้'), findsOneWidget);
-    expect(find.text('ชื่อที่ต้องค้นหา'), findsNothing);
+    expect(find.text('ชื่อที่ต้องค้นหา'), findsOneWidget);
+    expect(find.text('กรอกชื่อให้ตรงกับชื่อในตารางเวร'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('${DateTime.now().year}'), findsNothing);
 
