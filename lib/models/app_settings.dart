@@ -10,9 +10,7 @@ class AppSettings {
     required this.googleWebClientId,
   });
 
-  static const defaultSourceUrl =
-      'https://docs.google.com/spreadsheets/d/'
-      '1kppXtjpD6Vm5MIf58bIiQa5dQ0SDpC1xVnz-CrAwpSE/edit?gid=2123533299';
+  static const defaultSourceUrl = '';
 
   factory AppSettings.defaults() => const AppSettings(
     sourceUrl: defaultSourceUrl,

@@ -371,7 +371,7 @@ class _AppShellState extends State<AppShell> {
               Text('ข้ามรายการที่มีแล้ว ${controller.existingCount} กิจกรรม'),
               Text(
                 controller.settings.archiveOriginal
-                    ? 'จะสร้าง/ตรวจสำเนาต้นฉบับประจำเดือนใน Google Drive ก่อน'
+                    ? 'จะสร้าง/ตรวจสำเนาต้นฉบับใน Drive ของบัญชีที่ล็อกอินก่อน'
                     : 'ไม่ได้เปิดสร้างสำเนาต้นฉบับ',
               ),
               const SizedBox(height: 12),
@@ -793,6 +793,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                         controller: source,
                         decoration: const InputDecoration(
                           labelText: 'ลิงก์ Google Sheets ต้นฉบับ',
+                          hintText: 'วางลิงก์ Google Sheets ของคุณ',
+                          helperText:
+                              'ลิงก์ที่บันทึกจะเก็บไว้เฉพาะในเครื่องนี้',
                           prefixIcon: Icon(Icons.table_chart_outlined),
                         ),
                       ),
@@ -930,10 +933,10 @@ class _DashboardPageState extends State<_DashboardPage> {
                     ),
                   ),
                   title: const Text(
-                    'เก็บสำเนาต้นฉบับประจำเดือนใน Google Drive',
+                    'เก็บสำเนาต้นฉบับใน Drive ของบัญชีที่ล็อกอิน',
                   ),
                   subtitle: const Text(
-                    'สร้างครั้งเดียวต่อเดือนก่อนซิงก์ และไม่แก้ไฟล์ต้นฉบับ',
+                    'สร้างครั้งเดียวต่อเดือนก่อนซิงก์ ไม่แก้หรือลบไฟล์ต้นฉบับ',
                   ),
                   secondary: const Icon(Icons.content_copy_outlined),
                 ),

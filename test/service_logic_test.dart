@@ -78,8 +78,21 @@ void main() {
     );
   });
 
+  test('starts empty but preserves a Sheets URL saved on the device', () async {
+    expect(AppSettings.defaults().sourceUrl, isEmpty);
+    const savedUrl =
+        'https://docs.google.com/spreadsheets/d/LocalSavedSheetId/edit';
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'source_url': savedUrl,
+    });
+
+    final settings = await SettingsService().load();
+
+    expect(settings.sourceUrl, savedUrl);
+  });
+
   test('parses Sheets URLs and raw spreadsheet IDs', () {
-    const id = '1kppXtjpD6Vm5MIf58bIiQa5dQ0SDpC1xVnz-CrAwpSE';
+    const id = '1TestSpreadsheetId_0123456789';
     expect(
       SheetsService.spreadsheetIdFromUrl(
         'https://docs.google.com/spreadsheets/d/$id/edit?gid=1',
