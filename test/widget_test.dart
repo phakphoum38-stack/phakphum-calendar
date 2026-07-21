@@ -50,6 +50,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('saved Sheets controls are visible in the audit tab', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      PhakphumCalendarApp(controller: AppController.demo()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(NavigationDestination).at(2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ชีตที่บันทึก'), findsOneWidget);
+    expect(find.text('บันทึกชีตปัจจุบัน'), findsOneWidget);
+    expect(find.textContaining('ล็อกอิน Google'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tools library remains usable in phone landscape', (
     tester,
   ) async {

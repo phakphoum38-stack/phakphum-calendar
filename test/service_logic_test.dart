@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/models/app_settings.dart';
+import 'package:phakphum_calendar/models/saved_sheet.dart';
 import 'package:phakphum_calendar/models/shift.dart';
 import 'package:phakphum_calendar/models/tool_definition.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
@@ -67,6 +68,40 @@ void main() {
     expect(await service.loadPinnedToolIds(), <String>{'gmail', 'vscode'});
   });
 
+  test('persists saved Sheets separately by opaque account ID', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final service = SettingsService();
+    final savedAt = DateTime(2026, 7, 21, 10, 30);
+    final records = <SavedSheet>[
+      SavedSheet(
+        ownerAccountId: 'account-a',
+        spreadsheetId: 'SpreadsheetId_0123456789',
+        spreadsheetTitle: 'Roster',
+        sheetId: 123,
+        sheetTitle: 'August',
+        url:
+            'https://docs.google.com/spreadsheets/d/SpreadsheetId_0123456789/edit#gid=123',
+        savedAt: savedAt,
+      ),
+      SavedSheet(
+        ownerAccountId: 'account-b',
+        spreadsheetId: 'AnotherSpreadsheetId_1234',
+        spreadsheetTitle: 'Team roster',
+        url:
+            'https://docs.google.com/spreadsheets/d/AnotherSpreadsheetId_1234/edit',
+        savedAt: savedAt.subtract(const Duration(minutes: 1)),
+      ),
+    ];
+
+    await service.saveSavedSheets(records);
+    final loaded = await service.loadSavedSheets();
+
+    expect(loaded, hasLength(2));
+    expect(loaded.first.ownerAccountId, 'account-a');
+    expect(loaded.first.sheetTitle, 'August');
+    expect(loaded.last.ownerAccountId, 'account-b');
+  });
+
   test('keeps the web OAuth client ID in app settings copies', () {
     final settings = AppSettings.defaults().copyWith(
       googleWebClientId: '123456789012-abcDEF_123.apps.googleusercontent.com',
@@ -100,6 +135,13 @@ void main() {
       id,
     );
     expect(SheetsService.spreadsheetIdFromUrl(id), id);
+    expect(
+      SheetsService.sheetIdFromUrl(
+        'https://docs.google.com/spreadsheets/d/$id/edit#gid=456',
+      ),
+      456,
+    );
+    expect(SheetsService.sheetUrl(id, 456), endsWith('/edit#gid=456'));
     expect(
       () => SheetsService.spreadsheetIdFromUrl('not-a-sheet'),
       throwsFormatException,
