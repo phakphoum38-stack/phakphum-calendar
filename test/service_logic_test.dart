@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:phakphum_calendar/models/app_settings.dart';
 import 'package:phakphum_calendar/models/saved_sheet.dart';
 import 'package:phakphum_calendar/models/shift.dart';
@@ -6,6 +7,7 @@ import 'package:phakphum_calendar/models/shift_alert.dart';
 import 'package:phakphum_calendar/models/tool_definition.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
 import 'package:phakphum_calendar/services/drive_archive_service.dart';
+import 'package:phakphum_calendar/services/drive_ownership_service.dart';
 import 'package:phakphum_calendar/services/google_auth_service.dart';
 import 'package:phakphum_calendar/services/settings_service.dart';
 import 'package:phakphum_calendar/services/sheets_service.dart';
@@ -32,6 +34,7 @@ void main() {
       containsAll(<String>[
         'https://www.googleapis.com/auth/spreadsheets.readonly',
         'https://www.googleapis.com/auth/calendar.events.readonly',
+        drive.DriveApi.driveMetadataReadonlyScope,
       ]),
     );
     expect(
@@ -128,41 +131,62 @@ void main() {
     );
   });
 
-  test('defaults the selected month and year to the current calendar', () {
-    final settings = AppSettings.defaults(now: DateTime(2031, 4, 2));
+  test('starts Sheet, name, month and year fields empty', () {
+    final settings = AppSettings.defaults();
 
-    expect(settings.month, 4);
-    expect(settings.year, 2031);
+    expect(settings.month, isNull);
+    expect(settings.year, isNull);
     expect(settings.targetName, isEmpty);
   });
 
-  test(
-    'migrates the old fixed calendar default to the current month',
-    () async {
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'target_year': 2026,
-        'target_month': 8,
-      });
-
-      final settings = await SettingsService().load();
-      final now = DateTime.now();
-
-      expect(settings.month, now.month);
-      expect(settings.year, now.year);
-    },
-  );
-
-  test('starts empty but preserves a Sheets URL saved on the device', () async {
-    expect(AppSettings.defaults().sourceUrl, isEmpty);
+  test('removes old global Sheet, name, month and year values', () async {
     const savedUrl =
         'https://docs.google.com/spreadsheets/d/LocalSavedSheetId/edit';
     SharedPreferences.setMockInitialValues(<String, Object>{
       'source_url': savedUrl,
+      'target_name': 'Old Name',
+      'target_year': 2026,
+      'target_month': 8,
     });
 
     final settings = await SettingsService().load();
+    final prefs = await SharedPreferences.getInstance();
 
-    expect(settings.sourceUrl, savedUrl);
+    expect(settings.targetName, isEmpty);
+    expect(settings.year, isNull);
+    expect(settings.month, isNull);
+    expect(prefs.containsKey('source_url'), isFalse);
+    expect(prefs.containsKey('target_name'), isFalse);
+    expect(prefs.containsKey('target_year'), isFalse);
+    expect(prefs.containsKey('target_month'), isFalse);
+  });
+
+  test('accepts only a Google Sheet owned by the signed-in account', () {
+    final owned = drive.File(
+      mimeType: DriveOwnershipService.googleSheetMimeType,
+      ownedByMe: true,
+      trashed: false,
+    );
+    expect(
+      () => DriveOwnershipService.validateOwnedSpreadsheet(owned),
+      returnsNormally,
+    );
+
+    expect(
+      () => DriveOwnershipService.validateOwnedSpreadsheet(
+        drive.File(
+          mimeType: DriveOwnershipService.googleSheetMimeType,
+          ownedByMe: false,
+        ),
+      ),
+      throwsStateError,
+    );
+    expect(
+      () => DriveOwnershipService.validateOwnedSpreadsheet(
+        drive.File(mimeType: 'application/pdf', ownedByMe: true),
+      ),
+      throwsStateError,
+    );
   });
 
   test('parses Sheets URLs and raw spreadsheet IDs', () {
@@ -206,6 +230,14 @@ void main() {
     expect(
       CalendarService.matchesExisting(shift, {
         CalendarService.legacyKeyFor(shift),
+      }),
+      isTrue,
+    );
+    expect(shift.displayName, 'P1 เช้า (UP1)');
+    expect(CalendarService.summaryFor(shift), 'P1 เช้า (UP1)');
+    expect(
+      CalendarService.matchesExisting(shift, {
+        CalendarService.displayLegacyKeyFor(shift),
       }),
       isTrue,
     );

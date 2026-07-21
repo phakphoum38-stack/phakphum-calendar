@@ -42,6 +42,66 @@ void main() {
     expect(shifts[2].end, DateTime(2026, 8, 4, 8));
   });
 
+  test('keeps every requested duty time standard', () {
+    final days = <Object?>['วันที่', ...List.generate(31, (i) => i + 1)];
+    final labels = <String>[
+      'P4 เช้า',
+      'P3 บ่าย',
+      'P2 ดึก',
+      'IPD เช้า',
+      'IPD บ่าย',
+      'CT IPD เช้า',
+      'CT IPD บ่าย',
+      'CT ER เช้า',
+      'CT ER บ่าย',
+      'ER เช้า',
+      'ER บ่าย',
+      'ER ดึก',
+      'GEN',
+      '',
+      'CT 14 ชั้น',
+    ];
+    final rows = <List<Object?>>[];
+    for (var index = 0; index < labels.length; index++) {
+      final row = _row(labels[index]);
+      row[index + 1] = 'ผู้ใช้งานทดสอบ';
+      rows.add(row);
+    }
+
+    final shifts = parser.parse(
+      snapshots: [
+        SheetSnapshot(title: 'กรกฎาคม 2569', rows: [days, ...rows]),
+      ],
+      targetName: 'ผู้ใช้งานทดสอบ',
+      year: 2026,
+      month: 7,
+    );
+    final byCode = {for (final shift in shifts) shift.code: shift};
+
+    expect(byCode['UP4']?.start, DateTime(2026, 7, 1, 8));
+    expect(byCode['UP4']?.end, DateTime(2026, 7, 1, 16));
+    expect(byCode['AP3']?.start, DateTime(2026, 7, 2, 16));
+    expect(byCode['AP3']?.end, DateTime(2026, 7, 3));
+    expect(byCode['NP2']?.start, DateTime(2026, 7, 3));
+    expect(byCode['NP2']?.end, DateTime(2026, 7, 3, 8));
+    expect(byCode['UIPD']?.start, DateTime(2026, 7, 4, 8));
+    expect(byCode['UIPD']?.end, DateTime(2026, 7, 4, 16));
+    expect(byCode['AIPD']?.end, DateTime(2026, 7, 6, 8));
+    expect(byCode['UCTIPD']?.start, DateTime(2026, 7, 6, 8));
+    expect(byCode['ACTIPD']?.end, DateTime(2026, 7, 8, 8));
+    expect(byCode['UCTER']?.start, DateTime(2026, 7, 8, 8));
+    expect(byCode['ACTER']?.end, DateTime(2026, 7, 10, 8));
+    expect(byCode['UER']?.end, DateTime(2026, 7, 10, 16));
+    expect(byCode['AER']?.end, DateTime(2026, 7, 12));
+    expect(byCode['NER']?.end, DateTime(2026, 7, 12, 8));
+    expect(byCode['UG']?.start, DateTime(2026, 7, 13, 7, 30));
+    expect(byCode['UG']?.end, DateTime(2026, 7, 13, 12));
+    expect(byCode['AG']?.start, DateTime(2026, 7, 14, 16, 30));
+    expect(byCode['AG']?.end, DateTime(2026, 7, 14, 20));
+    expect(byCode['U14']?.start, DateTime(2026, 7, 15, 7));
+    expect(byCode['U14']?.end, DateTime(2026, 7, 15, 8));
+  });
+
   test('maps GEN morning, GEN afternoon, and 14 floor', () {
     final days = <Object?>['วันที่', ...List.generate(31, (i) => i + 1)];
     final genMorning = _row('GEN');
@@ -109,6 +169,31 @@ void main() {
     expect(shifts[0].end, DateTime(2026, 7, 23, 16));
     expect(shifts[1].start, DateTime(2026, 7, 24, 8));
     expect(shifts[1].end, DateTime(2026, 7, 24, 16));
+  });
+
+  test('uses background colors read from the original sheet', () {
+    final shifts = parser.parse(
+      snapshots: [
+        SheetSnapshot(
+          title: 'กรกฎาคม 2569',
+          rows: [
+            ['วันที่', 1, 2, 3, 4, 5, 6, 7],
+            ['P1 เช้า', 'ผู้ใช้งานทดสอบ'],
+          ],
+          backgroundColors: [
+            const [],
+            [null, 0xFFD50000],
+          ],
+        ),
+      ],
+      targetName: 'ผู้ใช้งานทดสอบ',
+      year: 2026,
+      month: 7,
+    );
+
+    expect(shifts, hasLength(1));
+    expect(shifts.single.category, ShiftCategory.other);
+    expect(shifts.single.sourceColorHex, '#D50000');
   });
 }
 

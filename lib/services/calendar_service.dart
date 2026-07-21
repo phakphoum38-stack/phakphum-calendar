@@ -98,10 +98,12 @@ class CalendarService {
       final key = keyFor(shift);
       if (shift.excluded || matchesExisting(shift, existingKeys)) continue;
       final event = calendar.Event(
-        summary: shift.code,
+        summary: summaryFor(shift),
         description:
             '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
-            'ชื่อในตาราง: ${shift.assignedName}\n'
+            'ชื่อเวรจากชีต: ${shift.rowLabel}\n'
+            'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}\n'
+            '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
             'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
             'ประเภท: ${shift.category.label}',
         colorId: shift.category.googleColorId,
@@ -121,6 +123,7 @@ class CalendarService {
       await api.events.insert(event, 'primary', sendUpdates: 'none');
       existingKeys.add(key);
       existingKeys.add(legacyKeyFor(shift));
+      existingKeys.add(displayLegacyKeyFor(shift));
       inserted++;
     }
     return inserted;
@@ -132,8 +135,19 @@ class CalendarService {
   static String legacyKeyFor(Shift shift) =>
       _legacyKey(shift.code, shift.start);
 
+  static String summaryFor(Shift shift) => shift.displayName;
+
+  static String displayLegacyKeyFor(Shift shift) =>
+      _legacyKey(summaryFor(shift), shift.start);
+
+  static bool matchesLegacyEvent(Shift shift, String legacyKey) =>
+      legacyKey == legacyKeyFor(shift) ||
+      legacyKey == displayLegacyKeyFor(shift);
+
   static bool matchesExisting(Shift shift, Set<String> keys) =>
-      keys.contains(keyFor(shift)) || keys.contains(legacyKeyFor(shift));
+      keys.contains(keyFor(shift)) ||
+      keys.contains(legacyKeyFor(shift)) ||
+      keys.contains(displayLegacyKeyFor(shift));
 
   static String _legacyKey(String summary, DateTime wallTime) =>
       'legacy|$summary|${wallTime.year.toString().padLeft(4, '0')}-'

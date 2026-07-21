@@ -15,6 +15,7 @@ import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
 import '../services/drive_archive_service.dart';
+import '../services/drive_ownership_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/settings_service.dart';
 import '../services/sheets_service.dart';
@@ -30,13 +31,15 @@ class AppController extends ChangeNotifier {
     ShiftAlertService? alertService,
     CalendarService? calendarService,
     DriveArchiveService? archiveService,
+    DriveOwnershipService? ownershipService,
   }) : auth = auth ?? GoogleAuthService(),
        _settingsService = settingsService ?? SettingsService(),
        _sheetsService = sheetsService ?? SheetsService(),
        _parser = parser ?? const ShiftParser(),
        _alertService = alertService ?? const ShiftAlertService(),
        _calendarService = calendarService ?? const CalendarService(),
-       _archiveService = archiveService ?? const DriveArchiveService();
+       _archiveService = archiveService ?? const DriveArchiveService(),
+       _ownershipService = ownershipService ?? const DriveOwnershipService();
 
   AppController.demo()
     : auth = GoogleAuthService(),
@@ -45,7 +48,8 @@ class AppController extends ChangeNotifier {
       _parser = const ShiftParser(),
       _alertService = const ShiftAlertService(),
       _calendarService = const CalendarService(),
-      _archiveService = const DriveArchiveService() {
+      _archiveService = const DriveArchiveService(),
+      _ownershipService = const DriveOwnershipService() {
     initialized = true;
     settings = AppSettings.defaults();
     final sourceShifts = [
@@ -101,6 +105,7 @@ class AppController extends ChangeNotifier {
   final ShiftAlertService _alertService;
   final CalendarService _calendarService;
   final DriveArchiveService _archiveService;
+  final DriveOwnershipService _ownershipService;
 
   AppSettings settings = AppSettings.defaults();
   List<Shift> shifts = [];
@@ -118,6 +123,7 @@ class AppController extends ChangeNotifier {
   String? error;
   DateTime? lastRefresh;
   Timer? _autoRefreshTimer;
+  String? _observedAccountId;
 
   int get includedCount => shifts.where((shift) => !shift.excluded).length;
   int get existingCount => shifts
@@ -187,12 +193,11 @@ class AppController extends ChangeNotifier {
   Future<void> signIn() => auth.signIn();
 
   Future<void> authorizeReadAccess() async {
-    await _run('ขอสิทธิ์อ่าน Google Sheets และ Calendar', () async {
+    await _run('ขอสิทธิ์อ่าน Google Sheets, Drive และ Calendar', () async {
       await auth.requestReadAccess();
-      status = 'อนุญาตสิทธิ์อ่าน Google Sheets และ Calendar สำเร็จ';
+      status = 'อนุญาตสิทธิ์อ่าน Google Sheets, Drive และ Calendar สำเร็จ';
       await _addAudit('auth.read', status!, true);
     });
-    await loadRoster();
   }
 
   Future<void> signOut() async {
@@ -245,8 +250,14 @@ class AppController extends ChangeNotifier {
     if (accountId == null) return const [];
     return savedSheets
         .where((sheet) => sheet.ownerAccountId == accountId)
-        .toList();
+        .toList()
+      ..sort((left, right) => right.savedAt.compareTo(left.savedAt));
   }
+
+  SavedSheet? get currentSourceSheet =>
+      savedSheetsForCurrentAccount.firstOrNull;
+
+  String get currentSourceUrl => currentSourceSheet?.url ?? '';
 
   bool isToolPinned(String id) => pinnedToolIds.contains(id);
 
@@ -274,31 +285,46 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> saveCurrentSheet() async {
+    final sourceUrl = currentSourceUrl;
+    if (sourceUrl.isEmpty) {
+      throw StateError('กรุณาเลือกไฟล์ Google Sheets หลักในหน้าแรกก่อน');
+    }
+    await selectSourceForCurrentAccount(sourceUrl);
+  }
+
+  Future<void> selectSourceForCurrentAccount(String sourceUrl) async {
     final account = auth.account;
     if (account == null) throw StateError('กรุณาล็อกอิน Google ก่อน');
-    if (settings.sourceUrl.trim().isEmpty) {
-      throw StateError('กรุณาวางลิงก์ Google Sheets ในหน้าแรกก่อน');
-    }
-    await _run('บันทึกชีตปัจจุบัน', () async {
+    final normalizedUrl = sourceUrl.trim();
+    final spreadsheetId = SheetsService.spreadsheetIdFromUrl(normalizedUrl);
+    await _run('ตรวจและเลือกไฟล์ชีตหลักของบัญชีนี้', () async {
       final client = await auth.clientFor([
         sheets.SheetsApi.spreadsheetsReadonlyScope,
+        drive.DriveApi.driveMetadataReadonlyScope,
       ]);
       try {
+        await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final reference = await _sheetsService.describeSpreadsheet(
           client,
-          settings.sourceUrl,
+          normalizedUrl,
         );
         final saved = await _saveSheetReference(account.id, reference);
-        status = 'บันทึก “${saved.displayTitle}” ไว้ในเครื่องแล้ว';
+        status = 'เลือก “${saved.displayTitle}” เป็นไฟล์หลักของบัญชีนี้แล้ว';
         await _addAudit(
-          'sheet.reference.save',
-          'บันทึกลิงก์ชีต “${saved.displayTitle}” ไว้เฉพาะในเครื่อง',
+          'sheet.source.select',
+          'ตรวจว่าเป็นไฟล์ของบัญชีปัจจุบันและบันทึก “${saved.displayTitle}” '
+              'ไว้เฉพาะในเครื่อง',
           true,
         );
       } finally {
         client.close();
       }
     });
+  }
+
+  Future<void> activateSavedSheet(SavedSheet sheet) async {
+    _requireSheetOwner(sheet);
+    await selectSourceForCurrentAccount(sheet.url);
   }
 
   Future<void> openSavedSheet(SavedSheet sheet) async {
@@ -322,8 +348,17 @@ class AppController extends ChangeNotifier {
   Future<void> deleteSavedSheet(SavedSheet sheet) async {
     _requireSheetOwner(sheet);
     await _run('ลบชีตออกจากรายการบันทึก', () async {
+      final wasCurrent = currentSourceSheet?.key == sheet.key;
       savedSheets.removeWhere((item) => item.key == sheet.key);
       await _settingsService.saveSavedSheets(savedSheets);
+      if (wasCurrent) {
+        shifts = [];
+        alerts = [];
+        calendarPeriods = [];
+        existingKeys = {};
+        sheetTitles = [];
+        _autoRefreshTimer?.cancel();
+      }
       status = 'ลบ “${sheet.displayTitle}” ออกจากรายการแล้ว';
       await _addAudit(
         'sheet.reference.delete',
@@ -335,6 +370,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> loadRoster({bool background = false}) async {
     await _run('อ่านตารางเวร', () async {
+      final sourceUrl = currentSourceUrl;
+      if (sourceUrl.isEmpty) {
+        throw StateError(
+          'กรุณาวางลิงก์และเลือกไฟล์ Google Sheets หลักของบัญชีนี้ก่อน',
+        );
+      }
+      final period = _requirePeriod();
       final searchNames = rosterSearchNames;
       if (searchNames.isEmpty) {
         throw const FormatException(
@@ -343,18 +385,18 @@ class AppController extends ChangeNotifier {
       }
       final client = await auth.clientFor([
         sheets.SheetsApi.spreadsheetsReadonlyScope,
+        drive.DriveApi.driveMetadataReadonlyScope,
       ], promptIfNecessary: !background);
       try {
-        final snapshots = await _sheetsService.readAll(
-          client,
-          settings.sourceUrl,
-        );
+        final spreadsheetId = SheetsService.spreadsheetIdFromUrl(sourceUrl);
+        await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
+        final snapshots = await _sheetsService.readAll(client, sourceUrl);
         final parsed = _parser.parse(
           snapshots: snapshots,
           targetName: searchNames.first,
           targetAliases: searchNames.skip(1),
-          year: settings.year,
-          month: settings.month,
+          year: period.year,
+          month: period.month,
         );
         shifts = _alertService.addOffDutyPeriods(parsed);
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
@@ -363,13 +405,18 @@ class AppController extends ChangeNotifier {
         _rebuildAlerts(applyDecisions: true);
         lastRefresh = DateTime.now();
         final offCount = shifts.where((shift) => shift.isOffDuty).length;
+        final colorCount = parsed
+            .where((shift) => shift.sourceColorValue != null)
+            .length;
         status =
             'พบเวรของ ${searchNames.first} ${parsed.length} รายการ • '
+            'อ่านสีจากไฟล์หลัก $colorCount รายการ • '
             'สร้าง OFF $offCount รายการ • รอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'sheet.read',
           'อ่าน ${snapshots.length} แท็บ พบ ${parsed.length} เวร '
-              'และสร้าง OFF $offCount รายการ; ไม่มีการแก้ไขชีต',
+              'อ่านสีจากไฟล์หลัก $colorCount รายการ และสร้าง OFF '
+              '$offCount รายการ; ไม่มีการแก้ไขชีต',
           true,
         );
       } finally {
@@ -388,14 +435,15 @@ class AppController extends ChangeNotifier {
   Future<void> compareCalendar() async {
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
     await _run('เปรียบเทียบ Google Calendar', () async {
+      final period = _requirePeriod();
       final client = await auth.clientFor([
         calendar.CalendarApi.calendarEventsReadonlyScope,
       ]);
       try {
         final snapshot = await _calendarService.readCalendar(
           client,
-          year: settings.year,
-          month: settings.month,
+          year: period.year,
+          month: period.month,
         );
         existingKeys = snapshot.sourceKeys;
         calendarPeriods = snapshot.busyPeriods;
@@ -424,14 +472,19 @@ class AppController extends ChangeNotifier {
       );
     }
     await _run('สร้างสำเนาและบันทึกปฏิทิน', () async {
+      final sourceUrl = currentSourceUrl;
+      if (sourceUrl.isEmpty) {
+        throw StateError('ไม่พบไฟล์ชีตหลักของบัญชีที่ล็อกอิน');
+      }
+      final period = _requirePeriod();
       final calendarClient = await auth.clientFor([
         calendar.CalendarApi.calendarEventsScope,
       ]);
       try {
         final snapshot = await _calendarService.readCalendar(
           calendarClient,
-          year: settings.year,
-          month: settings.month,
+          year: period.year,
+          month: period.month,
         );
         existingKeys = snapshot.sourceKeys;
         calendarPeriods = snapshot.busyPeriods;
@@ -448,11 +501,9 @@ class AppController extends ChangeNotifier {
           try {
             final archive = await _archiveService.copyMonthlyOriginal(
               driveClient,
-              sourceFileId: SheetsService.spreadsheetIdFromUrl(
-                settings.sourceUrl,
-              ),
-              year: settings.year,
-              month: settings.month,
+              sourceFileId: SheetsService.spreadsheetIdFromUrl(sourceUrl),
+              year: period.year,
+              month: period.month,
             );
             await _addAudit(
               'drive.copy',
@@ -490,12 +541,21 @@ class AppController extends ChangeNotifier {
     if (templateTitle.trim().isEmpty || newTitle.trim().isEmpty) {
       throw StateError('กรุณาระบุแท็บต้นแบบและชื่อแท็บใหม่');
     }
+    final sourceUrl = currentSourceUrl;
+    if (sourceUrl.isEmpty) {
+      throw StateError('กรุณาเลือกไฟล์ Google Sheets หลักของบัญชีนี้ก่อน');
+    }
     await _run('สร้างชีตเดือนล่วงหน้า', () async {
-      final client = await auth.clientFor([sheets.SheetsApi.spreadsheetsScope]);
+      final client = await auth.clientFor([
+        sheets.SheetsApi.spreadsheetsScope,
+        drive.DriveApi.driveMetadataReadonlyScope,
+      ]);
       try {
+        final spreadsheetId = SheetsService.spreadsheetIdFromUrl(sourceUrl);
+        await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final created = await _sheetsService.duplicateSheet(
           client,
-          sourceUrl: settings.sourceUrl,
+          sourceUrl: sourceUrl,
           templateTitle: templateTitle.trim(),
           newTitle: newTitle.trim(),
         );
@@ -649,8 +709,28 @@ class AppController extends ChangeNotifier {
   }
 
   void _onAuthChanged() {
-    if (!auth.isSignedIn) _autoRefreshTimer?.cancel();
+    final accountId = auth.account?.id;
+    if (_observedAccountId != accountId) {
+      _observedAccountId = accountId;
+      settings = settings.clearRosterSelection();
+      _autoRefreshTimer?.cancel();
+      shifts = [];
+      alerts = [];
+      calendarPeriods = [];
+      existingKeys = {};
+      sheetTitles = [];
+      lastRefresh = null;
+    }
     notifyListeners();
+  }
+
+  ({int year, int month}) _requirePeriod() {
+    final year = settings.year;
+    final month = settings.month;
+    if (year == null || month == null) {
+      throw StateError('กรุณาเลือกเดือนและปี ค.ศ. ก่อนอ่านตารางเวร');
+    }
+    return (year: year, month: month);
   }
 
   void _scheduleAutoRefresh() {

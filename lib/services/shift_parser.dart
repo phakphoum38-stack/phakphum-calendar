@@ -1,4 +1,5 @@
 import '../models/shift.dart';
+import 'shift_color_service.dart';
 
 class ShiftParser {
   const ShiftParser();
@@ -76,6 +77,8 @@ class ShiftParser {
             rule.endMinute,
           );
           if (!end.isAfter(start)) end = end.add(const Duration(days: 1));
+          final sourceColor = snapshot.backgroundColorAt(rowIndex, entry.key);
+          final colorMatch = ShiftColorService.classify(sourceColor);
           final shift = Shift(
             code: rule.code,
             rowLabel: label.isEmpty ? 'GEN บ่าย' : label,
@@ -84,7 +87,8 @@ class ShiftParser {
             end: end,
             sheetTitle: snapshot.title,
             cell: '${_columnName(entry.key + 1)}${rowIndex + 1}',
-            category: rule.category,
+            category: colorMatch?.category ?? rule.category,
+            sourceColorValue: sourceColor,
           );
           found.putIfAbsent(shift.sourceKey, () => shift);
         }
