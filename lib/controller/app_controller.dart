@@ -114,11 +114,13 @@ class AppController extends ChangeNotifier {
   Map<String, ShiftAlertDecision> alertDecisions = {};
   List<AuditEntry> auditEntries = [];
   List<SavedSheet> savedSheets = [];
+  List<RecentOwnedSheet> recentOwnedSheets = [];
   Set<String> existingKeys = {};
   List<String> sheetTitles = [];
   Set<String> pinnedToolIds = {...defaultPinnedToolIds};
   bool initialized = false;
   bool busy = false;
+  bool recentSheetHistoryLoaded = false;
   String? status;
   String? error;
   DateTime? lastRefresh;
@@ -208,6 +210,8 @@ class AppController extends ChangeNotifier {
     calendarPeriods = [];
     existingKeys = {};
     sheetTitles = [];
+    recentOwnedSheets = [];
+    recentSheetHistoryLoaded = false;
     lastRefresh = null;
     status = 'ออกจากระบบ Google แล้ว';
     notifyListeners();
@@ -290,6 +294,34 @@ class AppController extends ChangeNotifier {
       throw StateError('กรุณาเลือกไฟล์ Google Sheets หลักในหน้าแรกก่อน');
     }
     await selectSourceForCurrentAccount(sourceUrl);
+  }
+
+  Future<void> findRecentSourceSheets() async {
+    await _run('ค้นหาไฟล์จากประวัติอัปเดต Google Sheets', () async {
+      final client = await auth.clientFor([
+        drive.DriveApi.driveMetadataReadonlyScope,
+      ]);
+      try {
+        recentOwnedSheets = await _ownershipService
+            .listRecentlyModifiedOwnedSpreadsheets(client);
+        recentSheetHistoryLoaded = true;
+        status = recentOwnedSheets.isEmpty
+            ? 'ไม่พบ Google Sheets ที่บัญชีนี้เป็นเจ้าของ'
+            : 'พบไฟล์ที่แก้ไขล่าสุด ${recentOwnedSheets.length} ไฟล์';
+        await _addAudit(
+          'drive.sheet_history.read',
+          'ค้นหาประวัติไฟล์แบบอ่านอย่างเดียว พบ '
+              '${recentOwnedSheets.length} ไฟล์; ไม่บันทึกชื่อไฟล์ใน Audit log',
+          true,
+        );
+      } finally {
+        client.close();
+      }
+    });
+  }
+
+  Future<void> selectRecentSourceSheet(RecentOwnedSheet sheet) async {
+    await selectSourceForCurrentAccount(sheet.url);
   }
 
   Future<void> selectSourceForCurrentAccount(String sourceUrl) async {
@@ -719,6 +751,8 @@ class AppController extends ChangeNotifier {
       calendarPeriods = [];
       existingKeys = {};
       sheetTitles = [];
+      recentOwnedSheets = [];
+      recentSheetHistoryLoaded = false;
       lastRefresh = null;
     }
     notifyListeners();
