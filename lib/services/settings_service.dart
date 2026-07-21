@@ -12,6 +12,7 @@ class SettingsService {
   static const _nameKey = 'target_name';
   static const _yearKey = 'target_year';
   static const _monthKey = 'target_month';
+  static const _calendarDefaultsVersionKey = 'calendar_defaults_version';
   static const _archiveKey = 'archive_original';
   static const _autoRefreshKey = 'auto_refresh';
   static const _refreshSecondsKey = 'refresh_seconds';
@@ -24,11 +25,20 @@ class SettingsService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('passkey_sha256');
     final defaults = AppSettings.defaults();
+    var year = prefs.getInt(_yearKey) ?? defaults.year;
+    var month = prefs.getInt(_monthKey) ?? defaults.month;
+    final calendarDefaultsVersion =
+        prefs.getInt(_calendarDefaultsVersionKey) ?? 1;
+    if (calendarDefaultsVersion < 2 && year == 2026 && month == 8) {
+      year = defaults.year;
+      month = defaults.month;
+    }
+    await prefs.setInt(_calendarDefaultsVersionKey, 2);
     return AppSettings(
       sourceUrl: prefs.getString(_sourceKey) ?? defaults.sourceUrl,
       targetName: prefs.getString(_nameKey) ?? defaults.targetName,
-      year: prefs.getInt(_yearKey) ?? defaults.year,
-      month: prefs.getInt(_monthKey) ?? defaults.month,
+      year: year,
+      month: month,
       archiveOriginal: prefs.getBool(_archiveKey) ?? defaults.archiveOriginal,
       autoRefresh: prefs.getBool(_autoRefreshKey) ?? defaults.autoRefresh,
       refreshSeconds:

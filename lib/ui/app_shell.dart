@@ -752,19 +752,22 @@ class _DashboardPageState extends State<_DashboardPage> {
   late final source = TextEditingController(
     text: widget.controller.settings.sourceUrl,
   );
-  late final name = TextEditingController(
-    text: widget.controller.settings.targetName,
-  );
-  late final year = TextEditingController(
-    text: '${widget.controller.settings.year}',
-  );
   late int month = widget.controller.settings.month;
+  late int year = widget.controller.settings.year;
+
+  List<int> get selectableYears {
+    final currentYear = DateTime.now().year;
+    final values = <int>{
+      for (var value = currentYear - 5; value <= currentYear + 10; value++)
+        value,
+      year,
+    }.toList()..sort();
+    return values;
+  }
 
   @override
   void dispose() {
     source.dispose();
-    name.dispose();
-    year.dispose();
     super.dispose();
   }
 
@@ -772,8 +775,7 @@ class _DashboardPageState extends State<_DashboardPage> {
       widget.controller.updateSettings(
         widget.controller.settings.copyWith(
           sourceUrl: source.text.trim(),
-          targetName: name.text.trim(),
-          year: int.tryParse(year.text) ?? widget.controller.settings.year,
+          year: year,
           month: month,
           autoRefresh: autoRefresh,
           refreshSeconds: refreshSeconds,
@@ -823,15 +825,27 @@ class _DashboardPageState extends State<_DashboardPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.account_circle_outlined, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              controller.auth.account?.displayName
+                                          ?.trim()
+                                          .isNotEmpty ==
+                                      true
+                                  ? 'ค้นหาเวรตามชื่อบัญชี Google: ${controller.auth.account!.displayName!.trim()}'
+                                  : 'ระบบจะค้นหาเวรตามชื่อบัญชี Google หลังลงชื่อเข้าใช้',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
                       LayoutBuilder(
                         builder: (context, constraints) {
-                          final narrow = constraints.maxWidth < 650;
-                          final nameField = TextField(
-                            controller: name,
-                            decoration: const InputDecoration(
-                              labelText: 'ชื่อที่ต้องค้นหา',
-                            ),
-                          );
+                          final narrow = constraints.maxWidth < 420;
                           final monthField = DropdownButtonFormField<int>(
                             initialValue: month,
                             isExpanded: true,
@@ -851,19 +865,26 @@ class _DashboardPageState extends State<_DashboardPage> {
                             onChanged: (value) =>
                                 setState(() => month = value ?? month),
                           );
-                          final yearField = TextField(
-                            controller: year,
-                            keyboardType: TextInputType.number,
+                          final yearField = DropdownButtonFormField<int>(
+                            initialValue: year,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'ปี ค.ศ.',
                             ),
+                            items: [
+                              for (final value in selectableYears)
+                                DropdownMenuItem(
+                                  value: value,
+                                  child: Text('$value'),
+                                ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => year = value ?? year),
                           );
                           if (narrow) {
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                nameField,
-                                const SizedBox(height: 12),
                                 monthField,
                                 const SizedBox(height: 12),
                                 yearField,
@@ -873,11 +894,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(child: nameField),
+                              Expanded(child: monthField),
                               const SizedBox(width: 12),
-                              SizedBox(width: 210, child: monthField),
-                              const SizedBox(width: 12),
-                              SizedBox(width: 130, child: yearField),
+                              Expanded(child: yearField),
                             ],
                           );
                         },

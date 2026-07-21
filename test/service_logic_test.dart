@@ -113,6 +113,30 @@ void main() {
     );
   });
 
+  test('defaults the selected month and year to the current calendar', () {
+    final settings = AppSettings.defaults(now: DateTime(2031, 4, 2));
+
+    expect(settings.month, 4);
+    expect(settings.year, 2031);
+    expect(settings.targetName, isEmpty);
+  });
+
+  test(
+    'migrates the old fixed calendar default to the current month',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'target_year': 2026,
+        'target_month': 8,
+      });
+
+      final settings = await SettingsService().load();
+      final now = DateTime.now();
+
+      expect(settings.month, now.month);
+      expect(settings.year, now.year);
+    },
+  );
+
   test('starts empty but preserves a Sheets URL saved on the device', () async {
     expect(AppSettings.defaults().sourceUrl, isEmpty);
     const savedUrl =
@@ -152,7 +176,7 @@ void main() {
     final shift = Shift(
       code: 'UP1',
       rowLabel: 'P1 เช้า',
-      assignedName: 'ภาคภูมิ',
+      assignedName: 'ผู้ใช้งานทดสอบ',
       start: DateTime(2026, 8, 3, 8),
       end: DateTime(2026, 8, 3, 16),
       sheetTitle: 'สิงหาคม 2569',

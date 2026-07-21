@@ -14,9 +14,9 @@ void main() {
     final p1 = _row('P1 เช้า');
     final p2 = _row('P2 บ่าย');
     final ipd = _row('IPD บ่าย');
-    p1[17] = 'ภาคภูมิ';
-    p2[18] = 'ภาคภูมิ';
-    ipd[19] = 'ภาคภูมิ';
+    p1[17] = 'ผู้ใช้งานทดสอบ';
+    p2[18] = 'ผู้ใช้งานทดสอบ';
+    ipd[19] = 'ผู้ใช้งานทดสอบ';
 
     final shifts = parser.parse(
       snapshots: [
@@ -31,7 +31,7 @@ void main() {
           ],
         ),
       ],
-      targetName: 'ภาคภูมิ',
+      targetName: 'ผู้ใช้งานทดสอบ',
       year: 2026,
       month: 8,
     );
@@ -47,9 +47,9 @@ void main() {
     final genMorning = _row('GEN');
     final genAfternoon = _row('');
     final floor14 = _row('CT 14 ชั้น');
-    genMorning[4] = 'ภาคภูมิ';
-    genAfternoon[5] = 'ภาคภูมิ';
-    floor14[6] = 'ภาคภูมิ';
+    genMorning[4] = 'ผู้ใช้งานทดสอบ';
+    genAfternoon[5] = 'ผู้ใช้งานทดสอบ';
+    floor14[6] = 'ผู้ใช้งานทดสอบ';
 
     final shifts = parser.parse(
       snapshots: [
@@ -64,7 +64,7 @@ void main() {
           ],
         ),
       ],
-      targetName: 'ภาคภูมิ',
+      targetName: 'ผู้ใช้งานทดสอบ',
       year: 2026,
       month: 8,
     );

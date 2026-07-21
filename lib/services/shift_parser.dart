@@ -6,11 +6,15 @@ class ShiftParser {
   List<Shift> parse({
     required List<SheetSnapshot> snapshots,
     required String targetName,
+    Iterable<String> targetAliases = const [],
     required int year,
     required int month,
   }) {
-    final target = _compact(targetName);
-    if (target.isEmpty) {
+    final targets = <String>{
+      targetName,
+      ...targetAliases,
+    }.map(_compact).where((value) => value.length >= 2).toSet();
+    if (targets.isEmpty) {
       throw const FormatException('กรุณาระบุชื่อผู้ปฏิบัติงาน');
     }
     final found = <String, Shift>{};
@@ -53,7 +57,8 @@ class ShiftParser {
           final date = entry.value;
           if (date.year != year || date.month != month) continue;
           final assigned = _textAt(row, entry.key).trim();
-          if (assigned.isEmpty || !_compact(assigned).contains(target)) {
+          final compactAssigned = _compact(assigned);
+          if (assigned.isEmpty || !targets.any(compactAssigned.contains)) {
             continue;
           }
           final start = DateTime(
