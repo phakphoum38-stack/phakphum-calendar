@@ -2,6 +2,7 @@ enum ShiftCategory {
   own,
   other,
   clinic,
+  specialClinic,
   off,
   majorSwap,
   given,
@@ -14,6 +15,7 @@ extension ShiftCategoryInfo on ShiftCategory {
     ShiftCategory.own => 'เวรของตัวเอง',
     ShiftCategory.other => 'เวรคนอื่น',
     ShiftCategory.clinic => 'เวรคลินิก',
+    ShiftCategory.specialClinic => 'เวรคลินิก (แบบพิเศษ)',
     ShiftCategory.off => 'เวรออฟหลังเวรดึก',
     ShiftCategory.majorSwap => 'แลกเวรใหญ่',
     ShiftCategory.given => 'ยกเวร',
@@ -25,8 +27,9 @@ extension ShiftCategoryInfo on ShiftCategory {
     ShiftCategory.own => 'กราไฟต์',
     ShiftCategory.other => 'มะเขือเทศ',
     ShiftCategory.clinic => 'ฟ้า',
+    ShiftCategory.specialClinic => 'อะโวคาโด',
     ShiftCategory.off => 'ลาเวนเดอร์',
-    ShiftCategory.majorSwap => 'องุ่น',
+    ShiftCategory.majorSwap => 'มะเขือเทศ',
     ShiftCategory.given => 'ลาเวนเดอร์',
     ShiftCategory.borrowedUnpaid => 'กล้วย',
     ShiftCategory.borrowedPaid => 'เขียว',
@@ -35,9 +38,10 @@ extension ShiftCategoryInfo on ShiftCategory {
   String get googleColorId => switch (this) {
     ShiftCategory.own => '8',
     ShiftCategory.other => '11',
-    ShiftCategory.clinic => '9',
-    ShiftCategory.off => '3',
-    ShiftCategory.majorSwap => '3',
+    ShiftCategory.clinic => '7',
+    ShiftCategory.specialClinic => '10',
+    ShiftCategory.off => '1',
+    ShiftCategory.majorSwap => '11',
     ShiftCategory.given => '1',
     ShiftCategory.borrowedUnpaid => '5',
     ShiftCategory.borrowedPaid => '10',
@@ -47,9 +51,10 @@ extension ShiftCategoryInfo on ShiftCategory {
     ShiftCategory.own => 0xFF616161,
     ShiftCategory.other => 0xFFD50000,
     ShiftCategory.clinic => 0xFF039BE5,
+    ShiftCategory.specialClinic => 0xFF0B8043,
     ShiftCategory.off => 0xFF7986CB,
-    ShiftCategory.majorSwap => 0xFF7986CB,
-    ShiftCategory.given => 0xFFA4BDFC,
+    ShiftCategory.majorSwap => 0xFFD50000,
+    ShiftCategory.given => 0xFF7986CB,
     ShiftCategory.borrowedUnpaid => 0xFFF6BF26,
     ShiftCategory.borrowedPaid => 0xFF0B8043,
   };
@@ -68,6 +73,7 @@ class Shift {
     this.excluded = false,
     this.generated = false,
     this.linkedShiftKey,
+    this.sourceColorValue,
   });
 
   final String code;
@@ -81,12 +87,24 @@ class Shift {
   final bool excluded;
   final bool generated;
   final String? linkedShiftKey;
+  final int? sourceColorValue;
 
   bool get isNightShift =>
       code.startsWith('N') &&
       start.hour == 0 &&
       end.difference(start) == const Duration(hours: 8);
   bool get isOffDuty => category == ShiftCategory.off || code == 'OFF';
+
+  String get displayName {
+    if (isOffDuty) return 'OFF — เวรออฟหลังเวรดึก';
+    final label = rowLabel.trim();
+    if (label.isEmpty || label == code) return code;
+    return '$label ($code)';
+  }
+
+  String? get sourceColorHex => sourceColorValue == null
+      ? null
+      : '#${(sourceColorValue! & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   String get sourceKey =>
       '${start.year.toString().padLeft(4, '0')}-'
@@ -105,12 +123,26 @@ class Shift {
     excluded: excluded ?? this.excluded,
     generated: generated,
     linkedShiftKey: linkedShiftKey,
+    sourceColorValue: sourceColorValue,
   );
 }
 
 class SheetSnapshot {
-  const SheetSnapshot({required this.title, required this.rows});
+  const SheetSnapshot({
+    required this.title,
+    required this.rows,
+    this.backgroundColors = const [],
+  });
 
   final String title;
   final List<List<Object?>> rows;
+  final List<List<int?>> backgroundColors;
+
+  int? backgroundColorAt(int row, int column) =>
+      row >= 0 &&
+          row < backgroundColors.length &&
+          column >= 0 &&
+          column < backgroundColors[row].length
+      ? backgroundColors[row][column]
+      : null;
 }

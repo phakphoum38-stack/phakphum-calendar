@@ -97,6 +97,19 @@ class SheetsService {
       $fields: 'valueRanges(values)',
     );
     final values = batch.valueRanges ?? const <sheets.ValueRange>[];
+    final formatted = await api.spreadsheets.get(
+      id,
+      ranges: ranges,
+      includeGridData: true,
+      $fields:
+          'sheets(properties(title),data(startRow,startColumn,'
+          'rowData(values(effectiveFormat(backgroundColorStyle)))))',
+    );
+    final colorsByTitle = <String, List<List<int?>>>{
+      for (final sheet in formatted.sheets ?? const <sheets.Sheet>[])
+        if ((sheet.properties?.title ?? '').isNotEmpty)
+          sheet.properties!.title!: backgroundColorsForSheet(sheet),
+    };
     return [
       for (var index = 0; index < titles.length; index++)
         SheetSnapshot(
@@ -106,9 +119,50 @@ class SheetsService {
                   ? values[index].values
                   : const <List<Object?>>[]) ??
               const <List<Object?>>[],
+          backgroundColors: colorsByTitle[titles[index]] ?? const [],
         ),
     ];
   }
+
+  static List<List<int?>> backgroundColorsForSheet(sheets.Sheet sheet) {
+    final result = <List<int?>>[];
+    for (final grid in sheet.data ?? const <sheets.GridData>[]) {
+      final startRow = grid.startRow ?? 0;
+      final startColumn = grid.startColumn ?? 0;
+      final rows = grid.rowData ?? const <sheets.RowData>[];
+      for (var rowOffset = 0; rowOffset < rows.length; rowOffset++) {
+        final rowIndex = startRow + rowOffset;
+        while (result.length <= rowIndex) {
+          result.add(<int?>[]);
+        }
+        final cells = rows[rowOffset].values ?? const <sheets.CellData>[];
+        for (
+          var columnOffset = 0;
+          columnOffset < cells.length;
+          columnOffset++
+        ) {
+          final columnIndex = startColumn + columnOffset;
+          while (result[rowIndex].length <= columnIndex) {
+            result[rowIndex].add(null);
+          }
+          result[rowIndex][columnIndex] = _colorValue(cells[columnOffset]);
+        }
+      }
+    }
+    return result;
+  }
+
+  static int? _colorValue(sheets.CellData cell) {
+    final color = cell.effectiveFormat?.backgroundColorStyle?.rgbColor;
+    if (color == null) return null;
+    final red = _colorChannel(color.red);
+    final green = _colorChannel(color.green);
+    final blue = _colorChannel(color.blue);
+    return 0xFF000000 | (red << 16) | (green << 8) | blue;
+  }
+
+  static int _colorChannel(double? value) =>
+      (((value ?? 0) * 255).round()).clamp(0, 255);
 
   Future<SheetReference> duplicateSheet(
     GoogleApiClient client, {

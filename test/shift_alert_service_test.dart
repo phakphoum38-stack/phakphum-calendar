@@ -21,6 +21,7 @@ void main() {
     expect(offShifts[1].start, DateTime(2026, 8, 11, 8));
     expect(offShifts[1].end, DateTime(2026, 8, 11, 16));
     expect(offShifts.every((shift) => shift.generated), isTrue);
+    expect(offShifts.first.displayName, 'OFF — เวรออฟหลังเวรดึก');
   });
 
   test('flags a roster duty that overlaps OFF after a night shift', () {
@@ -122,10 +123,10 @@ void main() {
       calendarPeriods: [
         CalendarBusyPeriod(
           id: 'same-event',
-          title: shift.code,
+          title: shift.displayName,
           start: shift.start,
           end: shift.end,
-          legacyKey: CalendarService.legacyKeyFor(shift),
+          legacyKey: CalendarService.displayLegacyKeyFor(shift),
         ),
       ],
       decisions: const {},

@@ -9,6 +9,7 @@ import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
 import '../services/google_auth_service.dart';
+import '../services/shift_color_service.dart';
 import 'google_sign_in_button.dart';
 
 class AppShell extends StatefulWidget {
@@ -1427,6 +1428,7 @@ class _PreviewPage extends StatelessWidget {
           controller.existingKeys,
         );
         final color = Color(shift.category.colorValue);
+        final sourceColor = ShiftColorService.classify(shift.sourceColorValue);
         return Card(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1437,7 +1439,7 @@ class _PreviewPage extends StatelessWidget {
                   initialValue: shift.category,
                   isExpanded: true,
                   decoration: const InputDecoration(
-                    labelText: 'ประเภท/สี',
+                    labelText: 'ประเภท/สี Calendar',
                     isDense: true,
                   ),
                   items: [
@@ -1445,7 +1447,7 @@ class _PreviewPage extends StatelessWidget {
                       DropdownMenuItem(
                         value: category,
                         child: Text(
-                          category.label,
+                          '${category.label} • ${category.colorName}',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1467,7 +1469,7 @@ class _PreviewPage extends StatelessWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
-                          shift.code,
+                          shift.displayName,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         Chip(
@@ -1483,6 +1485,26 @@ class _PreviewPage extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                             avatar: Icon(Icons.bedtime_outlined, size: 16),
                             label: Text('OFF อัตโนมัติ'),
+                          ),
+                        if (shift.sourceColorValue != null)
+                          Chip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: CircleAvatar(
+                              backgroundColor: Color(shift.sourceColorValue!),
+                              radius: 8,
+                            ),
+                            label: Text(
+                              'สีไฟล์หลัก: '
+                              '${sourceColor?.sourceName ?? shift.sourceColorHex}',
+                            ),
+                          ),
+                        if (sourceColor?.requiresReview == true)
+                          const Chip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: Icon(Icons.info_outline, size: 16),
+                            label: Text(
+                              'ลาเวนเดอร์: ตรวจว่าแลกเวรใหญ่หรือยกเวร',
+                            ),
                           ),
                       ],
                     ),

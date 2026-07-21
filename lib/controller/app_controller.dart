@@ -363,13 +363,18 @@ class AppController extends ChangeNotifier {
         _rebuildAlerts(applyDecisions: true);
         lastRefresh = DateTime.now();
         final offCount = shifts.where((shift) => shift.isOffDuty).length;
+        final colorCount = parsed
+            .where((shift) => shift.sourceColorValue != null)
+            .length;
         status =
             'พบเวรของ ${searchNames.first} ${parsed.length} รายการ • '
+            'อ่านสีจากไฟล์หลัก $colorCount รายการ • '
             'สร้าง OFF $offCount รายการ • รอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'sheet.read',
           'อ่าน ${snapshots.length} แท็บ พบ ${parsed.length} เวร '
-              'และสร้าง OFF $offCount รายการ; ไม่มีการแก้ไขชีต',
+              'อ่านสีจากไฟล์หลัก $colorCount รายการ และสร้าง OFF '
+              '$offCount รายการ; ไม่มีการแก้ไขชีต',
           true,
         );
       } finally {

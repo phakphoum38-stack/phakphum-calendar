@@ -56,7 +56,7 @@ class ShiftAlertService {
           type: ShiftAlertType.offAfterNight,
           title: 'สร้างเวรออฟหลังเวรดึกแล้ว',
           message:
-              '${night?.code ?? 'เวรดึก'} สิ้นสุดเวลา 08:00 '
+              '${night?.displayName ?? 'เวรดึก'} สิ้นสุดเวลา 08:00 '
               'ระบบกำหนดช่วง 08:00–16:00 เป็น OFF อัตโนมัติ',
           start: off.start,
           end: off.end,
@@ -89,7 +89,7 @@ class ShiftAlertService {
               type: ShiftAlertType.offConflict,
               title: 'เวรชนช่วง OFF 08:00–16:00',
               message:
-                  '${duty.code} ${_range(duty.start, duty.end)} ชนกับช่วง '
+                  '${duty.displayName} ${_range(duty.start, duty.end)} ชนกับช่วง '
                   'OFF หลังเวรดึก ${_range(off.start, off.end)}',
               start: _later(duty.start, off.start),
               end: _earlier(duty.end, off.end),
@@ -108,8 +108,8 @@ class ShiftAlertService {
             type: ShiftAlertType.shiftOverlap,
             title: 'พบเวรซ้อนจากตารางเวร',
             message:
-                '${first.code} ${_range(first.start, first.end)} ชนกับ '
-                '${second.code} ${_range(second.start, second.end)}',
+                '${first.displayName} ${_range(first.start, first.end)} ชนกับ '
+                '${second.displayName} ${_range(second.start, second.end)}',
             start: _later(first.start, second.start),
             end: _earlier(first.end, second.end),
             decision: decisions[id] ?? ShiftAlertDecision.pending,
@@ -122,7 +122,7 @@ class ShiftAlertService {
 
     for (final shift in activeShifts) {
       for (final period in calendarPeriods) {
-        if (period.legacyKey == CalendarService.legacyKeyFor(shift) ||
+        if (CalendarService.matchesLegacyEvent(shift, period.legacyKey) ||
             !_overlaps(shift.start, shift.end, period.start, period.end)) {
           continue;
         }
@@ -140,7 +140,7 @@ class ShiftAlertService {
             message: offConflict
                 ? 'ช่วง OFF หลังเวรดึก ${_range(shift.start, shift.end)} ชนกับ '
                       '“${period.title}” ${_range(period.start, period.end)}'
-                : '${shift.code} ${_range(shift.start, shift.end)} ชนกับ '
+                : '${shift.displayName} ${_range(shift.start, shift.end)} ชนกับ '
                       '“${period.title}” ${_range(period.start, period.end)}',
             start: _later(shift.start, period.start),
             end: _earlier(shift.end, period.end),

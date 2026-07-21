@@ -209,6 +209,14 @@ void main() {
       }),
       isTrue,
     );
+    expect(shift.displayName, 'P1 เช้า (UP1)');
+    expect(CalendarService.summaryFor(shift), 'P1 เช้า (UP1)');
+    expect(
+      CalendarService.matchesExisting(shift, {
+        CalendarService.displayLegacyKeyFor(shift),
+      }),
+      isTrue,
+    );
   });
 
   test('Drive archive lookup is scoped to source file and month', () {
