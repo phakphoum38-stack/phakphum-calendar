@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/models/app_settings.dart';
 import 'package:phakphum_calendar/models/shift.dart';
+import 'package:phakphum_calendar/models/tool_definition.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
 import 'package:phakphum_calendar/services/drive_archive_service.dart';
 import 'package:phakphum_calendar/services/google_auth_service.dart';
+import 'package:phakphum_calendar/services/settings_service.dart';
 import 'package:phakphum_calendar/services/sheets_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('validates Google Web OAuth client IDs', () {
@@ -43,6 +46,27 @@ void main() {
     );
   });
 
+  test('tool catalog uses unique HTTPS links and safe default pins', () {
+    expect(
+      toolCatalog.map((tool) => tool.id).toSet(),
+      hasLength(toolCatalog.length),
+    );
+    expect(toolCatalog.every((tool) => tool.uri.scheme == 'https'), isTrue);
+    expect(defaultPinnedToolIds.every((id) => toolById(id) != null), isTrue);
+    expect(toolById('gmail')!.usesGoogleAccountChooser, isTrue);
+    expect(toolById('vscode')!.url, 'https://vscode.dev/');
+  });
+
+  test('persists only known pinned tool IDs on the current device', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final service = SettingsService();
+
+    expect(await service.loadPinnedToolIds(), defaultPinnedToolIds);
+    await service.savePinnedToolIds(<String>{'gmail', 'vscode', 'unknown'});
+
+    expect(await service.loadPinnedToolIds(), <String>{'gmail', 'vscode'});
+  });
+
   test('keeps the web OAuth client ID in app settings copies', () {
     final settings = AppSettings.defaults().copyWith(
       googleWebClientId: '123456789012-abcDEF_123.apps.googleusercontent.com',
@@ -54,8 +78,21 @@ void main() {
     );
   });
 
+  test('starts empty but preserves a Sheets URL saved on the device', () async {
+    expect(AppSettings.defaults().sourceUrl, isEmpty);
+    const savedUrl =
+        'https://docs.google.com/spreadsheets/d/LocalSavedSheetId/edit';
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'source_url': savedUrl,
+    });
+
+    final settings = await SettingsService().load();
+
+    expect(settings.sourceUrl, savedUrl);
+  });
+
   test('parses Sheets URLs and raw spreadsheet IDs', () {
-    const id = '1kppXtjpD6Vm5MIf58bIiQa5dQ0SDpC1xVnz-CrAwpSE';
+    const id = '1TestSpreadsheetId_0123456789';
     expect(
       SheetsService.spreadsheetIdFromUrl(
         'https://docs.google.com/spreadsheets/d/$id/edit?gid=1',

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
+import '../models/tool_definition.dart';
 
 class SettingsService {
   static const _sourceKey = 'source_url';
@@ -15,6 +16,7 @@ class SettingsService {
   static const _refreshSecondsKey = 'refresh_seconds';
   static const _googleWebClientIdKey = 'google_web_client_id';
   static const _auditKey = 'audit_log';
+  static const _pinnedToolIdsKey = 'pinned_tool_ids';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -74,5 +76,19 @@ class SettingsService {
     entries.insert(0, jsonEncode(entry.toJson()));
     if (entries.length > 200) entries.removeRange(200, entries.length);
     await prefs.setStringList(_auditKey, entries);
+  }
+
+  Future<Set<String>> loadPinnedToolIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_pinnedToolIdsKey);
+    if (saved == null) return {...defaultPinnedToolIds};
+    return saved.where((id) => toolById(id) != null).toSet();
+  }
+
+  Future<void> savePinnedToolIds(Iterable<String> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    final validIds = ids.where((id) => toolById(id) != null).toSet().toList()
+      ..sort();
+    await prefs.setStringList(_pinnedToolIdsKey, validIds);
   }
 }
