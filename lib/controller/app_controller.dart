@@ -46,7 +46,7 @@ class AppController extends ChangeNotifier {
       Shift(
         code: 'UP1',
         rowLabel: 'P1 เช้า',
-        assignedName: 'ภาคภูมิ',
+        assignedName: 'ผู้ใช้งานตัวอย่าง',
         start: DateTime(2026, 8, 3, 8),
         end: DateTime(2026, 8, 3, 16),
         sheetTitle: 'ตัวอย่าง',
@@ -56,7 +56,7 @@ class AppController extends ChangeNotifier {
       Shift(
         code: 'UG',
         rowLabel: 'GEN',
-        assignedName: 'ภาคภูมิ',
+        assignedName: 'ผู้ใช้งานตัวอย่าง',
         start: DateTime(2026, 8, 8, 7, 30),
         end: DateTime(2026, 8, 8, 12),
         sheetTitle: 'ตัวอย่าง',
@@ -98,6 +98,23 @@ class AppController extends ChangeNotifier {
             !CalendarService.matchesExisting(shift, existingKeys),
       )
       .length;
+
+  List<String> get rosterSearchNames {
+    final names = <String>{};
+    final displayName = auth.account?.displayName?.trim() ?? '';
+    if (displayName.isNotEmpty) {
+      names.add(displayName);
+      names.addAll(
+        displayName
+            .split(RegExp(r'\s+'))
+            .map((part) => part.trim())
+            .where((part) => part.length >= 2),
+      );
+    }
+    final legacyName = settings.targetName.trim();
+    if (legacyName.isNotEmpty) names.add(legacyName);
+    return names.toList(growable: false);
+  }
 
   Future<void> initialize() async {
     if (initialized) return;
@@ -269,6 +286,12 @@ class AppController extends ChangeNotifier {
 
   Future<void> loadRoster({bool background = false}) async {
     await _run('อ่านตารางเวร', () async {
+      final searchNames = rosterSearchNames;
+      if (searchNames.isEmpty) {
+        throw const FormatException(
+          'บัญชี Google นี้ไม่มีชื่อที่ใช้ค้นหา กรุณาตรวจชื่อโปรไฟล์ Google',
+        );
+      }
       final client = await auth.clientFor([
         sheets.SheetsApi.spreadsheetsReadonlyScope,
       ], promptIfNecessary: !background);
@@ -279,14 +302,15 @@ class AppController extends ChangeNotifier {
         );
         shifts = _parser.parse(
           snapshots: snapshots,
-          targetName: settings.targetName,
+          targetName: searchNames.first,
+          targetAliases: searchNames.skip(1),
           year: settings.year,
           month: settings.month,
         );
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
         existingKeys = {};
         lastRefresh = DateTime.now();
-        status = 'พบเวรของ ${settings.targetName} ${shifts.length} รายการ';
+        status = 'พบเวรของ ${searchNames.first} ${shifts.length} รายการ';
         await _addAudit(
           'sheet.read',
           'อ่าน ${snapshots.length} แท็บ พบ ${shifts.length} เวร; ไม่มีการแก้ไขชีต',

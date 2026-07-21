@@ -1,125 +1,212 @@
 # Phakphum Shift Calendar
 
-Flutter app สำหรับอ่านตารางเวรจาก Google Sheets, ตรวจรายการก่อนบันทึก และสร้างกิจกรรมใน Google Calendar บน Android, iOS, Web, Windows, macOS และ Linux
+แอป Flutter สำหรับอ่านตารางเวรจาก Google Sheets แบบ read-only ตรวจรายการก่อนบันทึก และเพิ่มเวรที่ยืนยันแล้วลง Google Calendar รองรับ UI บน Web, Android, iOS, Windows, macOS และ Linux
 
-## ระบบที่รองรับ
+- แอปไม่ฝังลิงก์ชีต บัญชี Google, OAuth Client ID, token หรือผลลัพธ์ตารางเวรไว้ในซอร์สโค้ด
+- ชื่อที่ใช้ค้นหาเวรอ่านจากชื่อโปรไฟล์ของบัญชี Google ที่ล็อกอินโดยอัตโนมัติ จึงไม่มีช่องกรอกชื่อผู้ค้นหา
+- เดือนและปี ค.ศ. เริ่มต้นตามวันที่ปัจจุบันของเครื่อง และผู้ใช้แตะเลือกค่าอื่นได้
+- ไอคอนแอปเป็นรูปชีตและปฏิทินบนทุกแพลตฟอร์มที่โปรเจกต์สร้างให้
 
-| ระบบ | เปิดและใช้งาน UI | Google Sign-In/API |
-| --- | --- | --- |
-| Android | รองรับ | รองรับ |
-| iOS | รองรับ | รองรับเมื่อตั้ง OAuth |
-| Web | รองรับ | รองรับเมื่อตั้ง OAuth |
-| macOS | รองรับ | รองรับเมื่อตั้ง OAuth และ URL scheme |
-| Windows | รองรับ | แพ็กเกจ `google_sign_in` ยังไม่รองรับ ให้ใช้เวอร์ชัน Web สำหรับงาน Google |
-| Linux | รองรับ | แพ็กเกจ `google_sign_in` ยังไม่รองรับ ให้ใช้เวอร์ชัน Web สำหรับงาน Google |
+## สถานะของแต่ละระบบ
 
-## ความสามารถ
+| ระบบ | เปิด UI | Google Sign-In/API ในแอป native | ไฟล์จาก GitHub Actions |
+| --- | --- | --- | --- |
+| Web | รองรับ | รองรับเมื่อตั้ง Web OAuth | `phakphum-calendar-web` และ GitHub Pages |
+| Android | รองรับ | รองรับเมื่อตั้ง Android OAuth | `phakphum-calendar-android-apk` |
+| iOS | รองรับ | รองรับเมื่อตั้ง iOS OAuth | `phakphum-calendar-ios-unsigned-ipa` |
+| Windows | รองรับ | ยังไม่รองรับโดยแพ็กเกจที่ใช้ ให้เปิด Web สำหรับงาน Google | `phakphum-calendar-windows` |
+| macOS | รองรับ | รองรับเมื่อตั้ง macOS OAuth และ URL scheme | `phakphum-calendar-macos` |
+| Linux | รองรับ | ยังไม่รองรับโดยแพ็กเกจที่ใช้ ให้เปิด Web สำหรับงาน Google | `phakphum-calendar-linux` |
 
-- หลัง Google Login แอปแสดงป๊อปอัปขอสิทธิ์อ่าน Sheets/Calendar ทันที และตรวจสิทธิ์เดิมก่อนเพื่อไม่ขอซ้ำโดยไม่จำเป็น
-- แถบเครื่องมือร่วมสำหรับ Google, Gmail, Drive, Calendar, Sheets, Gemini, ChatGPT, Copilot, GitHub, VS Code Web, Google Cloud และ Notion
-- เพิ่ม/นำเครื่องมือออกจากแถบได้ โดยบันทึกเฉพาะรหัสทางลัดในเครื่อง ไม่เก็บอีเมล รหัสผ่าน หรือ token ของบริการภายนอก
-- อ่าน Google Sheets ด้วย `spreadsheets.readonly` โดยไม่แก้ไขต้นฉบับ
-- ค้นหาเวรตามชื่อ/เดือน/ปี และแปลงเวลา P1–P4, IPD, CT IPD, CT ER, ER, GEN และ 14 ชั้น
-- รีเฟรชทันที หรือ Auto refresh ทุก 1–10 วินาที (ไม่เริ่มรอบใหม่ถ้ารอบเดิมยังทำงาน)
-- Preview, เลือก/ไม่เลือก และกำหนดสีแต่ละกิจกรรมก่อนเขียน
-- เปรียบเทียบ Calendar และกันรายการซ้ำ ทั้งอีเวนต์จากแอปและอีเวนต์เดิมที่ชื่อ/เวลาเดียวกัน
-- สร้างสำเนาไฟล์ต้นฉบับประจำเดือนใน Google Drive ของบัญชีที่ล็อกอิน โดยไม่แก้หรือลบต้นฉบับ และไม่สร้างซ้ำเดือนเดิม
-- แท็บบันทึกเก็บรายการชีตไว้เฉพาะในเครื่อง แยกตามบัญชี Google สำหรับเปิดดู บันทึกลิงก์ปัจจุบัน และลบออกจากรายการโดยไม่ลบไฟล์จริง
-- สร้างแท็บเดือนล่วงหน้าจากแท็บต้นแบบหลังล็อกอิน Google และกดยืนยันรายการ
-- Audit log เก็บในเครื่องสูงสุด 200 รายการ
+รายการระบบปฏิบัติการที่ Flutter รุ่นปัจจุบันรองรับดูได้จาก [Flutter supported platforms](https://docs.flutter.dev/reference/supported-platforms)
 
-## ขอบเขตความปลอดภัย
+## วิธีใช้งาน
 
-การอ่านเวรไม่มีคำสั่งเขียน Google Sheets ส่วนการสร้างสำเนา Drive, เขียน Calendar และสร้างแท็บเดือนล่วงหน้าต้องล็อกอิน Google และอนุญาตสิทธิ์ที่เกี่ยวข้อง แอปไม่เพิ่มผู้เข้าร่วม ไม่ส่งคำเชิญ และไม่สร้าง Google Meet
+### 1. เตรียม Google Sheets
 
-ฟังก์ชัน “สร้างชีตเดือนล่วงหน้า” ทำสำเนาเต็มของแท็บต้นแบบเป็นแท็บใหม่ จึงควรตรวจและแก้วันที่/รายชื่อในแท็บใหม่ก่อนนำมาใช้ แอปไม่แก้แท็บต้นแบบ
+1. ให้ตารางมีชื่อผู้ปฏิบัติงานตรงกับชื่อเต็ม ชื่อจริง หรือนามสกุลในโปรไฟล์ Google ที่จะล็อกอิน
+2. บัญชีนั้นต้องมีสิทธิ์เปิด Google Sheets ต้นฉบับ
+3. คัดลอก URL ของชีตจากเบราว์เซอร์ แอปไม่กำหนดชีตส่วนกลางและไม่ส่ง URL นี้ขึ้น GitHub
 
-Auto refresh ใช้ batch read หนึ่งครั้งต่อรอบหลังโหลดรายชื่อแท็บครั้งแรก ช่วง 1 วินาทีอาจแตะโควตาอ่าน 60 requests/นาที/ผู้ใช้ของ Sheets API หากพบ `429` ให้เพิ่มช่วงเป็น 2–10 วินาที
+ตัวอ่านรองรับเวร P1–P4, IPD, CT IPD, CT ER, ER, GEN และ 14 ชั้นตามรูปแบบตารางของโปรเจกต์
+
+### 2. ล็อกอินและอนุญาตสิทธิ์
+
+1. เปิดแอปแล้วกด **เข้าสู่ระบบด้วย Google**
+2. เลือกบัญชี Google ที่มีสิทธิ์เข้าถึงชีต
+3. เมื่อป็อปอัพสิทธิ์ปรากฏ ให้ตรวจรายการสิทธิ์ก่อนอนุญาต
+4. แอปจะใช้ชื่อโปรไฟล์ Google เพื่อค้นหาเวรโดยอัตโนมัติ หากไม่พบเวร ให้ตรวจว่าชื่อในโปรไฟล์ตรงกับชื่อในชีต
+
+แอปตรวจสิทธิ์อ่านที่เคยอนุญาตก่อน จึงไม่ควรแสดงป็อปอัพซ้ำโดยไม่จำเป็น สิทธิ์เขียน Calendar, สำเนา Drive และสร้างแท็บชีตจะถูกขอเมื่อผู้ใช้เรียกฟังก์ชันนั้น
+
+### 3. อ่านและตรวจตารางเวร
+
+1. วาง URL ในช่อง **ลิงก์ Google Sheets ต้นฉบับ**
+2. เลือก **เดือน** และ **ปี ค.ศ.** ค่าเริ่มต้นคือเดือนและปีปัจจุบัน
+3. เปิดหรือปิด **เก็บสำเนาต้นฉบับใน Drive** ตามต้องการ
+4. กด **รีเฟรช/อ่านใหม่ตอนนี้**
+5. ไปแท็บ **ตัวอย่าง** เพื่อตรวจวัน เวลา ประเภทเวร สี และเลือกว่าจะนำรายการใดไปใช้
+6. กด **เปรียบเทียบ Calendar** เพื่อตรวจรายการซ้ำ
+7. ตรวจตัวเลข “อ่านพบ / เลือกไว้ / มีใน Calendar / รอเพิ่ม” ก่อนดำเนินการ
+8. กด **ยืนยันและบันทึก Calendar** เฉพาะเมื่อรายการถูกต้อง
+
+แอปอ่านชีตต้นฉบับด้วย `spreadsheets.readonly` และไม่มีคำสั่งแก้เซลล์ในขั้นตอนอ่านเวร การเขียน Calendar จะเกิดหลังผู้ใช้กดยืนยันเท่านั้น
+
+### 4. ใช้แท็บบันทึก
+
+- **บันทึกชีตปัจจุบัน** เก็บ URL อ้างอิงไว้เฉพาะอุปกรณ์/เบราว์เซอร์และแยกตามบัญชี Google
+- **เปิดดู** เปิดชีตจริงด้วยบัญชีที่ล็อกอิน ผู้ใช้จะแก้ชีตได้ตามสิทธิ์ที่ Google กำหนด
+- **ลบ** ลบเฉพาะรายการอ้างอิงในแอป ไม่ลบไฟล์ Google Sheets จริง
+- **สร้างชีตเดือนล่วงหน้า** ทำสำเนาแท็บต้นแบบเป็นแท็บใหม่ ผู้ใช้ควรตรวจวันที่และรายชื่อในแท็บใหม่ก่อนใช้งาน
+
+### 5. Auto refresh และสำเนาต้นฉบับ
+
+- Auto refresh เลือกช่วง 1–10 วินาทีได้ รอบใหม่จะไม่เริ่มซ้อนกับรอบที่ยังทำงาน
+- ช่วง 1 วินาทีอาจแตะโควตา Google Sheets API หากพบ `429` ให้เพิ่มเป็น 2–10 วินาที
+- เมื่อเปิดการเก็บสำเนา แอปสร้างสำเนาต้นฉบับใน Drive หนึ่งครั้งต่อไฟล์และเดือนก่อนซิงก์ โดยไม่แก้หรือลบไฟล์ต้นฉบับ
+
+## ติดตั้งจาก GitHub Actions
+
+หน้า repository: [phakphoum38-stack/phakphum-calendar](https://github.com/phakphoum38-stack/phakphum-calendar)
+
+1. เปิดแท็บ **Actions**
+2. เลือก workflow ของระบบที่ต้องการ
+3. เปิด run ล่าสุดที่สำเร็จบนสาขา `main`
+4. เลื่อนลงส่วน **Artifacts** แล้วดาวน์โหลด artifact ตามตารางด้านบน
+5. แตก ZIP ที่ GitHub สร้างครอบ artifact ก่อน แล้วจึงใช้ไฟล์แอปภายใน
+
+GitHub กำหนดให้ผู้ดาวน์โหลด artifact ล็อกอินและมีสิทธิ์อ่าน repository ขั้นตอนมาตรฐานดูได้ที่ [Downloading workflow artifacts](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts?tool=webui)
+
+ดาวน์โหลดผ่าน GitHub CLI ได้เช่นกัน:
+
+```powershell
+gh auth login
+gh run list --repo phakphoum38-stack/phakphum-calendar
+gh run download RUN_ID --repo phakphoum38-stack/phakphum-calendar
+```
+
+### ตรวจ SHA-256 ก่อนติดตั้ง
+
+แต่ละ artifact มี `SHA256SUMS.txt` ยกเว้น Web artifact ที่ GitHub Pages นำไป deploy โดยตรง
+
+Windows PowerShell:
+
+```powershell
+Get-FileHash .\phakphum-calendar-windows.zip -Algorithm SHA256
+Get-Content .\SHA256SUMS.txt
+```
+
+macOS:
+
+```bash
+shasum -a 256 phakphum-calendar-macos.zip
+cat SHA256SUMS.txt
+```
+
+Linux:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+ค่า hash ที่คำนวณต้องตรงกับบรรทัดของไฟล์นั้นใน `SHA256SUMS.txt`
+
+## ติดตั้ง Web / PWA
+
+1. เปิด [GitHub Pages ของแอป](https://phakphoum38-stack.github.io/phakphum-calendar/) ด้วย Chrome, Edge หรือ Safari รุ่นปัจจุบัน
+2. หากเว็บแจ้งว่ายังไม่ได้ตั้ง OAuth ให้กด **ตั้งค่า Google OAuth** แล้ววาง Web Client ID ของโปรเจกต์ Google Cloud ที่เชื่อถือได้
+3. ใน Chrome/Edge กดไอคอนติดตั้งที่แถบที่อยู่ หรือเมนู **Install app / ติดตั้งแอป** เพื่อใช้แบบ PWA
+4. iPhone/iPad ใช้ Safari → Share → **Add to Home Screen**
+
+Web Client ID ไม่ใช่ Client Secret แต่ควรใช้เฉพาะ ID ของโปรเจกต์ที่ตั้ง Authorized JavaScript origins ตรงกับ URL นี้ ค่าที่กรอกจากหน้าแอปเก็บใน browser profile ปัจจุบัน
+
+## ติดตั้ง Android
+
+1. ดาวน์โหลด `phakphum-calendar-android-apk`
+2. แตกไฟล์และตรวจ SHA-256 ของ `app-release.apk`
+3. ส่ง APK ไปยังโทรศัพท์แล้วเปิดไฟล์
+4. Android อาจขออนุญาต **Install unknown apps** สำหรับแอปที่ใช้เปิด APK ให้อนุญาตเฉพาะแหล่งที่เชื่อถือได้
+5. ติดตั้งแล้วเปิด **Shift Calendar**
+
+ข้อจำกัด: workflow ปัจจุบัน build แบบ release แต่ลงนามด้วย debug key ของโปรเจกต์ จึงเหมาะสำหรับทดสอบ ไม่ใช่ไฟล์สำหรับเผยแพร่ Play Store การใช้งานจริงควรตั้ง release keystore และเก็บรหัสผ่านใน GitHub Secrets
+
+## ติดตั้ง iOS / iPadOS
+
+artifact `phakphum-calendar-ios-unsigned-ipa` เป็น IPA ที่ยังไม่ลงลายเซ็น จึงติดตั้งบน iPhone/iPad ปกติโดยตรงไม่ได้
+
+1. ดาวน์โหลดและตรวจ SHA-256 ของ `phakphum-calendar-unsigned.ipa`
+2. ใช้ macOS/Xcode เปิดโปรเจกต์ `ios/Runner.xcworkspace`
+3. เลือก Apple Developer Team และ bundle identifier ที่บัญชีมีสิทธิ์ใช้
+4. ตั้ง iOS OAuth Client ID และ Reversed Client ID ให้ตรงกับ bundle ID
+5. สร้าง signed archive จาก Xcode แล้วติดตั้งผ่านวิธีแจกจ่ายของ Apple ที่ทีมเลือก
+
+หากต้องการเพียงตรวจโครงสร้าง build ใช้ unsigned IPA ได้ แต่การติดตั้งจริงต้องมี Apple certificate และ provisioning profile
+
+## ติดตั้ง Windows
+
+1. ดาวน์โหลด `phakphum-calendar-windows`
+2. แตก artifact แล้วตรวจ `phakphum-calendar-windows.zip`
+3. แตก `phakphum-calendar-windows.zip` อีกครั้ง โดยเก็บ `.exe`, `.dll` และโฟลเดอร์ `data` ไว้ด้วยกัน
+4. เปิด `phakphum_calendar.exe`
+
+ไฟล์ยังไม่ได้เซ็น Authenticode จึงอาจมีคำเตือน Windows SmartScreen ให้ตรวจ source, workflow run และ SHA-256 ก่อนใช้งาน Google Sign-In native ยังไม่รองรับบน Windows ในเวอร์ชันนี้ ให้กด **Google Login ใช้ผ่าน Web** เพื่อเปิดเว็บแอป
+
+## ติดตั้ง macOS
+
+1. ดาวน์โหลด `phakphum-calendar-macos`
+2. ตรวจ SHA-256 แล้วแตก `phakphum-calendar-macos.zip`
+3. ย้าย `phakphum_calendar.app` ไปที่ `/Applications`
+4. เปิดแอปและอนุญาตสิทธิ์ตามนโยบายของเครื่อง
+
+artifact ยังไม่ได้ notarize/sign สำหรับการแจกจ่ายสาธารณะ macOS อาจป้องกันการเปิด ผู้เผยแพร่ควรลงลายเซ็นด้วย Developer ID และ notarize ก่อนแจกจ่ายให้ผู้ใช้ทั่วไป
+
+## ติดตั้ง Linux
+
+ตัวอย่างสำหรับ Ubuntu/Debian:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libgtk-3-0 libstdc++6
+tar -xzf phakphum-calendar-linux.tar.gz
+cd bundle
+./phakphum_calendar
+```
+
+ต้องเก็บ executable, `data` และ `lib` ไว้ในโครงสร้างเดิม ไอคอนแอปอยู่ใน `bundle/data/app_icon.png` Google Sign-In native ยังไม่รองรับบน Linux ในเวอร์ชันนี้ ให้ใช้ Web สำหรับงาน Google
 
 ## ตั้งค่า Google Cloud
 
-1. สร้าง Google Cloud project และ OAuth consent screen
-2. เปิด API:
+อ่านภาพรวม OAuth 2.0 ได้จาก [Google Identity OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)
+
+1. สร้างหรือเลือก Google Cloud project
+2. เปิด API ต่อไปนี้:
    - Google Sheets API
    - Google Calendar API
    - Google Drive API
-3. สร้าง OAuth Client IDs:
-   - Web: เพิ่ม Authorized JavaScript origins ให้ตรงกับ URL ที่เปิดแอป เช่น `http://localhost:8080` และ URL ของ GitHub Pages
+3. ตั้ง OAuth consent screen/Google Auth Platform:
+   - ใส่ชื่อแอป อีเมลสนับสนุน และอีเมลติดต่อ
+   - เลือก Audience ให้ตรงกับการใช้งาน Internal หรือ External
+   - ถ้ายังอยู่โหมด Testing ให้เพิ่มทุกบัญชีที่ต้องใช้ใน Test users
+   - เพิ่ม scopes ที่แอปใช้และเผยแพร่ consent screen เมื่อพร้อม
+4. สร้าง OAuth Client ตามระบบ:
+   - Web: เพิ่ม Authorized JavaScript origins เช่น `http://localhost:8080` และ `https://phakphoum38-stack.github.io`
    - Android: package `com.phakphoum.phakphum_calendar` พร้อม SHA-1/SHA-256 ของ signing key
    - iOS: bundle ID `com.phakphoum.phakphumCalendar`
-   - macOS: bundle ID `com.phakphoum.phakphumCalendar`
-4. สำหรับ iOS/macOS นำ Client ID และ Reversed Client ID ไปตั้งผ่าน GitHub secrets หรือแทนค่า placeholder ใน `ios/Runner/Info.plist`/`macos/Runner/Info.plist` เฉพาะเครื่อง build
+   - macOS: bundle ID `com.phakphoum.phakphumCalendar` และ URL scheme จาก Reversed Client ID
+5. ห้าม commit Client Secret, access token, refresh token, service-account key หรือไฟล์ข้อมูลบัญชีลง repository
 
 Scopes ที่แอปขอ:
 
-- `spreadsheets.readonly` และ `calendar.events.readonly` — ขอพร้อมกันจากป๊อปอัปหลังล็อกอิน เพื่ออ่านตารางเวรและตรวจรายการซ้ำ
-- `calendar.events` — สร้างกิจกรรม
-- `drive` — ค้นหา/สร้างสำเนาไฟล์ต้นฉบับที่มีอยู่แล้ว
-- `spreadsheets` — ทำสำเนาแท็บเดือนล่วงหน้าเมื่อผู้ใช้กดสั่ง
+- `spreadsheets.readonly` และ `calendar.events.readonly` — อ่านตารางและตรวจรายการซ้ำ
+- `calendar.events` — สร้างกิจกรรมหลังผู้ใช้ยืนยัน
+- `drive` — ค้นหา/สร้างสำเนาต้นฉบับเมื่อเปิดฟังก์ชันเก็บสำเนา
+- `spreadsheets` — สร้างสำเนาแท็บเดือนล่วงหน้าเมื่อผู้ใช้กดสั่ง
 
-สิทธิ์ `drive` และ `spreadsheets` เป็นสิทธิ์กว้างที่ขอเฉพาะเมื่อใช้ฟังก์ชันเขียนที่เกี่ยวข้อง แอป production อาจต้องผ่าน OAuth verification ของ Google
+สิทธิ์ `drive` และ `spreadsheets` มีขอบเขตกว้างและอาจทำให้แอป production ต้องผ่าน OAuth verification ของ Google
 
-## รันในเครื่อง
+## GitHub Secrets
 
-ติดตั้ง Flutter SDK และ toolchain ของระบบนั้น แล้วรัน:
-
-```powershell
-flutter pub get
-flutter run -d windows
-flutter run -d chrome --web-port=8080
-```
-
-บน macOS หรือ Linux เปลี่ยน device เป็น `macos` หรือ `linux` ตามลำดับ ส่วน Android/iOS เลือก emulator, simulator หรืออุปกรณ์จาก `flutter devices`
-
-สำหรับ Web ที่ต้องใช้ Google Login:
-
-```powershell
-flutter pub get
-flutter run -d chrome --web-port=8080 `
-  --dart-define=GOOGLE_WEB_CLIENT_ID="YOUR_WEB_CLIENT_ID" `
-  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
-```
-
-Web OAuth Client ID เป็นข้อมูลสาธารณะ ไม่ใช่ Client Secret หากไม่ได้ส่งผ่าน `--dart-define` ให้กด **ตั้งค่า Google OAuth** บนหน้าแรก วาง Web Client ID แล้วแอปจะเปิดปุ่ม Google Login โดยไม่ต้อง build ใหม่ ค่าจะถูกเก็บไว้เฉพาะใน browser profile นั้น
-
-## ตรวจและ build ในเครื่อง
-
-```powershell
-flutter analyze
-flutter test
-flutter build web --release `
-  --dart-define=GOOGLE_WEB_CLIENT_ID="YOUR_WEB_CLIENT_ID"
-flutter build apk --release `
-  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
-flutter build windows --release
-```
-
-การ build iOS และ macOS ต้องใช้ macOS/Xcode:
-
-```bash
-flutter build ios --release --no-codesign
-flutter build macos --release \
-  --dart-define=GOOGLE_MACOS_CLIENT_ID="YOUR_MACOS_CLIENT_ID" \
-  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
-```
-
-การ build Linux ต้องทำบน Linux ที่ติดตั้ง GTK development packages:
-
-```bash
-flutter build linux --release
-```
-
-## GitHub Actions และ secrets
-
-Workflows:
-
-- `Validate Flutter` — analyze + tests
-- `Build Android APK` — APK และ `SHA256SUMS.txt`
-- `Build iOS IPA (Unsigned)` — unsigned IPA และ checksum
-- `Build and Deploy Web` — web artifact และ GitHub Pages
-- `Build Desktop Apps` — ZIP/TAR.GZ สำหรับ Windows, macOS และ Linux พร้อม checksum
-
-ตั้ง secrets ใน GitHub repository:
+ตั้งค่าที่ **Repository → Settings → Secrets and variables → Actions**:
 
 - `GOOGLE_WEB_CLIENT_ID`
 - `GOOGLE_SERVER_CLIENT_ID`
@@ -128,6 +215,126 @@ Workflows:
 - `GOOGLE_MACOS_CLIENT_ID`
 - `GOOGLE_MACOS_REVERSED_CLIENT_ID`
 
-Android workflow ใช้ debug signing key ของ Flutter template จึงเหมาะกับการทดสอบ ไม่ใช่ Play Store release signing ส่วน IPA เป็น unsigned archive: ใช้ตรวจหรือส่งต่อไปขั้นตอน signing ได้ แต่ติดตั้งบน iPhone ปกติไม่ได้จนกว่าจะเซ็นด้วย Apple certificate/provisioning profile
+workflow จะนำค่าไปใส่เฉพาะตอน build ไม่มีไฟล์บัญชี ลิงก์ชีต หรือผลลัพธ์เวรถูกอัปโหลดเป็น artifact
 
-เปิด GitHub Pages ที่ **Settings → Pages → Source: GitHub Actions** ก่อนรัน Web workflow บนสาขา `main`
+## Build จากซอร์ส
+
+ติดตั้ง Flutter ตาม [Install Flutter](https://docs.flutter.dev/get-started/install) และ toolchain ของระบบ จากนั้นรันขั้นตอนร่วม:
+
+```powershell
+git clone https://github.com/phakphoum38-stack/phakphum-calendar.git
+cd phakphum-calendar
+flutter doctor -v
+flutter pub get
+flutter analyze
+flutter test
+```
+
+### Web
+
+```powershell
+flutter run -d chrome --web-port=8080 `
+  --dart-define=GOOGLE_WEB_CLIENT_ID="YOUR_WEB_CLIENT_ID" `
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+
+flutter build web --release `
+  --dart-define=GOOGLE_WEB_CLIENT_ID="YOUR_WEB_CLIENT_ID" `
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+```
+
+### Android
+
+ต้องมี Android SDK และ JDK 17:
+
+```powershell
+flutter devices
+flutter run -d DEVICE_ID `
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+flutter build apk --release `
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+```
+
+ดู SHA ของ signing key:
+
+```powershell
+cd android
+.\gradlew signingReport
+```
+
+### iOS
+
+ต้องใช้ macOS, Xcode และ Apple toolchain:
+
+```bash
+flutter run -d DEVICE_ID \
+  --dart-define=GOOGLE_IOS_CLIENT_ID="YOUR_IOS_CLIENT_ID" \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+
+flutter build ios --release --no-codesign \
+  --dart-define=GOOGLE_IOS_CLIENT_ID="YOUR_IOS_CLIENT_ID" \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+```
+
+### Windows
+
+ต้องมี Visual Studio พร้อม workload **Desktop development with C++**:
+
+```powershell
+flutter config --enable-windows-desktop
+flutter run -d windows
+flutter build windows --release
+```
+
+### macOS
+
+```bash
+flutter config --enable-macos-desktop
+flutter run -d macos \
+  --dart-define=GOOGLE_MACOS_CLIENT_ID="YOUR_MACOS_CLIENT_ID" \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+flutter build macos --release \
+  --dart-define=GOOGLE_MACOS_CLIENT_ID="YOUR_MACOS_CLIENT_ID" \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
+```
+
+### Linux
+
+ตัวอย่าง dependency สำหรับ Ubuntu/Debian ใช้ชุดเดียวกับ CI:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
+flutter config --enable-linux-desktop
+flutter run -d linux
+flutter build linux --release
+```
+
+### สร้างไอคอนใหม่
+
+ไฟล์ต้นฉบับอยู่ที่ `assets/app_icon_master.png`:
+
+```powershell
+flutter pub get
+dart run flutter_launcher_icons
+```
+
+คำสั่งนี้สร้างไอคอน Android, iOS, Web, Windows และ macOS ส่วน Linux จะนำไฟล์ต้นฉบับไปไว้ใน bundle ผ่าน CMake
+
+## Workflows
+
+- `Validate Flutter` — `flutter analyze` และ `flutter test`
+- `Build Android APK` — release APK สำหรับทดสอบและ SHA-256
+- `Build iOS IPA (Unsigned)` — unsigned IPA และ SHA-256
+- `Build and Deploy Web` — Web artifact และ GitHub Pages
+- `Build Desktop Apps` — Windows ZIP, macOS ZIP และ Linux TAR.GZ พร้อม SHA-256
+
+ทุก workflow รองรับ **Run workflow** และจะทำงานอัตโนมัติเมื่อไฟล์ที่เกี่ยวข้องถูก push เข้า `main`
+
+## ข้อมูลที่เก็บและขอบเขตความปลอดภัย
+
+- URL ชีต, ค่า OAuth ที่กรอกจาก UI, ตัวเลือกเดือน/ปี, แถบเครื่องมือ, บันทึก และ audit log เก็บใน local storage ของอุปกรณ์/เบราว์เซอร์
+- รายการชีตที่บันทึกแยกด้วย Google account ID แบบ opaque ไม่บันทึกรหัสผ่านหรือ Google token เอง
+- Audit log เก็บสูงสุด 200 รายการในเครื่อง
+- การลบรายการชีตในแท็บบันทึกไม่ลบไฟล์ Google Sheets
+- แอปไม่เพิ่มผู้เข้าร่วม ไม่ส่งคำเชิญ และไม่สร้าง Google Meet
+- repository และ build artifacts ต้องมีเฉพาะซอร์ส/ไฟล์แอป ห้ามรวมไฟล์ชีต ผลลัพธ์เวร อีเมล token หรือข้อมูลบัญชี

@@ -12,16 +12,19 @@ class AppSettings {
 
   static const defaultSourceUrl = '';
 
-  factory AppSettings.defaults() => const AppSettings(
-    sourceUrl: defaultSourceUrl,
-    targetName: 'ภาคภูมิ',
-    year: 2026,
-    month: 8,
-    archiveOriginal: true,
-    autoRefresh: false,
-    refreshSeconds: 5,
-    googleWebClientId: '',
-  );
+  factory AppSettings.defaults({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    return AppSettings(
+      sourceUrl: defaultSourceUrl,
+      targetName: '',
+      year: current.year,
+      month: current.month,
+      archiveOriginal: true,
+      autoRefresh: false,
+      refreshSeconds: 5,
+      googleWebClientId: '',
+    );
+  }
 
   final String sourceUrl;
   final String targetName;
