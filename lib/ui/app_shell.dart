@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
@@ -17,6 +19,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int selectedIndex = 0;
+  bool _permissionDialogOpen = false;
+  String? _permissionDialogShownForEmail;
 
   static const destinations = [
     NavigationDestination(
@@ -33,6 +37,37 @@ class _AppShellState extends State<AppShell> {
       label: 'ตั้งค่า',
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleControllerChanged);
+    super.dispose();
+  }
+
+  void _handleControllerChanged() {
+    final auth = widget.controller.auth;
+    final account = auth.account;
+    if (account == null) {
+      _permissionDialogShownForEmail = null;
+      return;
+    }
+    if (_permissionDialogOpen ||
+        auth.checkingReadAccess ||
+        auth.readAccessGranted ||
+        _permissionDialogShownForEmail == account.email) {
+      return;
+    }
+    _permissionDialogShownForEmail = account.email;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_showReadAccessDialog(account.email));
+    });
+  }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -145,6 +180,64 @@ class _AppShellState extends State<AppShell> {
         ),
       );
     }
+  }
+
+  Future<void> _showReadAccessDialog(String email) async {
+    if (_permissionDialogOpen || !mounted) return;
+    _permissionDialogOpen = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('อนุญาตการเข้าถึง Google'),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('บัญชี $email'),
+              const SizedBox(height: 12),
+              const Text(
+                'แอปจะเปิดหน้าต่าง Google เพื่อขอสิทธิ์อ่านข้อมูลที่จำเป็น:',
+              ),
+              const SizedBox(height: 12),
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.table_chart_outlined),
+                title: Text('Google Sheets แบบอ่านอย่างเดียว'),
+                subtitle: Text('ใช้ค้นหาเวร โดยไม่แก้ไขชีตต้นฉบับ'),
+              ),
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.calendar_month_outlined),
+                title: Text('Google Calendar แบบอ่านอย่างเดียว'),
+                subtitle: Text('ใช้ตรวจรายการซ้ำก่อนบันทึก'),
+              ),
+              const Text(
+                'สิทธิ์เขียน Calendar, Drive และ Sheets จะยังไม่ถูกขอในขั้นตอนนี้',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ไว้ภายหลัง'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              unawaited(_perform(widget.controller.authorizeReadAccess));
+            },
+            icon: const Icon(Icons.verified_user_outlined),
+            label: const Text('อนุญาตการเข้าถึง'),
+          ),
+        ],
+      ),
+    );
+    _permissionDialogOpen = false;
   }
 
   Future<void> _sync() async {
@@ -624,7 +717,11 @@ class _GoogleAccountCard extends StatelessWidget {
                     ),
                 ],
               )
-            : Row(
+            : Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 16,
+                runSpacing: 12,
                 children: [
                   CircleAvatar(
                     backgroundImage: account.photoUrl == null
@@ -635,7 +732,8 @@ class _GoogleAccountCard extends StatelessWidget {
                         : null,
                   ),
                   const SizedBox(width: 14),
-                  Expanded(
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 180),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -647,8 +745,31 @@ class _GoogleAccountCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (controller.auth.checkingReadAccess)
+                    const Chip(
+                      avatar: SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      label: Text('กำลังตรวจสิทธิ์'),
+                    )
+                  else if (controller.auth.readAccessGranted)
+                    const Chip(
+                      avatar: Icon(Icons.verified_outlined, size: 18),
+                      label: Text('พร้อมอ่าน Sheets และ Calendar'),
+                    )
+                  else
+                    OutlinedButton.icon(
+                      onPressed: controller.busy
+                          ? null
+                          : () => perform(controller.authorizeReadAccess),
+                      icon: const Icon(Icons.verified_user_outlined),
+                      label: const Text('อนุญาตสิทธิ์อ่าน'),
+                    ),
                   TextButton(
-                    onPressed: () => perform(controller.signOut),
+                    onPressed: controller.busy
+                        ? null
+                        : () => perform(controller.signOut),
                     child: const Text('ออกจากระบบ'),
                   ),
                 ],

@@ -6,6 +6,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'google_api_client.dart';
 
 class GoogleAuthService extends ChangeNotifier {
+  static const readAccessScopes = <String>[
+    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    'https://www.googleapis.com/auth/calendar.events.readonly',
+  ];
+
   static const _webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
   static const _iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
   static const _macosClientId = String.fromEnvironment(
@@ -21,12 +26,16 @@ class GoogleAuthService extends ChangeNotifier {
   bool _pluginInitialized = false;
   String _runtimeWebClientId = '';
   String? _error;
+  bool _checkingReadAccess = false;
+  bool _readAccessGranted = false;
 
   GoogleSignInAccount? get account => _account;
   bool get isSignedIn => _account != null;
   bool get initialized => _initialized;
   bool get signInReady => _pluginInitialized;
   String? get error => _error;
+  bool get checkingReadAccess => _checkingReadAccess;
+  bool get readAccessGranted => _readAccessGranted;
   String get webClientId =>
       _webClientId.isNotEmpty ? _webClientId : _runtimeWebClientId.trim();
   bool get canConfigureWebOAuth =>
@@ -100,8 +109,13 @@ class GoogleAuthService extends ChangeNotifier {
           case GoogleSignInAuthenticationEventSignIn():
             _account = event.user;
             _error = null;
+            _readAccessGranted = false;
+            _checkingReadAccess = true;
+            unawaited(_checkReadAccess(event.user));
           case GoogleSignInAuthenticationEventSignOut():
             _account = null;
+            _checkingReadAccess = false;
+            _readAccessGranted = false;
         }
         notifyListeners();
       },
@@ -160,7 +174,50 @@ class GoogleAuthService extends ChangeNotifier {
   Future<void> signOut() async {
     await GoogleSignIn.instance.signOut();
     _account = null;
+    _checkingReadAccess = false;
+    _readAccessGranted = false;
     notifyListeners();
+  }
+
+  Future<void> requestReadAccess() async {
+    final current = _account;
+    if (current == null) {
+      throw StateError('กรุณาเข้าสู่ระบบ Google ก่อน');
+    }
+
+    _checkingReadAccess = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await current.authorizationClient.authorizeScopes(readAccessScopes);
+      _readAccessGranted = true;
+    } catch (error) {
+      _readAccessGranted = false;
+      _error = _friendlyError(error);
+      rethrow;
+    } finally {
+      _checkingReadAccess = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _checkReadAccess(GoogleSignInAccount current) async {
+    try {
+      final authorization = await current.authorizationClient
+          .authorizationForScopes(readAccessScopes);
+      if (_account?.id == current.id) {
+        _readAccessGranted = authorization != null;
+      }
+    } catch (_) {
+      if (_account?.id == current.id) {
+        _readAccessGranted = false;
+      }
+    } finally {
+      if (_account?.id == current.id) {
+        _checkingReadAccess = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<GoogleApiClient> clientFor(

@@ -21,6 +21,28 @@ void main() {
     );
   });
 
+  test('requests only read-only scopes during initial Google access', () {
+    expect(
+      GoogleAuthService.readAccessScopes,
+      containsAll(<String>[
+        'https://www.googleapis.com/auth/spreadsheets.readonly',
+        'https://www.googleapis.com/auth/calendar.events.readonly',
+      ]),
+    );
+    expect(
+      GoogleAuthService.readAccessScopes,
+      isNot(contains('https://www.googleapis.com/auth/spreadsheets')),
+    );
+    expect(
+      GoogleAuthService.readAccessScopes,
+      isNot(contains('https://www.googleapis.com/auth/calendar.events')),
+    );
+    expect(
+      GoogleAuthService.readAccessScopes,
+      isNot(contains('https://www.googleapis.com/auth/drive')),
+    );
+  });
+
   test('keeps the web OAuth client ID in app settings copies', () {
     final settings = AppSettings.defaults().copyWith(
       googleWebClientId: '123456789012-abcDEF_123.apps.googleusercontent.com',

@@ -113,6 +113,16 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> signIn() => auth.signIn();
+
+  Future<void> authorizeReadAccess() async {
+    await _run('ขอสิทธิ์อ่าน Google Sheets และ Calendar', () async {
+      await auth.requestReadAccess();
+      status = 'อนุญาตสิทธิ์อ่าน Google Sheets และ Calendar สำเร็จ';
+      await _addAudit('auth.read', status!, true);
+    });
+    await loadRoster();
+  }
+
   Future<void> signOut() async {
     await auth.signOut();
     _autoRefreshTimer?.cancel();
