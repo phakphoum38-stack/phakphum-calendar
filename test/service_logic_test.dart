@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/models/app_settings.dart';
 import 'package:phakphum_calendar/models/saved_sheet.dart';
 import 'package:phakphum_calendar/models/shift.dart';
+import 'package:phakphum_calendar/models/shift_alert.dart';
 import 'package:phakphum_calendar/models/tool_definition.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
 import 'package:phakphum_calendar/services/drive_archive_service.dart';
@@ -100,6 +101,20 @@ void main() {
     expect(loaded.first.ownerAccountId, 'account-a');
     expect(loaded.first.sheetTitle, 'August');
     expect(loaded.last.ownerAccountId, 'account-b');
+  });
+
+  test('persists conflict decisions only in local preferences', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final service = SettingsService();
+
+    await service.saveAlertDecision(
+      'anonymous-alert-id',
+      ShiftAlertDecision.acknowledged,
+    );
+
+    expect(await service.loadAlertDecisions(), <String, ShiftAlertDecision>{
+      'anonymous-alert-id': ShiftAlertDecision.acknowledged,
+    });
   });
 
   test('keeps the web OAuth client ID in app settings copies', () {

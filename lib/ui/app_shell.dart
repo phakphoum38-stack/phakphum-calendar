@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../controller/app_controller.dart';
 import '../models/saved_sheet.dart';
 import '../models/shift.dart';
+import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
 import '../services/google_auth_service.dart';
@@ -24,21 +25,40 @@ class _AppShellState extends State<AppShell> {
   bool _permissionDialogOpen = false;
   String? _permissionDialogShownForEmail;
 
-  static const destinations = [
-    NavigationDestination(
+  List<NavigationDestination> _destinations(AppController controller) => [
+    const NavigationDestination(
       icon: Icon(Icons.dashboard_outlined),
       label: 'หน้าแรก',
     ),
-    NavigationDestination(
+    const NavigationDestination(
       icon: Icon(Icons.event_note_outlined),
       label: 'ตัวอย่าง',
     ),
-    NavigationDestination(icon: Icon(Icons.history_outlined), label: 'บันทึก'),
     NavigationDestination(
+      icon: Badge(
+        isLabelVisible: controller.pendingAlertCount > 0,
+        label: Text('${controller.pendingAlertCount}'),
+        child: const Icon(Icons.notifications_outlined),
+      ),
+      selectedIcon: Badge(
+        isLabelVisible: controller.pendingAlertCount > 0,
+        label: Text('${controller.pendingAlertCount}'),
+        child: const Icon(Icons.notifications),
+      ),
+      label: 'แจ้งเตือน',
+    ),
+    const NavigationDestination(
+      icon: Icon(Icons.history_outlined),
+      label: 'บันทึก',
+    ),
+    const NavigationDestination(
       icon: Icon(Icons.settings_outlined),
       label: 'ตั้งค่า',
     ),
-    NavigationDestination(icon: Icon(Icons.apps_outlined), label: 'เครื่องมือ'),
+    const NavigationDestination(
+      icon: Icon(Icons.apps_outlined),
+      label: 'เครื่องมือ',
+    ),
   ];
 
   @override
@@ -83,14 +103,18 @@ class _AppShellState extends State<AppShell> {
       return LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 900;
+          final destinations = _destinations(controller);
           final pages = <Widget>[
             _DashboardPage(
               controller: controller,
               perform: _perform,
+              compareCalendar: _compareCalendar,
               sync: _sync,
+              openAlerts: () => setState(() => selectedIndex = 2),
               configureGoogleOAuth: _configureGoogleOAuth,
             ),
             _PreviewPage(controller: controller),
+            _NotificationsPage(controller: controller, perform: _perform),
             _AuditPage(
               controller: controller,
               saveCurrentSheet: _saveCurrentSheet,
@@ -163,7 +187,7 @@ class _AppShellState extends State<AppShell> {
                 _PinnedToolsBar(
                   tools: controller.pinnedTools.toList(),
                   openTool: _openTool,
-                  manageTools: () => setState(() => selectedIndex = 4),
+                  manageTools: () => setState(() => selectedIndex = 5),
                 ),
                 const Divider(height: 1),
                 Expanded(child: mainContent),
@@ -186,23 +210,29 @@ class _AppShellState extends State<AppShell> {
   );
 
   Future<void> _perform(Future<void> Function() action) async {
+    await _performWithResult(action);
+  }
+
+  Future<bool> _performWithResult(Future<void> Function() action) async {
     try {
       await action();
-      if (!mounted) return;
+      if (!mounted) return false;
       final status = widget.controller.status;
       if (status != null) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(status)));
       }
+      return true;
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Bad state: ', '')),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
+      return false;
     }
   }
 
@@ -288,9 +318,90 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _sync() async {
+    final compared = await _performWithResult(
+      widget.controller.compareCalendar,
+    );
+    if (!compared) return;
+    if (widget.controller.pendingAlertCount > 0) {
+      await _showConflictWarningDialog();
+      return;
+    }
     final confirmed = await _showSyncConfirmationDialog();
     if (confirmed != true) return;
-    await _perform(widget.controller.syncCalendar);
+    final synced = await _performWithResult(widget.controller.syncCalendar);
+    if (!synced && widget.controller.pendingAlertCount > 0) {
+      await _showConflictWarningDialog();
+    }
+  }
+
+  Future<void> _compareCalendar() async {
+    final compared = await _performWithResult(
+      widget.controller.compareCalendar,
+    );
+    if (compared && widget.controller.pendingAlertCount > 0) {
+      await _showConflictWarningDialog();
+    }
+  }
+
+  Future<void> _showConflictWarningDialog() async {
+    final pending = widget.controller.alerts
+        .where((alert) => alert.isPending)
+        .toList();
+    if (!mounted || pending.isEmpty) return;
+    final inspect = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_rounded,
+          color: Theme.of(dialogContext).colorScheme.error,
+          size: 34,
+        ),
+        title: Text('พบรายการชนกัน ${pending.length} รายการ'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540, maxHeight: 420),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ยังไม่มีข้อมูลใดถูกเขียนลง Google Calendar '
+                  'กรุณาตรวจและตัดสินใจรายการต่อไปนี้ก่อน',
+                ),
+                const SizedBox(height: 12),
+                for (final alert in pending.take(5)) ...[
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.event_busy_outlined),
+                    title: Text(alert.title),
+                    subtitle: Text(alert.message),
+                  ),
+                  const Divider(height: 1),
+                ],
+                if (pending.length > 5) ...[
+                  const SizedBox(height: 10),
+                  Text('และอีก ${pending.length - 5} รายการ'),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('ปิด'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.notifications_active_outlined),
+            label: const Text('ตรวจและตัดสินใจ'),
+          ),
+        ],
+      ),
+    );
+    if (inspect == true && mounted) {
+      setState(() => selectedIndex = 2);
+    }
   }
 
   Future<void> _configureGoogleOAuth() async {
@@ -735,13 +846,17 @@ class _DashboardPage extends StatefulWidget {
   const _DashboardPage({
     required this.controller,
     required this.perform,
+    required this.compareCalendar,
     required this.sync,
+    required this.openAlerts,
     required this.configureGoogleOAuth,
   });
 
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
+  final Future<void> Function() compareCalendar;
   final Future<void> Function() sync;
+  final VoidCallback openAlerts;
   final Future<void> Function() configureGoogleOAuth;
 
   @override
@@ -932,8 +1047,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                 controller.auth.isSignedIn &&
                                     controller.shifts.isNotEmpty &&
                                     !controller.busy
-                                ? () =>
-                                      widget.perform(controller.compareCalendar)
+                                ? widget.compareCalendar
                                 : null,
                             icon: const Icon(Icons.difference_outlined),
                             label: const Text('เปรียบเทียบ Calendar'),
@@ -965,6 +1079,23 @@ class _DashboardPageState extends State<_DashboardPage> {
               ],
               const SizedBox(height: 16),
               _Stats(controller: controller),
+              if (controller.pendingAlertCount > 0) ...[
+                const SizedBox(height: 16),
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: ListTile(
+                    onTap: widget.openAlerts,
+                    leading: const Icon(Icons.notification_important_outlined),
+                    title: Text(
+                      'มี ${controller.pendingAlertCount} รายการชนกันที่ต้องตัดสินใจ',
+                    ),
+                    subtitle: const Text(
+                      'ระบบจะยังไม่เขียน Google Calendar จนกว่าจะตรวจครบ',
+                    ),
+                    trailing: const Icon(Icons.arrow_forward),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Card(
                 child: SwitchListTile(
@@ -1224,6 +1355,11 @@ class _Stats extends StatelessWidget {
         value: controller.newCount,
         icon: Icons.event_note_outlined,
       ),
+      _StatCard(
+        label: 'แจ้งเตือนค้าง',
+        value: controller.pendingAlertCount,
+        icon: Icons.notification_important_outlined,
+      ),
     ],
   );
 }
@@ -1314,11 +1450,13 @@ class _PreviewPage extends StatelessWidget {
                         ),
                       ),
                   ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      controller.updateShift(index, category: value);
-                    }
-                  },
+                  onChanged: shift.generated
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            controller.updateShift(index, category: value);
+                          }
+                        },
                 );
                 final details = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1340,6 +1478,12 @@ class _PreviewPage extends StatelessWidget {
                           ),
                           label: Text(exists ? 'มีแล้ว' : 'รายการใหม่'),
                         ),
+                        if (shift.generated)
+                          const Chip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: Icon(Icons.bedtime_outlined, size: 16),
+                            label: Text('OFF อัตโนมัติ'),
+                          ),
                       ],
                     ),
                     Text(
@@ -1348,12 +1492,18 @@ class _PreviewPage extends StatelessWidget {
                     Text(
                       '${shift.sheetTitle} • ${shift.cell} • ${shift.assignedName}',
                     ),
+                    if (shift.generated)
+                      const Text('ช่วงพัก 08:00–16:00 หลังเวรดึก'),
                   ],
                 );
                 final check = Checkbox(
                   value: !shift.excluded,
-                  onChanged: (value) =>
-                      controller.updateShift(index, excluded: value != true),
+                  onChanged: shift.generated
+                      ? null
+                      : (value) => controller.updateShift(
+                          index,
+                          excluded: value != true,
+                        ),
                 );
                 final bar = Container(
                   width: 5,
@@ -1396,6 +1546,167 @@ class _PreviewPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _NotificationsPage extends StatelessWidget {
+  const _NotificationsPage({required this.controller, required this.perform});
+
+  final AppController controller;
+  final Future<void> Function(Future<void> Function()) perform;
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.alerts.isEmpty) {
+      return const _EmptyState(
+        icon: Icons.notifications_none,
+        title: 'ยังไม่มีการแจ้งเตือน',
+        message:
+            'เมื่ออ่านเวรและเปรียบเทียบ Calendar แอปจะตรวจเวรซ้อนและช่วง OFF ให้อัตโนมัติ',
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Card(
+          color: controller.pendingAlertCount > 0
+              ? Theme.of(context).colorScheme.errorContainer
+              : Theme.of(context).colorScheme.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ศูนย์แจ้งเตือนเวร',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'รอตัดสินใจ ${controller.pendingAlertCount} รายการ • '
+                  'พบรายการชน ${controller.conflictAlertCount} รายการ',
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'รับทราบและคงไว้ = เขียนตามรายการเดิม • ยืนยันรายการ = '
+                  'ยืนยันรายการที่เลือก • ไม่นำเข้าปฏิทิน = ตัดรายการที่ชนออก',
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        for (final alert in controller.alerts) ...[
+          _AlertCard(
+            alert: alert,
+            onDecision: (decision) =>
+                perform(() => controller.resolveAlert(alert.id, decision)),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _AlertCard extends StatelessWidget {
+  const _AlertCard({required this.alert, required this.onDecision});
+
+  final ShiftAlert alert;
+  final Future<void> Function(ShiftAlertDecision decision) onDecision;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (alert.type) {
+      ShiftAlertType.offAfterNight => Colors.indigo,
+      ShiftAlertType.offConflict => Colors.deepOrange,
+      ShiftAlertType.shiftOverlap => Colors.red,
+      ShiftAlertType.calendarOverlap => Colors.purple,
+    };
+    final icon = switch (alert.type) {
+      ShiftAlertType.offAfterNight => Icons.bedtime_outlined,
+      ShiftAlertType.offConflict => Icons.do_not_disturb_on_outlined,
+      ShiftAlertType.shiftOverlap => Icons.warning_amber_rounded,
+      ShiftAlertType.calendarOverlap => Icons.event_busy_outlined,
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withValues(alpha: 0.12),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        alert.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Chip(
+                        visualDensity: VisualDensity.compact,
+                        avatar: Icon(
+                          alert.isPending
+                              ? Icons.schedule
+                              : Icons.check_circle_outline,
+                          size: 16,
+                        ),
+                        label: Text(alert.decision.label),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(alert.message),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_thaiDate(alert.start)} • '
+                    '${_time(alert.start)}–${_time(alert.end)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (alert.requiresDecision) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              onDecision(ShiftAlertDecision.acknowledged),
+                          icon: const Icon(Icons.done),
+                          label: const Text('รับทราบและคงไว้'),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () =>
+                              onDecision(ShiftAlertDecision.accepted),
+                          icon: const Icon(Icons.add_task),
+                          label: const Text('ยืนยันรายการ'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              onDecision(ShiftAlertDecision.cancelled),
+                          icon: const Icon(Icons.cancel_outlined),
+                          label: const Text('ไม่นำเข้าปฏิทิน'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -8,14 +8,17 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
+import '../models/calendar_busy_period.dart';
 import '../models/saved_sheet.dart';
 import '../models/shift.dart';
+import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
 import '../services/drive_archive_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/settings_service.dart';
 import '../services/sheets_service.dart';
+import '../services/shift_alert_service.dart';
 import '../services/shift_parser.dart';
 
 class AppController extends ChangeNotifier {
@@ -24,12 +27,14 @@ class AppController extends ChangeNotifier {
     SettingsService? settingsService,
     SheetsService? sheetsService,
     ShiftParser? parser,
+    ShiftAlertService? alertService,
     CalendarService? calendarService,
     DriveArchiveService? archiveService,
   }) : auth = auth ?? GoogleAuthService(),
        _settingsService = settingsService ?? SettingsService(),
        _sheetsService = sheetsService ?? SheetsService(),
        _parser = parser ?? const ShiftParser(),
+       _alertService = alertService ?? const ShiftAlertService(),
        _calendarService = calendarService ?? const CalendarService(),
        _archiveService = archiveService ?? const DriveArchiveService();
 
@@ -38,11 +43,12 @@ class AppController extends ChangeNotifier {
       _settingsService = SettingsService(),
       _sheetsService = SheetsService(),
       _parser = const ShiftParser(),
+      _alertService = const ShiftAlertService(),
       _calendarService = const CalendarService(),
       _archiveService = const DriveArchiveService() {
     initialized = true;
     settings = AppSettings.defaults();
-    shifts = [
+    final sourceShifts = [
       Shift(
         code: 'UP1',
         rowLabel: 'P1 เช้า',
@@ -63,18 +69,44 @@ class AppController extends ChangeNotifier {
         cell: 'I40',
         category: ShiftCategory.clinic,
       ),
+      Shift(
+        code: 'NP2',
+        rowLabel: 'P2 ดึก',
+        assignedName: 'ผู้ใช้งานตัวอย่าง',
+        start: DateTime(2026, 8, 10),
+        end: DateTime(2026, 8, 10, 8),
+        sheetTitle: 'ตัวอย่าง',
+        cell: 'K7',
+        category: ShiftCategory.own,
+      ),
+      Shift(
+        code: 'UP3',
+        rowLabel: 'P3 เช้า',
+        assignedName: 'ผู้ใช้งานตัวอย่าง',
+        start: DateTime(2026, 8, 10, 8),
+        end: DateTime(2026, 8, 10, 16),
+        sheetTitle: 'ตัวอย่าง',
+        cell: 'K9',
+        category: ShiftCategory.own,
+      ),
     ];
+    shifts = _alertService.addOffDutyPeriods(sourceShifts);
+    _rebuildAlerts();
   }
 
   final GoogleAuthService auth;
   final SettingsService _settingsService;
   final SheetsService _sheetsService;
   final ShiftParser _parser;
+  final ShiftAlertService _alertService;
   final CalendarService _calendarService;
   final DriveArchiveService _archiveService;
 
   AppSettings settings = AppSettings.defaults();
   List<Shift> shifts = [];
+  List<ShiftAlert> alerts = [];
+  List<CalendarBusyPeriod> calendarPeriods = [];
+  Map<String, ShiftAlertDecision> alertDecisions = {};
   List<AuditEntry> auditEntries = [];
   List<SavedSheet> savedSheets = [];
   Set<String> existingKeys = {};
@@ -98,6 +130,9 @@ class AppController extends ChangeNotifier {
             !CalendarService.matchesExisting(shift, existingKeys),
       )
       .length;
+  int get pendingAlertCount => alerts.where((alert) => alert.isPending).length;
+  int get conflictAlertCount =>
+      alerts.where((alert) => alert.isConflict).length;
 
   List<String> get rosterSearchNames {
     final names = <String>{};
@@ -138,6 +173,11 @@ class AppController extends ChangeNotifier {
     } catch (caught) {
       error ??= 'โหลดแถบเครื่องมือไม่สำเร็จ: $caught';
     }
+    try {
+      alertDecisions = await _settingsService.loadAlertDecisions();
+    } catch (caught) {
+      error ??= 'โหลดการตัดสินใจแจ้งเตือนไม่สำเร็จ: $caught';
+    }
     auth.addListener(_onAuthChanged);
     await auth.initialize(webClientId: settings.googleWebClientId);
     initialized = true;
@@ -159,6 +199,8 @@ class AppController extends ChangeNotifier {
     await auth.signOut();
     _autoRefreshTimer?.cancel();
     shifts = [];
+    alerts = [];
+    calendarPeriods = [];
     existingKeys = {};
     sheetTitles = [];
     lastRefresh = null;
@@ -182,8 +224,15 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> updateSettings(AppSettings next) async {
+    final periodChanged =
+        next.year != settings.year || next.month != settings.month;
+    if (periodChanged) {
+      calendarPeriods = [];
+      existingKeys = {};
+    }
     settings = next;
     await _settingsService.save(next);
+    if (periodChanged) _rebuildAlerts();
     _scheduleAutoRefresh();
     notifyListeners();
   }
@@ -300,20 +349,27 @@ class AppController extends ChangeNotifier {
           client,
           settings.sourceUrl,
         );
-        shifts = _parser.parse(
+        final parsed = _parser.parse(
           snapshots: snapshots,
           targetName: searchNames.first,
           targetAliases: searchNames.skip(1),
           year: settings.year,
           month: settings.month,
         );
+        shifts = _alertService.addOffDutyPeriods(parsed);
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
         existingKeys = {};
+        calendarPeriods = [];
+        _rebuildAlerts(applyDecisions: true);
         lastRefresh = DateTime.now();
-        status = 'พบเวรของ ${searchNames.first} ${shifts.length} รายการ';
+        final offCount = shifts.where((shift) => shift.isOffDuty).length;
+        status =
+            'พบเวรของ ${searchNames.first} ${parsed.length} รายการ • '
+            'สร้าง OFF $offCount รายการ • รอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'sheet.read',
-          'อ่าน ${snapshots.length} แท็บ พบ ${shifts.length} เวร; ไม่มีการแก้ไขชีต',
+          'อ่าน ${snapshots.length} แท็บ พบ ${parsed.length} เวร '
+              'และสร้าง OFF $offCount รายการ; ไม่มีการแก้ไขชีต',
           true,
         );
       } finally {
@@ -336,15 +392,21 @@ class AppController extends ChangeNotifier {
         calendar.CalendarApi.calendarEventsReadonlyScope,
       ]);
       try {
-        existingKeys = await _calendarService.existingSourceKeys(
+        final snapshot = await _calendarService.readCalendar(
           client,
           year: settings.year,
           month: settings.month,
         );
-        status = 'มีแล้ว $existingCount รายการ • เตรียมเพิ่ม $newCount รายการ';
+        existingKeys = snapshot.sourceKeys;
+        calendarPeriods = snapshot.busyPeriods;
+        _rebuildAlerts();
+        status =
+            'มีแล้ว $existingCount รายการ • เตรียมเพิ่ม $newCount รายการ • '
+            'แจ้งเตือนรอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'calendar.compare',
-          'ตรวจแบบอ่านอย่างเดียว: มีแล้ว $existingCount, ใหม่ $newCount',
+          'ตรวจแบบอ่านอย่างเดียว: มีแล้ว $existingCount, ใหม่ $newCount, '
+              'กิจกรรมที่นำมาตรวจชน ${calendarPeriods.length}',
           true,
         );
       } finally {
@@ -355,39 +417,55 @@ class AppController extends ChangeNotifier {
 
   Future<void> syncCalendar() async {
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
+    if (pendingAlertCount > 0) {
+      throw StateError(
+        'มีแจ้งเตือน $pendingAlertCount รายการที่ยังไม่ได้ตัดสินใจ '
+        'กรุณาตรวจแจ้งเตือนก่อนบันทึก Calendar',
+      );
+    }
     await _run('สร้างสำเนาและบันทึกปฏิทิน', () async {
-      if (settings.archiveOriginal) {
-        final driveClient = await auth.clientFor([drive.DriveApi.driveScope]);
-        try {
-          final archive = await _archiveService.copyMonthlyOriginal(
-            driveClient,
-            sourceFileId: SheetsService.spreadsheetIdFromUrl(
-              settings.sourceUrl,
-            ),
-            year: settings.year,
-            month: settings.month,
-          );
-          await _addAudit(
-            'drive.copy',
-            archive.alreadyExisted
-                ? 'ใช้สำเนาเดิม ${archive.name}; ไม่สร้างซ้ำ'
-                : 'สร้างสำเนาต้นฉบับ ${archive.name}',
-            true,
-          );
-        } finally {
-          driveClient.close();
-        }
-      }
-
       final calendarClient = await auth.clientFor([
         calendar.CalendarApi.calendarEventsScope,
       ]);
       try {
-        existingKeys = await _calendarService.existingSourceKeys(
+        final snapshot = await _calendarService.readCalendar(
           calendarClient,
           year: settings.year,
           month: settings.month,
         );
+        existingKeys = snapshot.sourceKeys;
+        calendarPeriods = snapshot.busyPeriods;
+        _rebuildAlerts();
+        if (pendingAlertCount > 0) {
+          throw StateError(
+            'พบเวรหรือช่วง OFF ชนกับ Calendar $pendingAlertCount รายการ '
+            'จึงยังไม่บันทึก กรุณาตรวจแจ้งเตือนก่อน',
+          );
+        }
+
+        if (settings.archiveOriginal) {
+          final driveClient = await auth.clientFor([drive.DriveApi.driveScope]);
+          try {
+            final archive = await _archiveService.copyMonthlyOriginal(
+              driveClient,
+              sourceFileId: SheetsService.spreadsheetIdFromUrl(
+                settings.sourceUrl,
+              ),
+              year: settings.year,
+              month: settings.month,
+            );
+            await _addAudit(
+              'drive.copy',
+              archive.alreadyExisted
+                  ? 'ใช้สำเนาเดิม ${archive.name}; ไม่สร้างซ้ำ'
+                  : 'สร้างสำเนาต้นฉบับ ${archive.name}',
+              true,
+            );
+          } finally {
+            driveClient.close();
+          }
+        }
+
         final inserted = await _calendarService.insertMissing(
           calendarClient,
           shifts,
@@ -446,7 +524,72 @@ class AppController extends ChangeNotifier {
       category: category,
       excluded: excluded,
     );
+    _rebuildAlerts();
     notifyListeners();
+  }
+
+  Future<void> resolveAlert(String alertId, ShiftAlertDecision decision) async {
+    ShiftAlert? alert;
+    for (final item in alerts) {
+      if (item.id == alertId) {
+        alert = item;
+        break;
+      }
+    }
+    if (alert == null || !alert.requiresDecision) return;
+    alertDecisions[alertId] = decision;
+    await _settingsService.saveAlertDecision(alertId, decision);
+    _applyAlertDecision(alert, decision);
+    _rebuildAlerts();
+    status = switch (decision) {
+      ShiftAlertDecision.acknowledged => 'รับทราบคำเตือนและคงรายการไว้',
+      ShiftAlertDecision.accepted => 'ยืนยันรายการที่ชนแล้ว',
+      ShiftAlertDecision.cancelled => 'ไม่นำรายการที่ชนเข้าปฏิทิน',
+      ShiftAlertDecision.pending => 'ตั้งเป็นรอตัดสินใจ',
+    };
+    await _addAudit('alert.${decision.name}', '${alert.title}: $status', true);
+    notifyListeners();
+  }
+
+  void _rebuildAlerts({bool applyDecisions = false}) {
+    alerts = _alertService.build(
+      shifts: shifts,
+      calendarPeriods: calendarPeriods,
+      decisions: alertDecisions,
+    );
+    if (!applyDecisions) return;
+    for (final alert in alerts) {
+      _applyAlertDecision(alert, alert.decision);
+    }
+    alerts = _alertService.build(
+      shifts: shifts,
+      calendarPeriods: calendarPeriods,
+      decisions: alertDecisions,
+    );
+  }
+
+  void _applyAlertDecision(ShiftAlert alert, ShiftAlertDecision decision) {
+    if (!alert.requiresDecision) return;
+    switch (decision) {
+      case ShiftAlertDecision.pending:
+      case ShiftAlertDecision.acknowledged:
+        return;
+      case ShiftAlertDecision.accepted:
+        _setExcluded(alert.targetShiftKey, false);
+        if (alert.type == ShiftAlertType.offConflict) {
+          _setExcluded(alert.offShiftKey, true);
+        }
+        return;
+      case ShiftAlertDecision.cancelled:
+        _setExcluded(alert.targetShiftKey, true);
+        return;
+    }
+  }
+
+  void _setExcluded(String? sourceKey, bool excluded) {
+    if (sourceKey == null) return;
+    final index = shifts.indexWhere((shift) => shift.sourceKey == sourceKey);
+    if (index >= 0) shifts[index] = shifts[index].copyWith(excluded: excluded);
   }
 
   Future<SavedSheet> _saveSheetReference(

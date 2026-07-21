@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
 
+import '../models/calendar_busy_period.dart';
 import '../models/shift.dart';
 import 'google_api_client.dart';
 
@@ -13,6 +14,14 @@ class CalendarService {
   static const timeZone = 'Asia/Bangkok';
 
   Future<Set<String>> existingSourceKeys(
+    GoogleApiClient client, {
+    required int year,
+    required int month,
+  }) async {
+    return (await readCalendar(client, year: year, month: month)).sourceKeys;
+  }
+
+  Future<CalendarReadResult> readCalendar(
     GoogleApiClient client, {
     required int year,
     required int month,
@@ -28,7 +37,8 @@ class CalendarService {
       month + 1,
       1,
     ).subtract(const Duration(hours: 7));
-    final result = <String>{};
+    final sourceKeys = <String>{};
+    final busyPeriods = <CalendarBusyPeriod>[];
     String? pageToken;
     do {
       final page = await api.events.list(
@@ -41,21 +51,40 @@ class CalendarService {
         pageToken: pageToken,
       );
       for (final event in page.items ?? const <calendar.Event>[]) {
-        final private = event.extendedProperties?.private;
-        if (private?['sourceApp'] == sourceApp &&
-            (private?['sourceKey'] ?? '').isNotEmpty) {
-          result.add(private!['sourceKey']!);
+        final privateProperties = event.extendedProperties?.private;
+        final isManaged = privateProperties?['sourceApp'] == sourceApp;
+        if (isManaged && (privateProperties?['sourceKey'] ?? '').isNotEmpty) {
+          sourceKeys.add(privateProperties!['sourceKey']!);
         }
         final startTime = event.start?.dateTime;
         final summary = event.summary;
         if (startTime != null && summary != null && summary.isNotEmpty) {
           final bangkokWall = startTime.toUtc().add(const Duration(hours: 7));
-          result.add(_legacyKey(summary, bangkokWall));
+          sourceKeys.add(_legacyKey(summary, bangkokWall));
         }
+        if (isManaged || event.transparency == 'transparent') continue;
+        final wallStart = _wallTime(event.start);
+        final wallEnd = _wallTime(event.end);
+        if (wallStart == null ||
+            wallEnd == null ||
+            !wallEnd.isAfter(wallStart)) {
+          continue;
+        }
+        busyPeriods.add(
+          CalendarBusyPeriod(
+            id: event.id ?? '${event.iCalUID ?? 'calendar'}|$wallStart',
+            title: (summary ?? '').trim().isEmpty
+                ? 'กิจกรรมไม่มีชื่อ'
+                : summary!,
+            start: wallStart,
+            end: wallEnd,
+            legacyKey: _legacyKey(summary ?? '', wallStart),
+          ),
+        );
       }
       pageToken = page.nextPageToken;
     } while (pageToken != null && pageToken.isNotEmpty);
-    return result;
+    return CalendarReadResult(sourceKeys: sourceKeys, busyPeriods: busyPeriods);
   }
 
   Future<int> insertMissing(
@@ -71,7 +100,7 @@ class CalendarService {
       final event = calendar.Event(
         summary: shift.code,
         description:
-            'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'
+            '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
             'ชื่อในตาราง: ${shift.assignedName}\n'
             'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
             'ประเภท: ${shift.category.label}',
@@ -112,6 +141,15 @@ class CalendarService {
       '${wallTime.day.toString().padLeft(2, '0')}T'
       '${wallTime.hour.toString().padLeft(2, '0')}:'
       '${wallTime.minute.toString().padLeft(2, '0')}';
+
+  DateTime? _wallTime(calendar.EventDateTime? value) {
+    final instant = value?.dateTime;
+    if (instant != null) {
+      return instant.toUtc().add(const Duration(hours: 7));
+    }
+    final date = value?.date;
+    return date == null ? null : DateTime(date.year, date.month, date.day);
+  }
 
   DateTime _bangkokInstant(DateTime wallTime) => DateTime.utc(
     wallTime.year,
