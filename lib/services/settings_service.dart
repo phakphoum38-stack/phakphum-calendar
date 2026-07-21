@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
 import '../models/saved_sheet.dart';
+import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 
 class SettingsService {
@@ -20,6 +21,7 @@ class SettingsService {
   static const _auditKey = 'audit_log';
   static const _pinnedToolIdsKey = 'pinned_tool_ids';
   static const _savedSheetsKey = 'saved_sheets';
+  static const _alertDecisionsKey = 'shift_alert_decisions';
 
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -128,6 +130,40 @@ class SettingsService {
     await prefs.setStringList(
       _savedSheetsKey,
       records.take(100).map((sheet) => jsonEncode(sheet.toJson())).toList(),
+    );
+  }
+
+  Future<Map<String, ShiftAlertDecision>> loadAlertDecisions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_alertDecisionsKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final values = Map<String, Object?>.from(jsonDecode(raw) as Map);
+      return {
+        for (final entry in values.entries)
+          if (ShiftAlertDecision.values.any(
+            (decision) => decision.name == entry.value,
+          ))
+            entry.key: ShiftAlertDecision.values.byName('${entry.value}'),
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveAlertDecision(
+    String alertId,
+    ShiftAlertDecision decision,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final decisions = await loadAlertDecisions();
+    decisions[alertId] = decision;
+    if (decisions.length > 500) decisions.remove(decisions.keys.first);
+    await prefs.setString(
+      _alertDecisionsKey,
+      jsonEncode({
+        for (final entry in decisions.entries) entry.key: entry.value.name,
+      }),
     );
   }
 }

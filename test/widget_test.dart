@@ -3,8 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/controller/app_controller.dart';
+import 'package:phakphum_calendar/models/shift_alert.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test(
+    'accepting an OFF conflict keeps duty and excludes generated OFF',
+    () async {
+      final controller = AppController.demo();
+      final conflict = controller.alerts.singleWhere(
+        (alert) => alert.type == ShiftAlertType.offConflict,
+      );
+
+      await controller.resolveAlert(conflict.id, ShiftAlertDecision.accepted);
+
+      expect(
+        controller.shifts.singleWhere((shift) => shift.code == 'OFF').excluded,
+        isTrue,
+      );
+      expect(
+        controller.shifts.singleWhere((shift) => shift.code == 'UP3').excluded,
+        isFalse,
+      );
+      controller.dispose();
+    },
+  );
+
   testWidgets('desktop layout shows the full navigation and dashboard', (
     tester,
   ) async {
@@ -24,6 +50,15 @@ void main() {
     expect(find.text('ชื่อที่ต้องค้นหา'), findsNothing);
     expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('${DateTime.now().year}'), findsOneWidget);
+
+    await tester.tap(find.text('แจ้งเตือน'));
+    await tester.pumpAndSettle();
+    expect(find.text('ศูนย์แจ้งเตือนเวร'), findsOneWidget);
+    expect(find.text('รับทราบและคงไว้'), findsWidgets);
+    expect(find.text('ไม่นำเข้าปฏิทิน'), findsWidgets);
+
+    await tester.tap(find.text('หน้าแรก'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byType(DropdownButtonFormField<int>).last);
     await tester.pumpAndSettle();
@@ -70,7 +105,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(NavigationDestination).at(2));
+    await tester.tap(find.byType(NavigationDestination).at(3));
     await tester.pumpAndSettle();
 
     expect(find.text('ชีตที่บันทึก'), findsOneWidget);
