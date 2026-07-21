@@ -4,10 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/sheets/v4.dart' as sheets;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
 import '../models/shift.dart';
+import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
 import '../services/drive_archive_service.dart';
 import '../services/google_auth_service.dart';
@@ -75,6 +77,7 @@ class AppController extends ChangeNotifier {
   List<AuditEntry> auditEntries = [];
   Set<String> existingKeys = {};
   List<String> sheetTitles = [];
+  Set<String> pinnedToolIds = {...defaultPinnedToolIds};
   bool initialized = false;
   bool busy = false;
   String? status;
@@ -105,6 +108,11 @@ class AppController extends ChangeNotifier {
       auditEntries = await _settingsService.loadAudit();
     } catch (caught) {
       error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
+    }
+    try {
+      pinnedToolIds = await _settingsService.loadPinnedToolIds();
+    } catch (caught) {
+      error ??= 'โหลดแถบเครื่องมือไม่สำเร็จ: $caught';
     }
     auth.addListener(_onAuthChanged);
     await auth.initialize(webClientId: settings.googleWebClientId);
@@ -153,6 +161,34 @@ class AppController extends ChangeNotifier {
     settings = next;
     await _settingsService.save(next);
     _scheduleAutoRefresh();
+    notifyListeners();
+  }
+
+  Iterable<ToolDefinition> get pinnedTools =>
+      toolCatalog.where((tool) => pinnedToolIds.contains(tool.id));
+
+  bool isToolPinned(String id) => pinnedToolIds.contains(id);
+
+  Future<void> toggleToolPinned(ToolDefinition tool) async {
+    if (pinnedToolIds.contains(tool.id)) {
+      pinnedToolIds = {...pinnedToolIds}..remove(tool.id);
+      status = 'นำ ${tool.name} ออกจากแถบแล้ว';
+    } else {
+      pinnedToolIds = {...pinnedToolIds, tool.id};
+      status = 'ติดตั้ง ${tool.name} ในแถบแล้ว';
+    }
+    await _settingsService.savePinnedToolIds(pinnedToolIds);
+    notifyListeners();
+  }
+
+  Future<void> openTool(ToolDefinition tool) async {
+    final opened = await launchUrl(
+      tool.uri,
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
+    if (!opened) throw StateError('ไม่สามารถเปิด ${tool.name} ได้');
+    status = 'เปิด ${tool.name} แล้ว';
     notifyListeners();
   }
 

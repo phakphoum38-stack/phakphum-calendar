@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
 import '../models/shift.dart';
+import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
 import '../services/google_auth_service.dart';
 import 'google_sign_in_button.dart';
@@ -36,6 +37,7 @@ class _AppShellState extends State<AppShell> {
       icon: Icon(Icons.settings_outlined),
       label: 'ตั้งค่า',
     ),
+    NavigationDestination(icon: Icon(Icons.apps_outlined), label: 'เครื่องมือ'),
   ];
 
   @override
@@ -93,8 +95,38 @@ class _AppShellState extends State<AppShell> {
               controller: controller,
               createFutureSheet: _createFutureSheet,
             ),
+            _ToolsPage(
+              controller: controller,
+              openTool: _openTool,
+              togglePinned: _togglePinnedTool,
+            ),
           ];
           final content = IndexedStack(index: selectedIndex, children: pages);
+          final mainContent = wide
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: selectedIndex,
+                      onDestinationSelected: (index) =>
+                          setState(() => selectedIndex = index),
+                      labelType: NavigationRailLabelType.all,
+                      leading: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: CircleAvatar(child: Icon(Icons.calendar_month)),
+                      ),
+                      destinations: [
+                        for (final destination in destinations)
+                          NavigationRailDestination(
+                            icon: destination.icon,
+                            label: Text(destination.label),
+                          ),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: content),
+                  ],
+                )
+              : content;
           return Scaffold(
             appBar: AppBar(
               title: const Column(
@@ -120,37 +152,23 @@ class _AppShellState extends State<AppShell> {
                   ),
               ],
             ),
-            body: wide
-                ? Row(
-                    children: [
-                      NavigationRail(
-                        selectedIndex: selectedIndex,
-                        onDestinationSelected: (index) =>
-                            setState(() => selectedIndex = index),
-                        labelType: NavigationRailLabelType.all,
-                        leading: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: CircleAvatar(
-                            child: Icon(Icons.calendar_month),
-                          ),
-                        ),
-                        destinations: [
-                          for (final destination in destinations)
-                            NavigationRailDestination(
-                              icon: destination.icon,
-                              label: Text(destination.label),
-                            ),
-                        ],
-                      ),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: content),
-                    ],
-                  )
-                : content,
+            body: Column(
+              children: [
+                _PinnedToolsBar(
+                  tools: controller.pinnedTools.toList(),
+                  openTool: _openTool,
+                  manageTools: () => setState(() => selectedIndex = 4),
+                ),
+                const Divider(height: 1),
+                Expanded(child: mainContent),
+              ],
+            ),
             bottomNavigationBar: wide
                 ? null
                 : NavigationBar(
                     selectedIndex: selectedIndex,
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.onlyShowSelected,
                     onDestinationSelected: (index) =>
                         setState(() => selectedIndex = index),
                     destinations: destinations,
@@ -239,6 +257,12 @@ class _AppShellState extends State<AppShell> {
     );
     _permissionDialogOpen = false;
   }
+
+  Future<void> _openTool(ToolDefinition tool) =>
+      _perform(() => widget.controller.openTool(tool));
+
+  Future<void> _togglePinnedTool(ToolDefinition tool) =>
+      _perform(() => widget.controller.toggleToolPinned(tool));
 
   Future<void> _sync() async {
     final confirmed = await _showSyncConfirmationDialog();
@@ -392,6 +416,297 @@ class _AppShellState extends State<AppShell> {
     );
   }
 }
+
+class _PinnedToolsBar extends StatelessWidget {
+  const _PinnedToolsBar({
+    required this.tools,
+    required this.openTool,
+    required this.manageTools,
+  });
+
+  final List<ToolDefinition> tools;
+  final Future<void> Function(ToolDefinition tool) openTool;
+  final VoidCallback manageTools;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    child: SizedBox(
+      height: 66,
+      child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 16, right: 8),
+            child: Icon(Icons.apps_outlined),
+          ),
+          Expanded(
+            child: tools.isEmpty
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: manageTools,
+                      icon: const Icon(Icons.add),
+                      label: const Text('ติดตั้งเครื่องมือในแถบ'),
+                    ),
+                  )
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    itemCount: tools.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final tool = tools[index];
+                      return ActionChip(
+                        tooltip: 'เปิด ${tool.name}',
+                        avatar: CircleAvatar(
+                          backgroundColor: tool.color.withValues(alpha: 0.14),
+                          child: Icon(tool.icon, size: 18, color: tool.color),
+                        ),
+                        label: Text(tool.name),
+                        onPressed: () => unawaited(openTool(tool)),
+                      );
+                    },
+                  ),
+          ),
+          IconButton(
+            onPressed: manageTools,
+            tooltip: 'จัดการเครื่องมือ',
+            icon: const Icon(Icons.add_circle_outline),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ToolsPage extends StatefulWidget {
+  const _ToolsPage({
+    required this.controller,
+    required this.openTool,
+    required this.togglePinned,
+  });
+
+  final AppController controller;
+  final Future<void> Function(ToolDefinition tool) openTool;
+  final Future<void> Function(ToolDefinition tool) togglePinned;
+
+  @override
+  State<_ToolsPage> createState() => _ToolsPageState();
+}
+
+class _ToolsPageState extends State<_ToolsPage> {
+  final search = TextEditingController();
+  ToolGroup? selectedGroup;
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = search.text.trim().toLowerCase();
+    final tools = toolCatalog.where((tool) {
+      final matchesGroup = selectedGroup == null || tool.group == selectedGroup;
+      final matchesQuery =
+          query.isEmpty ||
+          tool.name.toLowerCase().contains(query) ||
+          tool.description.toLowerCase().contains(query);
+      return matchesGroup && matchesQuery;
+    }).toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'คลังเครื่องมือ',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'ติดตั้งทางลัดลงแถบ แล้วเปิดด้วยบัญชีที่เลือกในแต่ละบริการได้ทุกระบบ',
+              ),
+              const SizedBox(height: 16),
+              Card(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.privacy_tip_outlined),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'แอปเก็บเฉพาะรายการทางลัดที่ติดตั้งในเครื่องนี้ '
+                          'ไม่เก็บอีเมล รหัสผ่าน หรือ token ของ Google, GitHub, AI และบริการอื่น',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: search,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'ค้นหาเครื่องมือ',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('ทั้งหมด'),
+                      selected: selectedGroup == null,
+                      onSelected: (_) => setState(() => selectedGroup = null),
+                    ),
+                    const SizedBox(width: 8),
+                    for (final group in ToolGroup.values) ...[
+                      FilterChip(
+                        label: Text(_toolGroupLabel(group)),
+                        selected: selectedGroup == group,
+                        onSelected: (_) =>
+                            setState(() => selectedGroup = group),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth >= 980
+                      ? 3
+                      : constraints.maxWidth >= 620
+                      ? 2
+                      : 1;
+                  const spacing = 16.0;
+                  final width =
+                      (constraints.maxWidth - (columns - 1) * spacing) /
+                      columns;
+                  return Wrap(
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: [
+                      for (final tool in tools)
+                        SizedBox(
+                          width: width,
+                          child: _ToolCard(
+                            tool: tool,
+                            pinned: widget.controller.isToolPinned(tool.id),
+                            openTool: widget.openTool,
+                            togglePinned: widget.togglePinned,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              if (tools.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: Text('ไม่พบเครื่องมือที่ค้นหา')),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolCard extends StatelessWidget {
+  const _ToolCard({
+    required this.tool,
+    required this.pinned,
+    required this.openTool,
+    required this.togglePinned,
+  });
+
+  final ToolDefinition tool;
+  final bool pinned;
+  final Future<void> Function(ToolDefinition tool) openTool;
+  final Future<void> Function(ToolDefinition tool) togglePinned;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: tool.color.withValues(alpha: 0.14),
+                child: Icon(tool.icon, color: tool.color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  tool.name,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              if (pinned)
+                const Tooltip(
+                  message: 'ติดตั้งในแถบแล้ว',
+                  child: Icon(Icons.push_pin, size: 20),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(tool.description),
+          const SizedBox(height: 10),
+          Text(
+            tool.usesGoogleAccountChooser
+                ? 'เลือกบัญชี Google ก่อนเปิดบริการ'
+                : 'ใช้ระบบบัญชีของบริการนั้นโดยตรง',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () => unawaited(openTool(tool)),
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('เปิด'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => unawaited(togglePinned(tool)),
+                icon: Icon(pinned ? Icons.remove : Icons.add),
+                label: Text(pinned ? 'นำออกจากแถบ' : 'ติดตั้งในแถบ'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String _toolGroupLabel(ToolGroup group) => switch (group) {
+  ToolGroup.google => 'Google',
+  ToolGroup.ai => 'AI',
+  ToolGroup.developer => 'นักพัฒนา',
+  ToolGroup.productivity => 'งานและเอกสาร',
+};
 
 class _DashboardPage extends StatefulWidget {
   const _DashboardPage({

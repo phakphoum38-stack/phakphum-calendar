@@ -22,6 +22,13 @@ void main() {
     expect(find.text('เข้าสู่ระบบด้วย Google'), findsOneWidget);
     expect(find.text('รีเฟรช/อ่านใหม่ตอนนี้'), findsOneWidget);
 
+    await tester.tap(find.text('เครื่องมือ'));
+    await tester.pumpAndSettle();
+    expect(find.text('คลังเครื่องมือ'), findsOneWidget);
+    expect(find.text('Gmail'), findsWidgets);
+    expect(find.text('VS Code Web'), findsWidgets);
+    expect(find.text('ติดตั้งในแถบ'), findsWidgets);
+
     await tester.tap(find.text('ตั้งค่า'));
     await tester.pumpAndSettle();
     expect(find.text('สร้างชีตเดือนล่วงหน้า'), findsOneWidget);
@@ -40,6 +47,25 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Auto refresh'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tools library remains usable in phone landscape', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(844, 390));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      PhakphumCalendarApp(controller: AppController.demo()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(NavigationDestination).last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Notion'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

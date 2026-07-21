@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/models/app_settings.dart';
 import 'package:phakphum_calendar/models/shift.dart';
+import 'package:phakphum_calendar/models/tool_definition.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
 import 'package:phakphum_calendar/services/drive_archive_service.dart';
 import 'package:phakphum_calendar/services/google_auth_service.dart';
+import 'package:phakphum_calendar/services/settings_service.dart';
 import 'package:phakphum_calendar/services/sheets_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('validates Google Web OAuth client IDs', () {
@@ -41,6 +44,27 @@ void main() {
       GoogleAuthService.readAccessScopes,
       isNot(contains('https://www.googleapis.com/auth/drive')),
     );
+  });
+
+  test('tool catalog uses unique HTTPS links and safe default pins', () {
+    expect(
+      toolCatalog.map((tool) => tool.id).toSet(),
+      hasLength(toolCatalog.length),
+    );
+    expect(toolCatalog.every((tool) => tool.uri.scheme == 'https'), isTrue);
+    expect(defaultPinnedToolIds.every((id) => toolById(id) != null), isTrue);
+    expect(toolById('gmail')!.usesGoogleAccountChooser, isTrue);
+    expect(toolById('vscode')!.url, 'https://vscode.dev/');
+  });
+
+  test('persists only known pinned tool IDs on the current device', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final service = SettingsService();
+
+    expect(await service.loadPinnedToolIds(), defaultPinnedToolIds);
+    await service.savePinnedToolIds(<String>{'gmail', 'vscode', 'unknown'});
+
+    expect(await service.loadPinnedToolIds(), <String>{'gmail', 'vscode'});
   });
 
   test('keeps the web OAuth client ID in app settings copies', () {
