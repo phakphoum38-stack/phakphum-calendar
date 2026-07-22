@@ -3,13 +3,12 @@ import '../domain/failed_sync_operation.dart';
 import '../domain/failed_sync_repository.dart';
 import 'failed_sync_json_codec.dart';
 
-class SharedPreferencesFailedSyncRepository
-    implements FailedSyncRepository {
+class SharedPreferencesFailedSyncRepository implements FailedSyncRepository {
   SharedPreferencesFailedSyncRepository({
     SharedPreferencesAsync? preferences,
     FailedSyncJsonCodec codec = const FailedSyncJsonCodec(),
-  })  : _preferences = preferences ?? SharedPreferencesAsync(),
-        _codec = codec;
+  }) : _preferences = preferences ?? SharedPreferencesAsync(),
+       _codec = codec;
 
   static const keyPrefix = 'sce.failed_sync.v1.';
   final SharedPreferencesAsync _preferences;

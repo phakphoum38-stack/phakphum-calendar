@@ -2,10 +2,7 @@ import '../domain/calendar_sync_command.dart';
 import '../domain/managed_calendar_event.dart';
 
 class CalendarUpdateOperation {
-  const CalendarUpdateOperation({
-    required this.eventId,
-    required this.command,
-  });
+  const CalendarUpdateOperation({required this.eventId, required this.command});
 
   final String eventId;
   final CalendarSyncCommand command;
@@ -32,6 +29,5 @@ class CalendarSyncPlan {
   final List<CalendarUpdateOperation> updates;
   final List<CalendarDeleteOperation> deletes;
 
-  int get operationCount =>
-      inserts.length + updates.length + deletes.length;
+  int get operationCount => inserts.length + updates.length + deletes.length;
 }

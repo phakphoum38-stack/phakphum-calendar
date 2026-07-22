@@ -35,10 +35,7 @@ class RosterSelectionController extends ChangeNotifier {
     }
   }
 
-  void select({
-    required RosterFileSlot slot,
-    required RosterFile file,
-  }) {
+  void select({required RosterFileSlot slot, required RosterFile file}) {
     _selection = switch (slot) {
       RosterFileSlot.original => _selection.copyWith(original: file),
       RosterFileSlot.current => _selection.copyWith(current: file),
@@ -48,10 +45,8 @@ class RosterSelectionController extends ChangeNotifier {
 
   void clear(RosterFileSlot slot) {
     _selection = switch (slot) {
-      RosterFileSlot.original =>
-        _selection.copyWith(clearOriginal: true),
-      RosterFileSlot.current =>
-        _selection.copyWith(clearCurrent: true),
+      RosterFileSlot.original => _selection.copyWith(clearOriginal: true),
+      RosterFileSlot.current => _selection.copyWith(clearCurrent: true),
     };
     notifyListeners();
   }

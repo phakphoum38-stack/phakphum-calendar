@@ -1,8 +1,5 @@
 class ThaiRosterPeriod {
-  const ThaiRosterPeriod({
-    required this.start,
-    required this.end,
-  });
+  const ThaiRosterPeriod({required this.start, required this.end});
 
   final DateTime start;
   final DateTime end;
@@ -78,9 +75,6 @@ class ThaiRosterPeriodParser {
       return DateTime(year, month, day);
     }
 
-    return ThaiRosterPeriod(
-      start: read(tokens.first),
-      end: read(tokens[1]),
-    );
+    return ThaiRosterPeriod(start: read(tokens.first), end: read(tokens[1]));
   }
 }

@@ -3,14 +3,13 @@ import '../domain/sync_history_entry.dart';
 import '../domain/sync_history_repository.dart';
 import 'sync_history_json_codec.dart';
 
-class SharedPreferencesSyncHistoryRepository
-    implements SyncHistoryRepository {
+class SharedPreferencesSyncHistoryRepository implements SyncHistoryRepository {
   SharedPreferencesSyncHistoryRepository({
     SharedPreferencesAsync? preferences,
     SyncHistoryJsonCodec codec = const SyncHistoryJsonCodec(),
     this.maximumEntries = 100,
-  })  : _preferences = preferences ?? SharedPreferencesAsync(),
-        _codec = codec;
+  }) : _preferences = preferences ?? SharedPreferencesAsync(),
+       _codec = codec;
 
   static const storageKey = 'sce.sync_history.v1';
   final SharedPreferencesAsync _preferences;
@@ -27,10 +26,9 @@ class SharedPreferencesSyncHistoryRepository
 
   @override
   Future<List<SyncHistoryEntry>> list({int limit = 100}) async {
-    final entries = _codec.decodeList(
-      await _preferences.getString(storageKey),
-    ).toList()
-      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    final entries =
+        _codec.decodeList(await _preferences.getString(storageKey)).toList()
+          ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return entries.take(limit).toList(growable: false);
   }
 

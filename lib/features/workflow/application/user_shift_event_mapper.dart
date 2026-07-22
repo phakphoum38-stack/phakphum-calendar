@@ -25,9 +25,7 @@ class UserShiftEventMapper {
   final ShiftCatalog catalog;
   final SyncIdFactory syncIdFactory;
 
-  UserShiftEventMappingResult mapChanges(
-    List<UserShiftChange> changes,
-  ) {
+  UserShiftEventMappingResult mapChanges(List<UserShiftChange> changes) {
     final candidates = <CalendarEventCandidate>[];
     final warnings = <String>[];
     var blockedCount = 0;

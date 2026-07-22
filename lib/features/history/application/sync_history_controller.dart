@@ -8,8 +8,7 @@ class SyncHistoryController extends ChangeNotifier {
 
   final SyncHistoryRepository _repository;
 
-  List<SyncHistoryEntry> _entries =
-      const <SyncHistoryEntry>[];
+  List<SyncHistoryEntry> _entries = const <SyncHistoryEntry>[];
   bool _isLoading = false;
   String? _message;
 

@@ -24,11 +24,11 @@ class RosterCellAssignment {
   final String? backgroundColor;
 
   String get positionKey => [
-        date.year.toString().padLeft(4, '0'),
-        date.month.toString().padLeft(2, '0'),
-        date.day.toString().padLeft(2, '0'),
-        category.trim().toLowerCase(),
-        period.trim().toLowerCase(),
-        slot.trim().toLowerCase(),
-      ].join('|');
+    date.year.toString().padLeft(4, '0'),
+    date.month.toString().padLeft(2, '0'),
+    date.day.toString().padLeft(2, '0'),
+    category.trim().toLowerCase(),
+    period.trim().toLowerCase(),
+    slot.trim().toLowerCase(),
+  ].join('|');
 }
