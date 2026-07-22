@@ -1,0 +1,173 @@
+name: Build Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "linux/**"
+      - "macos/**"
+      - "windows/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/desktop.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows release
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: flutter build windows --release --dart-define=GOOGLE_SERVER_CLIENT_ID="$env:GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Package Windows application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist/windows -Force | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/windows/phakphum-calendar-windows.zip -Force
+          $hash = (Get-FileHash dist/windows/phakphum-calendar-windows.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  phakphum-calendar-windows.zip" | Set-Content dist/windows/SHA256SUMS.txt -Encoding ascii
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phakphum-calendar-windows-x64
+          path: dist/windows
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Build Linux release
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: |
+          flutter build linux --release \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Package Linux application
+        run: |
+          mkdir -p dist/linux
+          tar -C build/linux/x64/release -czf dist/linux/phakphum-calendar-linux.tar.gz bundle
+          cd dist/linux
+          sha256sum phakphum-calendar-linux.tar.gz > SHA256SUMS.txt
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phakphum-calendar-linux-x64
+          path: dist/linux
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS universal runner
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Apply optional Google OAuth configuration
+        env:
+          GOOGLE_MACOS_CLIENT_ID: ${{ secrets.GOOGLE_MACOS_CLIENT_ID }}
+          GOOGLE_MACOS_REVERSED_CLIENT_ID: ${{ secrets.GOOGLE_MACOS_REVERSED_CLIENT_ID }}
+        run: |
+          if [[ -n "$GOOGLE_MACOS_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :GIDClientID $GOOGLE_MACOS_CLIENT_ID" macos/Runner/Info.plist
+          fi
+          if [[ -n "$GOOGLE_MACOS_REVERSED_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 $GOOGLE_MACOS_REVERSED_CLIENT_ID" macos/Runner/Info.plist
+          fi
+
+      - name: Build macOS release
+        env:
+          GOOGLE_MACOS_CLIENT_ID: ${{ secrets.GOOGLE_MACOS_CLIENT_ID }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: |
+          flutter build macos --release \
+            --dart-define=GOOGLE_MACOS_CLIENT_ID="$GOOGLE_MACOS_CLIENT_ID" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Package macOS application
+        run: |
+          mkdir -p dist/macos
+          APP_PATH="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" dist/macos/phakphum-calendar-macos.zip
+          cd dist/macos
+          shasum -a 256 phakphum-calendar-macos.zip > SHA256SUMS.txt
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phakphum-calendar-macos
+          path: dist/macos
+          if-no-files-found: error
+          retention-days: 14

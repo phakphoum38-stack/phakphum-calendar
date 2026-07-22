@@ -1,0 +1,83 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "ios/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Show Xcode and CocoaPods versions
+        run: |
+          xcodebuild -version
+          pod --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Apply optional Google OAuth configuration
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_REVERSED_CLIENT_ID: ${{ secrets.GOOGLE_REVERSED_CLIENT_ID }}
+        run: |
+          if [[ -n "$GOOGLE_IOS_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :GIDClientID $GOOGLE_IOS_CLIENT_ID" ios/Runner/Info.plist
+          fi
+          if [[ -n "$GOOGLE_REVERSED_CLIENT_ID" ]]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 $GOOGLE_REVERSED_CLIENT_ID" ios/Runner/Info.plist
+          fi
+
+      - name: Build unsigned iOS application
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=GOOGLE_IOS_CLIENT_ID="$GOOGLE_IOS_CLIENT_ID" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p dist/ios/Payload
+          ditto build/ios/iphoneos/Runner.app dist/ios/Payload/Runner.app
+          cd dist/ios
+          ditto -c -k --sequesterRsrc --keepParent Payload phakphum-calendar-unsigned.ipa
+          shasum -a 256 phakphum-calendar-unsigned.ipa > SHA256SUMS.txt
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phakphum-calendar-ios-unsigned
+          path: |
+            dist/ios/phakphum-calendar-unsigned.ipa
+            dist/ios/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

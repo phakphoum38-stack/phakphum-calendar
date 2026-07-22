@@ -1,0 +1,151 @@
+import '../../history/domain/sync_history_entry.dart';
+import '../../history/domain/sync_history_repository.dart';
+import '../domain/calendar_sync_gateway.dart';
+import '../domain/calendar_sync_operation_result.dart';
+import 'calendar_sync_plan.dart';
+
+class ResilientCalendarSyncResult {
+  const ResilientCalendarSyncResult({
+    required this.historyEntry,
+    required this.operations,
+  });
+
+  final SyncHistoryEntry historyEntry;
+  final List<CalendarSyncOperationResult> operations;
+
+  bool get hasFailures =>
+      operations.any((operation) => !operation.success);
+}
+
+class ResilientCalendarSyncExecutor {
+  const ResilientCalendarSyncExecutor({
+    required CalendarSyncGateway gateway,
+    required SyncHistoryRepository historyRepository,
+    this.maxAttempts = 2,
+  })  : _gateway = gateway,
+        _historyRepository = historyRepository;
+
+  final CalendarSyncGateway _gateway;
+  final SyncHistoryRepository _historyRepository;
+  final int maxAttempts;
+
+  Future<ResilientCalendarSyncResult> execute(
+    CalendarSyncPlan plan,
+  ) async {
+    final startedAt = DateTime.now();
+    final historyId =
+        'sync-${startedAt.microsecondsSinceEpoch}';
+
+    var history = SyncHistoryEntry(
+      id: historyId,
+      startedAt: startedAt,
+      status: SyncHistoryStatus.running,
+      inserted: 0,
+      updated: 0,
+      deleted: 0,
+      failed: 0,
+    );
+
+    await _historyRepository.save(history);
+
+    final operations = <CalendarSyncOperationResult>[];
+    var inserted = 0;
+    var updated = 0;
+    var deleted = 0;
+    var failed = 0;
+
+    for (final command in plan.inserts) {
+      final result = await _retry(
+        type: CalendarSyncOperationType.insert,
+        referenceId: command.syncId,
+        operation: () => _gateway.insert(command),
+      );
+      operations.add(result);
+      result.success ? inserted++ : failed++;
+    }
+
+    for (final operation in plan.updates) {
+      final result = await _retry(
+        type: CalendarSyncOperationType.update,
+        referenceId: operation.command.syncId,
+        operation: () => _gateway.update(
+          eventId: operation.eventId,
+          command: operation.command,
+        ),
+      );
+      operations.add(result);
+      result.success ? updated++ : failed++;
+    }
+
+    for (final operation in plan.deletes) {
+      final result = await _retry(
+        type: CalendarSyncOperationType.delete,
+        referenceId: operation.eventId,
+        operation: () => _gateway.delete(
+          eventId: operation.eventId,
+          calendarId: operation.calendarId,
+        ),
+      );
+      operations.add(result);
+      result.success ? deleted++ : failed++;
+    }
+
+    final status = failed == 0
+        ? SyncHistoryStatus.success
+        : inserted + updated + deleted == 0
+            ? SyncHistoryStatus.failure
+            : SyncHistoryStatus.partialSuccess;
+
+    history = history.copyWith(
+      finishedAt: DateTime.now(),
+      status: status,
+      inserted: inserted,
+      updated: updated,
+      deleted: deleted,
+      failed: failed,
+      message: failed == 0
+          ? 'Synchronization completed successfully.'
+          : 'Synchronization completed with $failed failed operation(s).',
+    );
+
+    await _historyRepository.save(history);
+
+    return ResilientCalendarSyncResult(
+      historyEntry: history,
+      operations: operations,
+    );
+  }
+
+  Future<CalendarSyncOperationResult> _retry({
+    required CalendarSyncOperationType type,
+    required String referenceId,
+    required Future<Object?> Function() operation,
+  }) async {
+    Object? lastError;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await operation();
+        return CalendarSyncOperationResult(
+          type: type,
+          referenceId: referenceId,
+          success: true,
+        );
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await Future<void>.delayed(
+            Duration(milliseconds: 250 * attempt),
+          );
+        }
+      }
+    }
+
+    return CalendarSyncOperationResult(
+      type: type,
+      referenceId: referenceId,
+      success: false,
+      message: lastError?.toString(),
+    );
+  }
+}
