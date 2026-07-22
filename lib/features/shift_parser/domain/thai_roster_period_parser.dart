@@ -1,5 +1,8 @@
 class ThaiRosterPeriod {
-  const ThaiRosterPeriod({required this.start, required this.end});
+  const ThaiRosterPeriod({
+    required this.start,
+    required this.end,
+  });
 
   final DateTime start;
   final DateTime end;
@@ -49,32 +52,61 @@ class ThaiRosterPeriodParser {
 
   ThaiRosterPeriod parse(String text) {
     final normalized = text
-        .replaceAll('พ.ศ.', '')
-        .replaceAll('พศ', '')
-        .replaceAll(RegExp(r'\\s+'), ' ')
+        .replaceAll(RegExp(r'พ\s*\.\s*ศ\s*\.?'), '')
+        .replaceAll(RegExp(r'พ\s*ศ'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
 
-    final tokens = RegExp(
-      r'(\\d{1,2})\\s*([ก-๙.]+)\\s*(\\d{2,4})',
+    final matches = RegExp(
+      r'(\d{1,2})\s*([ก-๙.]+)\s*(\d{2,4})',
     ).allMatches(normalized).toList();
 
-    if (tokens.length < 2) {
+    if (matches.length < 2) {
       throw FormatException('ไม่พบช่วงวันที่ในข้อความ: $text');
     }
 
-    DateTime read(RegExpMatch match) {
-      final day = int.parse(match.group(1)!);
-      final monthText = match.group(2)!.trim();
-      final month = _months[monthText];
-      if (month == null) {
-        throw FormatException('ไม่รู้จักเดือนไทย: $monthText');
-      }
-      var year = int.parse(match.group(3)!);
-      if (year < 100) year += 2500;
-      if (year >= 2400) year -= 543;
-      return DateTime(year, month, day);
+    final start = _readDate(matches[0]);
+    final end = _readDate(matches[1]);
+
+    if (end.isBefore(start)) {
+      throw FormatException(
+        'วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text',
+      );
     }
 
-    return ThaiRosterPeriod(start: read(tokens.first), end: read(tokens[1]));
+    return ThaiRosterPeriod(
+      start: start,
+      end: end,
+    );
+  }
+
+  DateTime _readDate(RegExpMatch match) {
+    final day = int.parse(match.group(1)!);
+    final monthText = match.group(2)!.trim();
+    final month = _months[monthText];
+
+    if (month == null) {
+      throw FormatException('ไม่รู้จักเดือนไทย: $monthText');
+    }
+
+    var year = int.parse(match.group(3)!);
+
+    if (year < 100) {
+      year += 2500;
+    }
+
+    if (year >= 2400) {
+      year -= 543;
+    }
+
+    final date = DateTime(year, month, day);
+
+    if (date.year != year || date.month != month || date.day != day) {
+      throw FormatException(
+        'วันที่ไม่ถูกต้อง: $day $monthText ${match.group(3)}',
+      );
+    }
+
+    return date;
   }
 }
