@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.0.0+9
+
+- Added multi-tenant SaaS foundation and strict tenant isolation guard.
+- Added public API contracts, cursor pagination and idempotency service.
+- Added plugin SDK and registry foundation.
+- Added platform admin metrics foundation.
+- Added Version 3.0 tests and architecture documentation.
+
+## [2.0.0] - 2026-07-22
+
+### Added
+- Multi-hospital and department domain models.
+- Role-based access control for Staff, Incharge, Manager and Admin.
+- Shift exchange request lifecycle and approval application service.
+- Audit event contract for organization-scoped traceability.
+- Rule Engine 2.0 foundation with overlap, minimum-rest and weekly-hours rules.
+- Version 2.0 unit tests and architecture documentation.
+
+## Unreleased
+
+### Fixed
+- แก้ Thai roster period parser ให้ regex อ่านตัวเลขและช่องว่างจริง รองรับ `16 กค69-15 สค.69`
+
+### Documentation
+- เพิ่ม Project Wiki สำหรับ architecture, coding standards, Rule Engine, testing, contribution, release, security และ privacy
+
+
 ## [Unreleased]
 
 ### Added

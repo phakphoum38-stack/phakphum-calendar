@@ -7,6 +7,15 @@
 - ช่องชีต ชื่อ เดือน และปีเริ่มต้นว่าง ไม่มีค่าของผู้ใช้ฝังในแอปหรือ repository ผู้ใช้เลือกเดือนและปี ค.ศ. เองก่อนอ่าน
 - ไอคอนแอปเป็นรูปชีตและปฏิทินบนทุกแพลตฟอร์มที่โปรเจกต์สร้างให้
 
+## Version 2.0 Foundation
+
+โปรเจกต์นี้รวมรากฐานสำหรับหลายโรงพยาบาล หลายแผนก RBAC การแลกเวร Audit Log และ Rule Engine แล้ว ดูรายละเอียดที่ [Version 2.0 Wiki](docs/wiki/v2/README.md)
+
+## เอกสารโครงการและ Wiki
+
+เริ่มอ่านเอกสารสำหรับนักพัฒนาและการเตรียม Production ได้ที่ [Project Wiki](docs/wiki/README.md) ซึ่งรวม Architecture, Coding Standards, Rule Engine Specification, Testing, Contributing, Release และ Security/Privacy
+
+
 ## สถานะของแต่ละระบบ
 
 | ระบบ | เปิด UI | Google Sign-In/API ในแอป native | ไฟล์จาก GitHub Actions |
@@ -415,3 +424,7 @@ This application now includes the Sprint 6 SCE architecture under `lib/features/
 - `.ai/` project memory, prompts, and templates
 
 The existing application shell remains the active entry point while the production modules are integrated incrementally through `AppController`.
+
+## Version 3.0 SaaS Foundation
+
+Version 3.0 adds multi-tenant isolation, public API contracts, idempotent writes, a plugin SDK foundation and platform administration metrics. See `VERSION_3_0_STATUS.md` and `docs/wiki/VERSION_3_ARCHITECTURE.md`.
