@@ -5,16 +5,16 @@ import 'package:phakphum_calendar/features/relationship_engine/domain/user_shift
 import 'package:phakphum_calendar/features/shift_parser/domain/roster_cell_assignment.dart';
 
 RosterCellAssignment assignment(String worker) => RosterCellAssignment(
-  spreadsheetId: 'sheet',
-  sheetId: 1,
-  sheetTitle: 'July',
-  sourceCell: 'B10',
-  date: DateTime(2026, 7, 16),
-  category: 'Portable',
-  period: 'บ่าย',
-  slot: 'P2',
-  workerName: worker,
-);
+      spreadsheetId: 'sheet',
+      sheetId: 1,
+      sheetTitle: 'July',
+      sourceCell: 'B10',
+      date: DateTime(2026, 7, 16),
+      category: 'Portable',
+      period: 'บ่าย',
+      slot: 'P2',
+      workerName: worker,
+    );
 
 void main() {
   test('detects a received shift for ภาคภูมิ', () {

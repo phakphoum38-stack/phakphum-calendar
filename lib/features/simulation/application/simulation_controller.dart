@@ -2,7 +2,14 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/simulation_plan.dart';
 
-enum SimulationStatus { idle, loading, ready, confirming, completed, failure }
+enum SimulationStatus {
+  idle,
+  loading,
+  ready,
+  confirming,
+  completed,
+  failure,
+}
 
 class SimulationController extends ChangeNotifier {
   SimulationStatus _status = SimulationStatus.idle;
@@ -25,7 +32,8 @@ class SimulationController extends ChangeNotifier {
   ) async {
     final currentPlan = _plan;
     if (currentPlan == null || !currentPlan.summary.canSynchronize) {
-      _message = 'ไม่สามารถซิงก์ได้ เนื่องจากยังมีรายการที่ถูกบล็อก';
+      _message =
+          'ไม่สามารถซิงก์ได้ เนื่องจากยังมีรายการที่ถูกบล็อก';
       notifyListeners();
       return;
     }

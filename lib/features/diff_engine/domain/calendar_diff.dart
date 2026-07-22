@@ -14,5 +14,7 @@ class CalendarDiff {
   final List<CalendarEventCandidate> unchanged;
 
   bool get hasChanges =>
-      toAdd.isNotEmpty || toUpdate.isNotEmpty || toDelete.isNotEmpty;
+      toAdd.isNotEmpty ||
+      toUpdate.isNotEmpty ||
+      toDelete.isNotEmpty;
 }

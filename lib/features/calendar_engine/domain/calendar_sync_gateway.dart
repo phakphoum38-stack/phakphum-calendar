@@ -8,12 +8,17 @@ abstract interface class CalendarSyncGateway {
     String calendarId = 'primary',
   });
 
-  Future<ManagedCalendarEvent> insert(CalendarSyncCommand command);
+  Future<ManagedCalendarEvent> insert(
+    CalendarSyncCommand command,
+  );
 
   Future<ManagedCalendarEvent> update({
     required String eventId,
     required CalendarSyncCommand command,
   });
 
-  Future<void> delete({required String eventId, String calendarId = 'primary'});
+  Future<void> delete({
+    required String eventId,
+    String calendarId = 'primary',
+  });
 }

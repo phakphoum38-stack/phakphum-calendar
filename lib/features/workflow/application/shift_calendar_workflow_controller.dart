@@ -11,8 +11,8 @@ class ShiftCalendarWorkflowController extends ChangeNotifier {
   ShiftCalendarWorkflowController({
     required WorkflowPreviewBuilder previewBuilder,
     required CalendarSyncCoordinator syncCoordinator,
-  }) : _previewBuilder = previewBuilder,
-       _syncCoordinator = syncCoordinator;
+  })  : _previewBuilder = previewBuilder,
+        _syncCoordinator = syncCoordinator;
 
   final WorkflowPreviewBuilder _previewBuilder;
   final CalendarSyncCoordinator _syncCoordinator;
@@ -31,12 +31,17 @@ class ShiftCalendarWorkflowController extends ChangeNotifier {
     required List<UserShiftChange> changes,
     required List<CalendarEventCandidate> existing,
   }) {
-    _preview = _previewBuilder.build(changes: changes, existing: existing);
+    _preview = _previewBuilder.build(
+      changes: changes,
+      existing: existing,
+    );
     _message = null;
     notifyListeners();
   }
 
-  Future<void> synchronize({String calendarId = 'primary'}) async {
+  Future<void> synchronize({
+    String calendarId = 'primary',
+  }) async {
     final current = _preview;
     if (current == null) {
       _message = 'ยังไม่มีผลการตรวจสอบสำหรับซิงก์';

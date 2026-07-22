@@ -32,7 +32,9 @@ class AuthenticationController extends ChangeNotifier {
   }
 
   Future<void> signIn() async {
-    _state = const AuthenticationState(status: AuthenticationStatus.signingIn);
+    _state = const AuthenticationState(
+      status: AuthenticationStatus.signingIn,
+    );
     notifyListeners();
 
     try {
@@ -52,7 +54,9 @@ class AuthenticationController extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _service.signOut();
-    _state = const AuthenticationState(status: AuthenticationStatus.signedOut);
+    _state = const AuthenticationState(
+      status: AuthenticationStatus.signedOut,
+    );
     notifyListeners();
   }
 

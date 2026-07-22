@@ -9,13 +9,14 @@ void main() {
     final start = DateTime(2026, 8, 4, 8);
     final end = DateTime(2026, 8, 4, 16);
 
-    CalendarEventCandidate candidate(String id) => CalendarEventCandidate(
-      syncId: id,
-      title: 'ER เช้า',
-      start: start,
-      end: end,
-      shouldExist: true,
-    );
+    CalendarEventCandidate candidate(String id) =>
+        CalendarEventCandidate(
+          syncId: id,
+          title: 'ER เช้า',
+          start: start,
+          end: end,
+          shouldExist: true,
+        );
 
     final plan = const CalendarSyncPlanBuilder().build(
       diff: CalendarDiff(

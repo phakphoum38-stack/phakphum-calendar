@@ -25,7 +25,8 @@ class GoogleDriveGateway implements DriveGateway {
       orderBy: 'modifiedTime desc',
       pageSize: pageSize,
       pageToken: pageToken,
-      $fields: 'nextPageToken,files(id,name,modifiedTime,webViewLink,mimeType)',
+      $fields:
+          'nextPageToken,files(id,name,modifiedTime,webViewLink,mimeType)',
     );
 
     return result.files

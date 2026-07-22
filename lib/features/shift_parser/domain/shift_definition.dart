@@ -17,11 +17,22 @@ class ShiftDefinition {
   final int endMinute;
   final bool endsNextDay;
 
-  DateTime startFor(DateTime date) =>
-      DateTime(date.year, date.month, date.day, startHour, startMinute);
+  DateTime startFor(DateTime date) => DateTime(
+        date.year,
+        date.month,
+        date.day,
+        startHour,
+        startMinute,
+      );
 
   DateTime endFor(DateTime date) {
-    final base = DateTime(date.year, date.month, date.day, endHour, endMinute);
+    final base = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      endHour,
+      endMinute,
+    );
     return endsNextDay ? base.add(const Duration(days: 1)) : base;
   }
 }

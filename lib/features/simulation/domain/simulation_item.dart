@@ -1,4 +1,10 @@
-enum SimulationAction { add, update, delete, unchanged, blocked }
+enum SimulationAction {
+  add,
+  update,
+  delete,
+  unchanged,
+  blocked,
+}
 
 class SimulationItem {
   const SimulationItem({

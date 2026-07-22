@@ -36,8 +36,11 @@ class SimulationPlanBuilder {
         ),
       ),
       ...diff.unchanged.map(
-        (event) =>
-            _item(event, SimulationAction.unchanged, 'ข้อมูลตรงกับกิจกรรมเดิม'),
+        (event) => _item(
+          event,
+          SimulationAction.unchanged,
+          'ข้อมูลตรงกับกิจกรรมเดิม',
+        ),
       ),
     ];
 

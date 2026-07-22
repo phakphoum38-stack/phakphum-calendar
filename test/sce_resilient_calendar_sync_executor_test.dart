@@ -17,7 +17,9 @@ class FlakyCalendarGateway implements CalendarSyncGateway {
   }) async {}
 
   @override
-  Future<ManagedCalendarEvent> insert(CalendarSyncCommand command) async {
+  Future<ManagedCalendarEvent> insert(
+    CalendarSyncCommand command,
+  ) async {
     insertAttempts++;
     if (insertAttempts == 1) {
       throw StateError('temporary failure');
@@ -36,7 +38,8 @@ class FlakyCalendarGateway implements CalendarSyncGateway {
     required DateTime timeMin,
     required DateTime timeMax,
     String calendarId = 'primary',
-  }) async => const [];
+  }) async =>
+      const [];
 
   @override
   Future<ManagedCalendarEvent> update({
@@ -83,7 +86,10 @@ void main() {
 
     expect(gateway.insertAttempts, 2);
     expect(result.hasFailures, isFalse);
-    expect(result.historyEntry.status, SyncHistoryStatus.success);
+    expect(
+      result.historyEntry.status,
+      SyncHistoryStatus.success,
+    );
     expect(result.historyEntry.inserted, 1);
   });
 }

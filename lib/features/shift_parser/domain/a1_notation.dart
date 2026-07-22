@@ -16,7 +16,8 @@ abstract final class A1Notation {
       columnNumber = (columnNumber - 1) ~/ 26;
     }
 
-    final columnLetters = buffer.toString().split('').reversed.join();
+    final columnLetters =
+        buffer.toString().split('').reversed.join();
 
     return '$columnLetters${rowIndex + 1}';
   }

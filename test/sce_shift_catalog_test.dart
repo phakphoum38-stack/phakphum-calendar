@@ -16,6 +16,12 @@ void main() {
   });
 
   test('returns null for unconfirmed CT shift time', () {
-    expect(ShiftCatalog.known.find(category: 'CT', period: 'เช้า'), isNull);
+    expect(
+      ShiftCatalog.known.find(
+        category: 'CT',
+        period: 'เช้า',
+      ),
+      isNull,
+    );
   });
 }

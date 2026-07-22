@@ -7,16 +7,16 @@ RosterCellAssignment assignment({
   required String cell,
   required String worker,
 }) => RosterCellAssignment(
-  spreadsheetId: 'spreadsheet',
-  sheetId: 1,
-  sheetTitle: 'กรกฎาคม',
-  sourceCell: cell,
-  date: DateTime(2026, 7, 24),
-  category: 'ER',
-  period: 'เช้า',
-  slot: '1',
-  workerName: worker,
-);
+      spreadsheetId: 'spreadsheet',
+      sheetId: 1,
+      sheetTitle: 'กรกฎาคม',
+      sourceCell: cell,
+      date: DateTime(2026, 7, 24),
+      category: 'ER',
+      period: 'เช้า',
+      slot: '1',
+      workerName: worker,
+    );
 
 void main() {
   const mapper = UserShiftEventMapper();

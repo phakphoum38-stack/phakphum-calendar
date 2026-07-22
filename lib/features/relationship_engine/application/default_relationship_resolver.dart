@@ -41,34 +41,35 @@ class DefaultRelationshipResolver implements RelationshipResolver {
           type: input.colorMeaning == 'majorExchange'
               ? ShiftRelationshipType.majorExchange
               : input.colorMeaning == 'clinicExchange'
-              ? ShiftRelationshipType.clinicExchange
-              : ShiftRelationshipType.received,
+                  ? ShiftRelationshipType.clinicExchange
+                  : ShiftRelationshipType.received,
           originalOwner: text,
-          actualWorker: input.userAliases.isEmpty
-              ? null
-              : input.userAliases.first,
+          actualWorker:
+              input.userAliases.isEmpty ? null : input.userAliases.first,
           transferFrom: text,
-          warning: text == null ? 'ไม่พบชื่อเจ้าของเวรเดิมในเซลล์' : null,
+          warning: text == null
+              ? 'ไม่พบชื่อเจ้าของเวรเดิมในเซลล์'
+              : null,
         );
 
       case 'givenAway':
         return RelationshipResolution(
           type: ShiftRelationshipType.givenAway,
-          originalOwner: input.userAliases.isEmpty
-              ? null
-              : input.userAliases.first,
+          originalOwner:
+              input.userAliases.isEmpty ? null : input.userAliases.first,
           actualWorker: text,
           transferTo: text,
-          warning: text == null ? 'ไม่พบชื่อผู้รับเวร' : null,
+          warning: text == null
+              ? 'ไม่พบชื่อผู้รับเวร'
+              : null,
         );
 
       case 'borrowedFree':
         return RelationshipResolution(
           type: ShiftRelationshipType.borrowedFree,
           originalOwner: text,
-          actualWorker: input.userAliases.isEmpty
-              ? null
-              : input.userAliases.first,
+          actualWorker:
+              input.userAliases.isEmpty ? null : input.userAliases.first,
           transferFrom: text,
         );
 
@@ -76,9 +77,8 @@ class DefaultRelationshipResolver implements RelationshipResolver {
         return RelationshipResolution(
           type: ShiftRelationshipType.borrowedPaid,
           originalOwner: text,
-          actualWorker: input.userAliases.isEmpty
-              ? null
-              : input.userAliases.first,
+          actualWorker:
+              input.userAliases.isEmpty ? null : input.userAliases.first,
           transferFrom: text,
         );
 

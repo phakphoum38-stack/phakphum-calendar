@@ -9,10 +9,14 @@ enum AuthenticationStatus {
 }
 
 class AuthenticationState {
-  const AuthenticationState({required this.status, this.user, this.message});
+  const AuthenticationState({
+    required this.status,
+    this.user,
+    this.message,
+  });
 
   const AuthenticationState.uninitialized()
-    : this(status: AuthenticationStatus.uninitialized);
+      : this(status: AuthenticationStatus.uninitialized);
 
   final AuthenticationStatus status;
   final GoogleUser? user;

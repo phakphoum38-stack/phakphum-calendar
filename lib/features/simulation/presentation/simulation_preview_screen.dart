@@ -22,13 +22,19 @@ class SimulationPreviewScreen extends StatelessWidget {
         final plan = controller.plan;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('ตรวจสอบก่อนอัปเดต Calendar')),
+          appBar: AppBar(
+            title: const Text('ตรวจสอบก่อนอัปเดต Calendar'),
+          ),
           body: plan == null
-              ? const Center(child: Text('ยังไม่มีผลการเปรียบเทียบ'))
+              ? const Center(
+                  child: Text('ยังไม่มีผลการเปรียบเทียบ'),
+                )
               : Column(
                   children: [
                     _SummaryHeader(plan: plan),
-                    Expanded(child: _SimulationList(items: plan.items)),
+                    Expanded(
+                      child: _SimulationList(items: plan.items),
+                    ),
                   ],
                 ),
           bottomNavigationBar: plan == null
@@ -39,14 +45,17 @@ class SimulationPreviewScreen extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed:
                           controller.status == SimulationStatus.confirming ||
-                              !plan.summary.canSynchronize ||
-                              !plan.hasChanges
-                          ? null
-                          : () => controller.confirm(onConfirm),
-                      icon: controller.status == SimulationStatus.confirming
+                                  !plan.summary.canSynchronize ||
+                                  !plan.hasChanges
+                              ? null
+                              : () => controller.confirm(onConfirm),
+                      icon: controller.status ==
+                              SimulationStatus.confirming
                           ? const SizedBox.square(
                               dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Icon(Icons.sync),
                       label: const Text('ยืนยันอัปเดต Google Calendar'),
@@ -123,7 +132,10 @@ class _SummaryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(avatar: Icon(icon, size: 18), label: Text('$label $count'));
+    return Chip(
+      avatar: Icon(icon, size: 18),
+      label: Text('$label $count'),
+    );
   }
 }
 
@@ -135,7 +147,9 @@ class _SimulationList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const Center(child: Text('ไม่พบรายการเปลี่ยนแปลง'));
+      return const Center(
+        child: Text('ไม่พบรายการเปลี่ยนแปลง'),
+      );
     }
 
     return ListView.separated(

@@ -13,15 +13,15 @@ class HospitalRosterParser {
 
   RosterParseReport parse(ShiftParserInput input) {
     final byCoordinate = <(int, int), dynamic>{
-      for (final cell in input.cells) (cell.rowIndex, cell.columnIndex): cell,
+      for (final cell in input.cells)
+        (cell.rowIndex, cell.columnIndex): cell,
     };
 
     final periodText = input.cells
         .map((cell) => cell.text)
         .whereType<String>()
         .firstWhere(
-          (text) =>
-              text.contains('ประจำเดือน') ||
+          (text) => text.contains('ประจำเดือน') ||
               (text.contains('16') && text.contains('15')),
           orElse: () => input.sheetTitle,
         );
@@ -119,7 +119,8 @@ class HospitalRosterParser {
       return startMonthCandidate;
     }
     final endMonthCandidate = DateTime(end.year, end.month, day);
-    if (!endMonthCandidate.isBefore(start) && !endMonthCandidate.isAfter(end)) {
+    if (!endMonthCandidate.isBefore(start) &&
+        !endMonthCandidate.isAfter(end)) {
       return endMonthCandidate;
     }
     throw FormatException('วันที่ $day อยู่นอกช่วงตารางเวร');
@@ -130,10 +131,10 @@ class HospitalRosterParser {
     final period = text.endsWith('เช้า')
         ? 'เช้า'
         : text.endsWith('บ่าย')
-        ? 'บ่าย'
-        : text.endsWith('ดึก')
-        ? 'ดึก'
-        : null;
+            ? 'บ่าย'
+            : text.endsWith('ดึก')
+                ? 'ดึก'
+                : null;
     if (period == null) return null;
 
     final base = text.substring(0, text.length - period.length).trim();

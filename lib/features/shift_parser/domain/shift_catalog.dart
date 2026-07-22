@@ -5,7 +5,10 @@ class ShiftCatalog {
 
   final List<ShiftDefinition> definitions;
 
-  ShiftDefinition? find({required String category, required String period}) {
+  ShiftDefinition? find({
+    required String category,
+    required String period,
+  }) {
     final normalizedCategory = category.trim().toLowerCase();
     final normalizedPeriod = period.trim().toLowerCase();
 

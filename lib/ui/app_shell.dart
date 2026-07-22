@@ -992,9 +992,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                       const SizedBox(height: 16),
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLow,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerLow,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: Theme.of(context).colorScheme.outlineVariant,
@@ -1016,18 +1016,18 @@ class _DashboardPageState extends State<_DashboardPage> {
                                       controller.selectedSourceSheetTitle,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       controller.hasSelectedSourceSheet
                                           ? 'ไฟล์หลักสำหรับอ่านตารางเวร • บันทึกไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
                                           : 'เลือกไฟล์จาก Google Drive โดยไม่ต้องวางลิงก์',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
                                     ),
                                   ],
                                 ),
@@ -1047,9 +1047,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                         icon: controller.busy
                             ? const SizedBox.square(
                                 dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.add_to_drive_outlined),
                         label: Text(
@@ -1346,7 +1344,8 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final file = files[index];
-                        final alreadyAdded = widget.alreadyAddedSpreadsheetIds
+                        final alreadyAdded = widget
+                            .alreadyAddedSpreadsheetIds
                             .contains(file.id);
                         final selected = _selectedIds.contains(file.id);
                         return CheckboxListTile(

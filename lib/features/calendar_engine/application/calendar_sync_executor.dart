@@ -18,7 +18,9 @@ class CalendarSyncExecutor {
 
   final CalendarSyncGateway _gateway;
 
-  Future<CalendarSyncResult> execute(CalendarSyncPlan plan) async {
+  Future<CalendarSyncResult> execute(
+    CalendarSyncPlan plan,
+  ) async {
     var inserted = 0;
     var updated = 0;
     var deleted = 0;

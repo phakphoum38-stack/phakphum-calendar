@@ -29,7 +29,9 @@ class SheetCell {
   final bool isMerged;
   final String? mergedAnchorA1;
 
-  bool get isBlank => formattedValue == null || formattedValue!.trim().isEmpty;
+  bool get isBlank =>
+      formattedValue == null ||
+      formattedValue!.trim().isEmpty;
 
   String? get normalizedText {
     final value = formattedValue?.trim();

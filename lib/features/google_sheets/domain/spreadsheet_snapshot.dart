@@ -18,9 +18,13 @@ class SpreadsheetSheetSnapshot {
   final List<SheetCell> cells;
   final List<SheetGridRange> mergedRanges;
 
-  SheetCell? cellAt({required int rowIndex, required int columnIndex}) {
+  SheetCell? cellAt({
+    required int rowIndex,
+    required int columnIndex,
+  }) {
     for (final cell in cells) {
-      if (cell.rowIndex == rowIndex && cell.columnIndex == columnIndex) {
+      if (cell.rowIndex == rowIndex &&
+          cell.columnIndex == columnIndex) {
         return cell;
       }
     }

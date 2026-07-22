@@ -72,7 +72,8 @@ class GoogleSheetsGateway implements SheetsGateway {
 
         for (var rowOffset = 0; rowOffset < rows.length; rowOffset++) {
           final rowIndex = startRow + rowOffset;
-          final values = rows[rowOffset].values ?? const <sheets.CellData>[];
+          final values = rows[rowOffset].values ??
+              const <sheets.CellData>[];
 
           for (
             var columnOffset = 0;
@@ -101,8 +102,10 @@ class GoogleSheetsGateway implements SheetsGateway {
                 formattedValue: cell.formattedValue,
                 rawValue: _readExtendedValue(cell.effectiveValue),
                 formula: cell.userEnteredValue?.formulaValue,
-                backgroundColor: _readBackgroundColor(cell.effectiveFormat),
-                numberFormatType: cell.effectiveFormat?.numberFormat?.type,
+                backgroundColor:
+                    _readBackgroundColor(cell.effectiveFormat),
+                numberFormatType:
+                    cell.effectiveFormat?.numberFormat?.type,
                 numberFormatPattern:
                     cell.effectiveFormat?.numberFormat?.pattern,
                 isMerged: mergedRange != null,
@@ -153,7 +156,8 @@ class GoogleSheetsGateway implements SheetsGateway {
       return value.boolValue;
     }
     if (value.errorValue != null) {
-      return value.errorValue?.message ?? value.errorValue?.type;
+      return value.errorValue?.message ??
+          value.errorValue?.type;
     }
     if (value.formulaValue != null) {
       return value.formulaValue;
@@ -182,7 +186,10 @@ class GoogleSheetsGateway implements SheetsGateway {
     required int columnIndex,
   }) {
     for (final range in ranges) {
-      if (range.contains(rowIndex: rowIndex, columnIndex: columnIndex)) {
+      if (range.contains(
+        rowIndex: rowIndex,
+        columnIndex: columnIndex,
+      )) {
         return range;
       }
     }

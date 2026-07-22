@@ -16,7 +16,10 @@ class SheetGridRange {
   int get rowCount => endRowIndex - startRowIndex;
   int get columnCount => endColumnIndex - startColumnIndex;
 
-  bool contains({required int rowIndex, required int columnIndex}) {
+  bool contains({
+    required int rowIndex,
+    required int columnIndex,
+  }) {
     return rowIndex >= startRowIndex &&
         rowIndex < endRowIndex &&
         columnIndex >= startColumnIndex &&

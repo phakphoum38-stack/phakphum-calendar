@@ -1,4 +1,9 @@
-enum SyncHistoryStatus { running, success, partialSuccess, failure }
+enum SyncHistoryStatus {
+  running,
+  success,
+  partialSuccess,
+  failure,
+}
 
 class SyncHistoryEntry {
   const SyncHistoryEntry({
