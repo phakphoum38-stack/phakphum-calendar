@@ -1,5 +1,8 @@
 class ThaiRosterPeriod {
-  const ThaiRosterPeriod({required this.start, required this.end});
+  const ThaiRosterPeriod({
+    required this.start,
+    required this.end,
+  });
 
   final DateTime start;
   final DateTime end;
@@ -48,14 +51,23 @@ class ThaiRosterPeriodParser {
   };
 
   ThaiRosterPeriod parse(String text) {
-    final normalized = text
-        .replaceAll(RegExp(r'พ\s*\.\s*ศ\s*\.?'), '')
-        .replaceAll(RegExp(r'พ\s*ศ'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final normalized = _normalize(text);
 
     final matches = RegExp(
-      r'(\d{1,2})\s*([ก-๙.]+)\s*(\d{2,4})',
+      r'(\d{1,2})\s*'
+      r'(มกราคม|ม\.ค\.|มค|'
+      r'กุมภาพันธ์|ก\.พ\.|กพ|'
+      r'มีนาคม|มี\.ค\.|มีค|'
+      r'เมษายน|เม\.ย\.|เมย|'
+      r'พฤษภาคม|พ\.ค\.|พค|'
+      r'มิถุนายน|มิ\.ย\.|มิย|'
+      r'กรกฎาคม|ก\.ค\.|กค|'
+      r'สิงหาคม|ส\.ค\.|สค|'
+      r'กันยายน|ก\.ย\.|กย|'
+      r'ตุลาคม|ต\.ค\.|ตค|'
+      r'พฤศจิกายน|พ\.ย\.|พย|'
+      r'ธันวาคม|ธ\.ค\.|ธค)'
+      r'\s*(\d{2,4})',
     ).allMatches(normalized).toList();
 
     if (matches.length < 2) {
@@ -66,22 +78,43 @@ class ThaiRosterPeriodParser {
     final end = _readDate(matches[1]);
 
     if (end.isBefore(start)) {
-      throw FormatException('วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text');
+      throw FormatException(
+        'วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text',
+      );
     }
 
-    return ThaiRosterPeriod(start: start, end: end);
+    return ThaiRosterPeriod(
+      start: start,
+      end: end,
+    );
+  }
+
+  String _normalize(String text) {
+    return text
+        .replaceAll(RegExp(r'พ\s*\.\s*ศ\s*\.?'), '')
+        .replaceAll(RegExp(r'พ\s*ศ\s*\.?'), '')
+        .replaceAll(RegExp(r'[–—−]'), '-')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   DateTime _readDate(RegExpMatch match) {
-    final day = int.parse(match.group(1)!);
-    final monthText = match.group(2)!.trim();
+    final dayText = match.group(1);
+    final monthText = match.group(2);
+    final yearText = match.group(3);
+
+    if (dayText == null || monthText == null || yearText == null) {
+      throw const FormatException('ข้อมูลวันที่ไม่ครบ');
+    }
+
+    final day = int.parse(dayText);
     final month = _months[monthText];
 
     if (month == null) {
       throw FormatException('ไม่รู้จักเดือนไทย: $monthText');
     }
 
-    var year = int.parse(match.group(3)!);
+    var year = int.parse(yearText);
 
     if (year < 100) {
       year += 2500;
@@ -95,7 +128,7 @@ class ThaiRosterPeriodParser {
 
     if (date.year != year || date.month != month || date.day != day) {
       throw FormatException(
-        'วันที่ไม่ถูกต้อง: $day $monthText ${match.group(3)}',
+        'วันที่ไม่ถูกต้อง: $dayText $monthText $yearText',
       );
     }
 
