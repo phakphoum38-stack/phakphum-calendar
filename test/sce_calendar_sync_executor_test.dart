@@ -19,9 +19,7 @@ class FakeCalendarSyncGateway implements CalendarSyncGateway {
   }
 
   @override
-  Future<ManagedCalendarEvent> insert(
-    CalendarSyncCommand command,
-  ) async {
+  Future<ManagedCalendarEvent> insert(CalendarSyncCommand command) async {
     inserted++;
     return ManagedCalendarEvent(
       eventId: 'new',
@@ -75,16 +73,10 @@ void main() {
       CalendarSyncPlan(
         inserts: [command],
         updates: [
-          CalendarUpdateOperation(
-            eventId: 'event-1',
-            command: command,
-          ),
+          CalendarUpdateOperation(eventId: 'event-1', command: command),
         ],
         deletes: const [
-          CalendarDeleteOperation(
-            eventId: 'event-2',
-            calendarId: 'primary',
-          ),
+          CalendarDeleteOperation(eventId: 'event-2', calendarId: 'primary'),
         ],
       ),
     );

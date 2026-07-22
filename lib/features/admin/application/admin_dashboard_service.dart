@@ -16,8 +16,9 @@ class AdminDashboardService {
       tenantIds.map(_gateway.loadTenantMetrics),
     );
     metrics.sort((left, right) {
-      final attentionOrder = (right.requiresAttention ? 1 : 0)
-          .compareTo(left.requiresAttention ? 1 : 0);
+      final attentionOrder = (right.requiresAttention ? 1 : 0).compareTo(
+        left.requiresAttention ? 1 : 0,
+      );
       if (attentionOrder != 0) return attentionOrder;
       return right.failedSyncOperations.compareTo(left.failedSyncOperations);
     });

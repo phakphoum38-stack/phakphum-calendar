@@ -1,8 +1,4 @@
-enum CalendarSyncOperationType {
-  insert,
-  update,
-  delete,
-}
+enum CalendarSyncOperationType { insert, update, delete }
 
 class CalendarSyncOperationResult {
   const CalendarSyncOperationResult({

@@ -39,8 +39,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
         .map(
           (event) => ManagedCalendarEvent(
             eventId: event.id!,
-            syncId:
-                event.extendedProperties!.private![syncIdKey]!,
+            syncId: event.extendedProperties!.private![syncIdKey]!,
             title: event.summary ?? '',
             start: event.start!.dateTime!,
             end: event.end!.dateTime!,
@@ -51,9 +50,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
   }
 
   @override
-  Future<ManagedCalendarEvent> insert(
-    CalendarSyncCommand command,
-  ) async {
+  Future<ManagedCalendarEvent> insert(CalendarSyncCommand command) async {
     final api = calendar.CalendarApi(_client);
     final created = await api.events.insert(
       _toEvent(command),
@@ -91,28 +88,18 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
     return calendar.Event(
       summary: command.title,
       description: command.description,
-      start: calendar.EventDateTime(
-        dateTime: command.start,
-      ),
-      end: calendar.EventDateTime(
-        dateTime: command.end,
-      ),
+      start: calendar.EventDateTime(dateTime: command.start),
+      end: calendar.EventDateTime(dateTime: command.end),
       extendedProperties: calendar.EventExtendedProperties(
-        private: <String, String>{
-          syncIdKey: command.syncId,
-        },
+        private: <String, String>{syncIdKey: command.syncId},
       ),
     );
   }
 
-  ManagedCalendarEvent _toManaged(
-    calendar.Event event,
-    String fallbackSyncId,
-  ) {
+  ManagedCalendarEvent _toManaged(calendar.Event event, String fallbackSyncId) {
     return ManagedCalendarEvent(
       eventId: event.id ?? '',
-      syncId: event.extendedProperties?.private?[syncIdKey] ??
-          fallbackSyncId,
+      syncId: event.extendedProperties?.private?[syncIdKey] ?? fallbackSyncId,
       title: event.summary ?? '',
       start: event.start?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
       end: event.end?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),

@@ -24,10 +24,7 @@ class ShiftExchangeService {
     required StaffRole approverRole,
     String? note,
   }) async {
-    if (!AccessPolicy.allows(
-      approverRole,
-      Permission.approveShiftExchange,
-    )) {
+    if (!AccessPolicy.allows(approverRole, Permission.approveShiftExchange)) {
       throw StateError('ผู้ใช้นี้ไม่มีสิทธิ์อนุมัติการแลกเวร');
     }
 

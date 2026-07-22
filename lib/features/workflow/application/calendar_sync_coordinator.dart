@@ -8,9 +8,9 @@ class CalendarSyncCoordinator {
     required CalendarSyncGateway gateway,
     required CalendarSyncPlanBuilder planBuilder,
     required ResilientCalendarSyncExecutor executor,
-  })  : _gateway = gateway,
-        _planBuilder = planBuilder,
-        _executor = executor;
+  }) : _gateway = gateway,
+       _planBuilder = planBuilder,
+       _executor = executor;
 
   final CalendarSyncGateway _gateway;
   final CalendarSyncPlanBuilder _planBuilder;

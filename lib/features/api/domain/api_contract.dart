@@ -13,23 +13,19 @@ class ApiError {
   final Map<String, Object?> details;
 
   Map<String, Object?> toJson() => {
-        'code': code,
-        'message': message,
-        'details': details,
-      };
+    'code': code,
+    'message': message,
+    'details': details,
+  };
 }
 
 @immutable
 class ApiResponse<T> {
-  const ApiResponse.success({
-    required this.data,
-    required this.correlationId,
-  }) : error = null;
+  const ApiResponse.success({required this.data, required this.correlationId})
+    : error = null;
 
-  const ApiResponse.failure({
-    required this.error,
-    required this.correlationId,
-  }) : data = null;
+  const ApiResponse.failure({required this.error, required this.correlationId})
+    : data = null;
 
   final T? data;
   final ApiError? error;
@@ -41,8 +37,8 @@ class ApiResponse<T> {
 @immutable
 class PageRequest {
   const PageRequest({this.cursor, this.limit = 50})
-      : assert(limit > 0),
-        assert(limit <= 200);
+    : assert(limit > 0),
+      assert(limit <= 200);
 
   final String? cursor;
   final int limit;

@@ -25,10 +25,7 @@ void main() {
 
   test('only requester can cancel', () {
     expect(
-      () => pending().cancel(
-        actorId: 'staff-b',
-        at: DateTime(2026, 7, 2),
-      ),
+      () => pending().cancel(actorId: 'staff-b', at: DateTime(2026, 7, 2)),
       throwsStateError,
     );
   });

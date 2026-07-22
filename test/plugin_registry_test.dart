@@ -35,12 +35,12 @@ class _FakePlugin implements PlatformPlugin {
 
   @override
   PluginManifest get manifest => const PluginManifest(
-        id: 'hospital.rules.th',
-        name: 'Thai Hospital Rules',
-        version: '1.0.0',
-        minimumPlatformVersion: '3.0.0',
-        capabilities: <String>{'schedule-rules'},
-      );
+    id: 'hospital.rules.th',
+    name: 'Thai Hospital Rules',
+    version: '1.0.0',
+    minimumPlatformVersion: '3.0.0',
+    capabilities: <String>{'schedule-rules'},
+  );
 
   @override
   Future<void> dispose() async {

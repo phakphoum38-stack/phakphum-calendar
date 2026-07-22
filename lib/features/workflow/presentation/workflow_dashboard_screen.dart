@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import '../application/shift_calendar_workflow_controller.dart';
 
 class WorkflowDashboardScreen extends StatelessWidget {
-  const WorkflowDashboardScreen({
-    required this.controller,
-    super.key,
-  });
+  const WorkflowDashboardScreen({required this.controller, super.key});
 
   final ShiftCalendarWorkflowController controller;
 
@@ -65,7 +62,8 @@ class WorkflowDashboardScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: FilledButton.icon(
-                      onPressed: controller.isBusy ||
+                      onPressed:
+                          controller.isBusy ||
                               !preview.simulation.summary.canSynchronize ||
                               !preview.simulation.hasChanges
                           ? null

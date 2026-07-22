@@ -66,9 +66,7 @@ class GoogleAuthenticationService implements AuthenticationService {
       scopeHint: GoogleScopes.required,
     );
 
-    await account.authorizationClient.authorizeScopes(
-      GoogleScopes.required,
-    );
+    await account.authorizationClient.authorizeScopes(GoogleScopes.required);
 
     _currentAccount = account;
     return _toDomain(account);

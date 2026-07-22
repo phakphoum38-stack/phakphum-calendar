@@ -24,10 +24,13 @@ void main() {
     expect(period.end, DateTime(2026, 8, 15));
   });
 
-  test('throws FormatException when a period contains fewer than two dates', () {
-    expect(
-      () => parser.parse('16 กรกฎาคม 2569'),
-      throwsA(isA<FormatException>()),
-    );
-  });
+  test(
+    'throws FormatException when a period contains fewer than two dates',
+    () {
+      expect(
+        () => parser.parse('16 กรกฎาคม 2569'),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
 }

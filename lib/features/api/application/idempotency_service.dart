@@ -1,8 +1,5 @@
 abstract interface class IdempotencyRepository {
-  Future<Object?> read({
-    required String tenantId,
-    required String key,
-  });
+  Future<Object?> read({required String tenantId, required String key});
 
   Future<void> write({
     required String tenantId,

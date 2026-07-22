@@ -59,18 +59,9 @@ void main() {
     );
 
     expect(result.toAdd.map((event) => event.syncId), contains('add'));
-    expect(
-      result.toUpdate.map((event) => event.syncId),
-      contains('update'),
-    );
-    expect(
-      result.toDelete.map((event) => event.syncId),
-      contains('delete'),
-    );
-    expect(
-      result.unchanged.map((event) => event.syncId),
-      contains('same'),
-    );
+    expect(result.toUpdate.map((event) => event.syncId), contains('update'));
+    expect(result.toDelete.map((event) => event.syncId), contains('delete'));
+    expect(result.unchanged.map((event) => event.syncId), contains('same'));
   });
 
   test('deletes existing event when desired event should not exist', () {

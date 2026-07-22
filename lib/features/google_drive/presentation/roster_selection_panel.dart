@@ -30,10 +30,7 @@ class RosterSelectionPanel extends StatelessWidget {
             _RosterSlotCard(
               title: 'ไฟล์ต้นฉบับ',
               file: controller.selection.original,
-              onSelect: () => _showFileDialog(
-                context,
-                RosterFileSlot.original,
-              ),
+              onSelect: () => _showFileDialog(context, RosterFileSlot.original),
               onClear: controller.selection.original == null
                   ? null
                   : () => controller.clear(RosterFileSlot.original),
@@ -42,10 +39,7 @@ class RosterSelectionPanel extends StatelessWidget {
             _RosterSlotCard(
               title: 'ไฟล์ปัจจุบัน',
               file: controller.selection.current,
-              onSelect: () => _showFileDialog(
-                context,
-                RosterFileSlot.current,
-              ),
+              onSelect: () => _showFileDialog(context, RosterFileSlot.current),
               onClear: controller.selection.current == null
                   ? null
                   : () => controller.clear(RosterFileSlot.current),
@@ -54,13 +48,10 @@ class RosterSelectionPanel extends StatelessWidget {
             if (controller.errorMessage != null)
               Text(
                 controller.errorMessage!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             FilledButton.icon(
-              onPressed:
-                  controller.selection.canCompare ? onCompare : null,
+              onPressed: controller.selection.canCompare ? onCompare : null,
               icon: const Icon(Icons.compare_arrows),
               label: const Text('เปรียบเทียบไฟล์'),
             ),
@@ -107,13 +98,11 @@ class RosterSelectionPanel extends StatelessWidget {
               : ListView.separated(
                   shrinkWrap: true,
                   itemCount: controller.availableFiles.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1),
+                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final file = controller.availableFiles[index];
                     return ListTile(
-                      leading:
-                          const Icon(Icons.table_chart_outlined),
+                      leading: const Icon(Icons.table_chart_outlined),
                       title: Text(file.name),
                       subtitle: file.modifiedTime == null
                           ? null
@@ -181,10 +170,7 @@ class _RosterSlotCard extends StatelessWidget {
                 tooltip: 'ล้างการเลือก',
                 icon: const Icon(Icons.close),
               ),
-            OutlinedButton(
-              onPressed: onSelect,
-              child: const Text('เลือก'),
-            ),
+            OutlinedButton(onPressed: onSelect, child: const Text('เลือก')),
           ],
         ),
       ),

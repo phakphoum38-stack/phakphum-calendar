@@ -6,7 +6,10 @@ import '../domain/failed_sync_operation.dart';
 import '../domain/failed_sync_repository.dart';
 
 class ResumeSyncResult {
-  const ResumeSyncResult({required this.historyEntry, required this.operations});
+  const ResumeSyncResult({
+    required this.historyEntry,
+    required this.operations,
+  });
   final SyncHistoryEntry historyEntry;
   final List<CalendarSyncOperationResult> operations;
   bool get completed => operations.every((item) => item.success);
@@ -17,9 +20,9 @@ class ResumeSyncService {
     required CalendarSyncGateway gateway,
     required SyncHistoryRepository historyRepository,
     required FailedSyncRepository failedRepository,
-  })  : _gateway = gateway,
-        _historyRepository = historyRepository,
-        _failedRepository = failedRepository;
+  }) : _gateway = gateway,
+       _historyRepository = historyRepository,
+       _failedRepository = failedRepository;
 
   final CalendarSyncGateway _gateway;
   final SyncHistoryRepository _historyRepository;
@@ -56,28 +59,34 @@ class ResumeSyncService {
           await _gateway.delete(eventId: eventId, calendarId: item.calendarId);
           deleted++;
         }
-        results.add(CalendarSyncOperationResult(
-          type: item.type,
-          referenceId: item.referenceId,
-          success: true,
-        ));
+        results.add(
+          CalendarSyncOperationResult(
+            type: item.type,
+            referenceId: item.referenceId,
+            success: true,
+          ),
+        );
       } catch (error) {
-        remaining.add(FailedSyncOperation(
-          historyId: item.historyId,
-          type: item.type,
-          referenceId: item.referenceId,
-          attempts: item.attempts + 1,
-          command: item.command,
-          eventId: item.eventId,
-          calendarId: item.calendarId,
-          message: error.toString(),
-        ));
-        results.add(CalendarSyncOperationResult(
-          type: item.type,
-          referenceId: item.referenceId,
-          success: false,
-          message: error.toString(),
-        ));
+        remaining.add(
+          FailedSyncOperation(
+            historyId: item.historyId,
+            type: item.type,
+            referenceId: item.referenceId,
+            attempts: item.attempts + 1,
+            command: item.command,
+            eventId: item.eventId,
+            calendarId: item.calendarId,
+            message: error.toString(),
+          ),
+        );
+        results.add(
+          CalendarSyncOperationResult(
+            type: item.type,
+            referenceId: item.referenceId,
+            success: false,
+            message: error.toString(),
+          ),
+        );
       }
     }
 

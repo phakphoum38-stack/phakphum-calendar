@@ -10,12 +10,7 @@ enum ShiftRelationshipType {
   unknown,
 }
 
-enum ShiftStatus {
-  valid,
-  warning,
-  blocked,
-  removed,
-}
+enum ShiftStatus { valid, warning, blocked, removed }
 
 class ShiftRecord {
   const ShiftRecord({

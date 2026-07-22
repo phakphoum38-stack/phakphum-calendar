@@ -8,12 +8,8 @@ class CalendarDiffEngine {
     required List<CalendarEventCandidate> desired,
     required List<CalendarEventCandidate> existing,
   }) {
-    final desiredById = {
-      for (final event in desired) event.syncId: event,
-    };
-    final existingById = {
-      for (final event in existing) event.syncId: event,
-    };
+    final desiredById = {for (final event in desired) event.syncId: event};
+    final existingById = {for (final event in existing) event.syncId: event};
 
     final toAdd = <CalendarEventCandidate>[];
     final toUpdate = <CalendarEventCandidate>[];

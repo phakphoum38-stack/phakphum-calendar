@@ -13,8 +13,7 @@ class ResilientCalendarSyncResult {
   final SyncHistoryEntry historyEntry;
   final List<CalendarSyncOperationResult> operations;
 
-  bool get hasFailures =>
-      operations.any((operation) => !operation.success);
+  bool get hasFailures => operations.any((operation) => !operation.success);
 }
 
 class ResilientCalendarSyncExecutor {
@@ -22,19 +21,16 @@ class ResilientCalendarSyncExecutor {
     required CalendarSyncGateway gateway,
     required SyncHistoryRepository historyRepository,
     this.maxAttempts = 2,
-  })  : _gateway = gateway,
-        _historyRepository = historyRepository;
+  }) : _gateway = gateway,
+       _historyRepository = historyRepository;
 
   final CalendarSyncGateway _gateway;
   final SyncHistoryRepository _historyRepository;
   final int maxAttempts;
 
-  Future<ResilientCalendarSyncResult> execute(
-    CalendarSyncPlan plan,
-  ) async {
+  Future<ResilientCalendarSyncResult> execute(CalendarSyncPlan plan) async {
     final startedAt = DateTime.now();
-    final historyId =
-        'sync-${startedAt.microsecondsSinceEpoch}';
+    final historyId = 'sync-${startedAt.microsecondsSinceEpoch}';
 
     var history = SyncHistoryEntry(
       id: historyId,
@@ -93,8 +89,8 @@ class ResilientCalendarSyncExecutor {
     final status = failed == 0
         ? SyncHistoryStatus.success
         : inserted + updated + deleted == 0
-            ? SyncHistoryStatus.failure
-            : SyncHistoryStatus.partialSuccess;
+        ? SyncHistoryStatus.failure
+        : SyncHistoryStatus.partialSuccess;
 
     history = history.copyWith(
       finishedAt: DateTime.now(),
@@ -134,9 +130,7 @@ class ResilientCalendarSyncExecutor {
       } catch (error) {
         lastError = error;
         if (attempt < maxAttempts) {
-          await Future<void>.delayed(
-            Duration(milliseconds: 250 * attempt),
-          );
+          await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
         }
       }
     }
