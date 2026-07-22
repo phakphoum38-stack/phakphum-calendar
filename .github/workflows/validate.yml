@@ -23,7 +23,7 @@ on:
       - ".github/workflows/validate.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: validate-${{ github.ref }}
@@ -38,8 +38,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -55,7 +53,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Format Dart files
+      - name: Check formatting
         shell: bash
         run: |
           targets=(lib test)
@@ -64,40 +62,7 @@ jobs:
             targets+=(integration_test)
           fi
 
-          dart format "${targets[@]}"
-
-      - name: Commit generated changes
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add lib test pubspec.lock
-
-          if [ -d integration_test ]; then
-            git add integration_test
-          fi
-
-          if git diff --cached --quiet; then
-            echo "No generated changes to commit."
-            exit 0
-          fi
-
-          git commit -m "style: format Dart files and update lockfile"
-          git push
-
-      - name: Verify pull request has no generated changes
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          if ! git diff --quiet; then
-            echo "Generated files or formatting are not up to date."
-            git diff --stat
-            git diff
-            exit 1
-          fi
+          dart format --output=none --set-exit-if-changed "${targets[@]}"
 
       - name: Analyze source
         run: flutter analyze --no-fatal-infos --fatal-warnings
