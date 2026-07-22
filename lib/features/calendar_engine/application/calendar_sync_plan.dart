@@ -1,5 +1,4 @@
 import '../domain/calendar_sync_command.dart';
-import '../domain/managed_calendar_event.dart';
 
 class CalendarUpdateOperation {
   const CalendarUpdateOperation({required this.eventId, required this.command});
