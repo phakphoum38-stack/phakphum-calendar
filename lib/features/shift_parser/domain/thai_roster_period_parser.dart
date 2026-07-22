@@ -1,8 +1,5 @@
 class ThaiRosterPeriod {
-  const ThaiRosterPeriod({
-    required this.start,
-    required this.end,
-  });
+  const ThaiRosterPeriod({required this.start, required this.end});
 
   final DateTime start;
   final DateTime end;
@@ -78,15 +75,10 @@ class ThaiRosterPeriodParser {
     final end = _readDate(matches[1]);
 
     if (end.isBefore(start)) {
-      throw FormatException(
-        'วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text',
-      );
+      throw FormatException('วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text');
     }
 
-    return ThaiRosterPeriod(
-      start: start,
-      end: end,
-    );
+    return ThaiRosterPeriod(start: start, end: end);
   }
 
   String _normalize(String text) {
@@ -127,9 +119,7 @@ class ThaiRosterPeriodParser {
     final date = DateTime(year, month, day);
 
     if (date.year != year || date.month != month || date.day != day) {
-      throw FormatException(
-        'วันที่ไม่ถูกต้อง: $dayText $monthText $yearText',
-      );
+      throw FormatException('วันที่ไม่ถูกต้อง: $dayText $monthText $yearText');
     }
 
     return date;
