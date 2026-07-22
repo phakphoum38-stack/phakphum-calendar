@@ -1,8 +1,5 @@
 class ThaiRosterPeriod {
-  const ThaiRosterPeriod({
-    required this.start,
-    required this.end,
-  });
+  const ThaiRosterPeriod({required this.start, required this.end});
 
   final DateTime start;
   final DateTime end;
@@ -71,49 +68,28 @@ class ThaiRosterPeriodParser {
     final matches = datePattern.allMatches(normalizedText).toList();
 
     if (matches.length < 2) {
-      throw FormatException(
-        'ไม่พบช่วงวันที่ในข้อความ: $text',
-      );
+      throw FormatException('ไม่พบช่วงวันที่ในข้อความ: $text');
     }
 
     final start = _readDate(matches[0]);
     final end = _readDate(matches[1]);
 
     if (end.isBefore(start)) {
-      throw FormatException(
-        'วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text',
-      );
+      throw FormatException('วันที่สิ้นสุดอยู่ก่อนวันที่เริ่มต้น: $text');
     }
 
-    return ThaiRosterPeriod(
-      start: start,
-      end: end,
-    );
+    return ThaiRosterPeriod(start: start, end: end);
   }
 
   String _normalizeText(String text) {
     return text
         // พ.ศ. / พ. ศ. / พศ / พศ.
-        .replaceAll(
-          RegExp(r'พ\s*\.\s*ศ\s*\.?'),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'พ\s*ศ\s*\.?'),
-          '',
-        )
-
+        .replaceAll(RegExp(r'พ\s*\.\s*ศ\s*\.?'), '')
+        .replaceAll(RegExp(r'พ\s*ศ\s*\.?'), '')
         // เปลี่ยนขีดชนิดต่าง ๆ ให้เป็นขีดมาตรฐาน
-        .replaceAll(
-          RegExp(r'[–—−]'),
-          '-',
-        )
-
+        .replaceAll(RegExp(r'[–—−]'), '-')
         // รวมช่องว่างซ้ำ
-        .replaceAll(
-          RegExp(r'\s+'),
-          ' ',
-        )
+        .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
 
@@ -122,52 +98,36 @@ class ThaiRosterPeriodParser {
     final rawMonthText = match.group(2);
     final yearText = match.group(3);
 
-    if (dayText == null ||
-        rawMonthText == null ||
-        yearText == null) {
-      throw const FormatException(
-        'ข้อมูลวันที่ไม่ครบถ้วน',
-      );
+    if (dayText == null || rawMonthText == null || yearText == null) {
+      throw const FormatException('ข้อมูลวันที่ไม่ครบถ้วน');
     }
 
     final day = int.tryParse(dayText);
 
     if (day == null) {
-      throw FormatException(
-        'วันไม่ถูกต้อง: $dayText',
-      );
+      throw FormatException('วันไม่ถูกต้อง: $dayText');
     }
 
     final monthText = _normalizeMonth(rawMonthText);
     final month = _months[monthText];
 
     if (month == null) {
-      throw FormatException(
-        'ไม่รู้จักเดือนไทย: $rawMonthText',
-      );
+      throw FormatException('ไม่รู้จักเดือนไทย: $rawMonthText');
     }
 
     final parsedYear = int.tryParse(yearText);
 
     if (parsedYear == null) {
-      throw FormatException(
-        'ปีไม่ถูกต้อง: $yearText',
-      );
+      throw FormatException('ปีไม่ถูกต้อง: $yearText');
     }
 
     final year = _toGregorianYear(parsedYear);
 
-    final date = DateTime(
-      year,
-      month,
-      day,
-    );
+    final date = DateTime(year, month, day);
 
     // DateTime จะปรับวันที่เกินเดือนไปเดือนถัดไปอัตโนมัติ
     // จึงต้องตรวจสอบค่าที่สร้างแล้วอีกครั้ง
-    if (date.year != year ||
-        date.month != month ||
-        date.day != day) {
+    if (date.year != year || date.month != month || date.day != day) {
       throw FormatException(
         'วันที่ไม่ถูกต้อง: $dayText $rawMonthText $yearText',
       );
@@ -177,10 +137,7 @@ class ThaiRosterPeriodParser {
   }
 
   String _normalizeMonth(String monthText) {
-    return monthText
-        .replaceAll('.', '')
-        .replaceAll(RegExp(r'\s+'), '')
-        .trim();
+    return monthText.replaceAll('.', '').replaceAll(RegExp(r'\s+'), '').trim();
   }
 
   int _toGregorianYear(int year) {
