@@ -2,17 +2,21 @@ import 'package:googleapis/drive/v3.dart' as drive;
 
 import 'google_api_client.dart';
 
+enum OwnedSheetOrder { firstCreated, recentlyModified }
+
 class RecentOwnedSheet {
   const RecentOwnedSheet({
     required this.id,
     required this.name,
     required this.url,
+    this.createdAt,
     this.modifiedAt,
   });
 
   final String id;
   final String name;
   final String url;
+  final DateTime? createdAt;
   final DateTime? modifiedAt;
 }
 
@@ -24,22 +28,31 @@ class DriveOwnershipService {
       "mimeType = '$googleSheetMimeType' and trashed = false "
       "and 'me' in owners";
 
-  Future<List<RecentOwnedSheet>> listRecentlyModifiedOwnedSpreadsheets(
+  Future<List<RecentOwnedSheet>> listOwnedSpreadsheets(
     GoogleApiClient client, {
     int limit = 20,
+    OwnedSheetOrder order = OwnedSheetOrder.recentlyModified,
   }) async {
     final response = await drive.DriveApi(client).files.list(
       q: recentOwnedSheetsQuery,
-      orderBy: 'modifiedByMeTime desc,name',
+      orderBy: switch (order) {
+        OwnedSheetOrder.firstCreated => 'createdTime,name',
+        OwnedSheetOrder.recentlyModified => 'modifiedByMeTime desc,name',
+      },
       corpora: 'user',
       spaces: 'drive',
       pageSize: limit.clamp(1, 50),
       $fields:
-          'files(id,name,mimeType,ownedByMe,trashed,modifiedTime,'
+          'files(id,name,mimeType,ownedByMe,trashed,createdTime,modifiedTime,'
           'modifiedByMeTime,webViewLink)',
     );
     return recentOwnedSheetsFromFiles(response.files ?? const []);
   }
+
+  Future<List<RecentOwnedSheet>> listRecentlyModifiedOwnedSpreadsheets(
+    GoogleApiClient client, {
+    int limit = 20,
+  }) => listOwnedSpreadsheets(client, limit: limit);
 
   static List<RecentOwnedSheet> recentOwnedSheetsFromFiles(
     Iterable<drive.File> files,
@@ -58,6 +71,7 @@ class DriveOwnershipService {
           url: file.webViewLink?.trim().isNotEmpty == true
               ? file.webViewLink!.trim()
               : 'https://docs.google.com/spreadsheets/d/${file.id}/edit',
+          createdAt: file.createdTime,
           modifiedAt: file.modifiedByMeTime ?? file.modifiedTime,
         ),
   ];

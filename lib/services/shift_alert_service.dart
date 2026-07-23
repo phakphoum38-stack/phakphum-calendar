@@ -148,6 +148,8 @@ class ShiftAlertService {
             primaryShiftKey: shift.linkedShiftKey ?? shift.sourceKey,
             targetShiftKey: shift.sourceKey,
             offShiftKey: offConflict ? shift.sourceKey : null,
+            calendarEventId: period.id,
+            calendarEventUrl: period.htmlLink,
           ),
         );
       }

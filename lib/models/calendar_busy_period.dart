@@ -5,6 +5,7 @@ class CalendarBusyPeriod {
     required this.start,
     required this.end,
     required this.legacyKey,
+    this.htmlLink,
   });
 
   final String id;
@@ -12,6 +13,7 @@ class CalendarBusyPeriod {
   final DateTime start;
   final DateTime end;
   final String legacyKey;
+  final String? htmlLink;
 }
 
 class CalendarReadResult {
