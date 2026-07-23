@@ -6,9 +6,8 @@ import 'failed_sync_json_codec.dart';
 class SharedPreferencesFailedSyncRepository implements FailedSyncRepository {
   SharedPreferencesFailedSyncRepository({
     SharedPreferencesAsync? preferences,
-    FailedSyncJsonCodec codec = const FailedSyncJsonCodec(),
-  }) : _preferences = preferences ?? SharedPreferencesAsync(),
-       _codec = codec;
+    this._codec = const FailedSyncJsonCodec(),
+  }) : _preferences = preferences ?? SharedPreferencesAsync();
 
   static const keyPrefix = 'sce.failed_sync.v1.';
   final SharedPreferencesAsync _preferences;

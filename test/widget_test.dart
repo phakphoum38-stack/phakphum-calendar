@@ -42,7 +42,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Shift Calendar'), findsOneWidget);
+    expect(find.text('Phakphum Calendar'), findsOneWidget);
     expect(find.text('แหล่งข้อมูลเวร'), findsOneWidget);
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.text('เข้าสู่ระบบด้วย Google'), findsOneWidget);
@@ -62,7 +62,10 @@ void main() {
     await tester.tap(find.text('หน้าแรก'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownButtonFormField<int>).last);
+    final yearDropdown = find.byType(DropdownButtonFormField<int>).last;
+    await tester.ensureVisible(yearDropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(yearDropdown);
     await tester.pumpAndSettle();
     await tester.tap(find.text('${DateTime.now().year + 1}').last);
     await tester.pumpAndSettle();

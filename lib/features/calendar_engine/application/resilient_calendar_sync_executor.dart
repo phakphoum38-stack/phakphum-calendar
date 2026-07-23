@@ -18,11 +18,10 @@ class ResilientCalendarSyncResult {
 
 class ResilientCalendarSyncExecutor {
   const ResilientCalendarSyncExecutor({
-    required CalendarSyncGateway gateway,
-    required SyncHistoryRepository historyRepository,
+    required this._gateway,
+    required this._historyRepository,
     this.maxAttempts = 2,
-  }) : _gateway = gateway,
-       _historyRepository = historyRepository;
+  });
 
   final CalendarSyncGateway _gateway;
   final SyncHistoryRepository _historyRepository;

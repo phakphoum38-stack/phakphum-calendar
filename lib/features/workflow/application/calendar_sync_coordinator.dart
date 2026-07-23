@@ -5,12 +5,10 @@ import '../../diff_engine/domain/calendar_diff.dart';
 
 class CalendarSyncCoordinator {
   const CalendarSyncCoordinator({
-    required CalendarSyncGateway gateway,
-    required CalendarSyncPlanBuilder planBuilder,
-    required ResilientCalendarSyncExecutor executor,
-  }) : _gateway = gateway,
-       _planBuilder = planBuilder,
-       _executor = executor;
+    required this._gateway,
+    required this._planBuilder,
+    required this._executor,
+  });
 
   final CalendarSyncGateway _gateway;
   final CalendarSyncPlanBuilder _planBuilder;

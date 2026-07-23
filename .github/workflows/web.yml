@@ -2,12 +2,8 @@ name: Build and Deploy Web
 
 on:
   workflow_dispatch:
-
   push:
-    branches:
-      - main
-      - release-v2.0
-      - release-v3.0
+    branches: [main]
     paths:
       - "lib/**"
       - "assets/**"
@@ -22,7 +18,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -50,10 +46,7 @@ jobs:
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
-
-          flutter build web \
-            --release \
-            --base-href "/$REPO_NAME/" \
+          flutter build web --release --base-href "/$REPO_NAME/" \
             --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
             --dart-define=GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID"
 
@@ -72,20 +65,15 @@ jobs:
 
   deploy-pages:
     name: Deploy GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build-web
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    if: |
-      github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/release-v2.0' ||
-      github.ref == 'refs/heads/release-v3.0'
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

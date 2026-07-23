@@ -17,12 +17,10 @@ class ResumeSyncResult {
 
 class ResumeSyncService {
   const ResumeSyncService({
-    required CalendarSyncGateway gateway,
-    required SyncHistoryRepository historyRepository,
-    required FailedSyncRepository failedRepository,
-  }) : _gateway = gateway,
-       _historyRepository = historyRepository,
-       _failedRepository = failedRepository;
+    required this._gateway,
+    required this._historyRepository,
+    required this._failedRepository,
+  });
 
   final CalendarSyncGateway _gateway;
   final SyncHistoryRepository _historyRepository;
