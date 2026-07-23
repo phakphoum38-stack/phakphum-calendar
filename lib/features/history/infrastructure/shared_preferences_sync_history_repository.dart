@@ -6,10 +6,9 @@ import 'sync_history_json_codec.dart';
 class SharedPreferencesSyncHistoryRepository implements SyncHistoryRepository {
   SharedPreferencesSyncHistoryRepository({
     SharedPreferencesAsync? preferences,
-    SyncHistoryJsonCodec codec = const SyncHistoryJsonCodec(),
+    this._codec = const SyncHistoryJsonCodec(),
     this.maximumEntries = 100,
-  }) : _preferences = preferences ?? SharedPreferencesAsync(),
-       _codec = codec;
+  }) : _preferences = preferences ?? SharedPreferencesAsync();
 
   static const storageKey = 'sce.sync_history.v1';
   final SharedPreferencesAsync _preferences;

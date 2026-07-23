@@ -9,10 +9,9 @@ import 'workflow_preview_builder.dart';
 
 class ShiftCalendarWorkflowController extends ChangeNotifier {
   ShiftCalendarWorkflowController({
-    required WorkflowPreviewBuilder previewBuilder,
-    required CalendarSyncCoordinator syncCoordinator,
-  }) : _previewBuilder = previewBuilder,
-       _syncCoordinator = syncCoordinator;
+    required this._previewBuilder,
+    required this._syncCoordinator,
+  });
 
   final WorkflowPreviewBuilder _previewBuilder;
   final CalendarSyncCoordinator _syncCoordinator;

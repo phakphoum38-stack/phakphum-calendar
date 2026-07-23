@@ -162,13 +162,34 @@ class _AppShellState extends State<AppShell> {
               : content;
           return Scaffold(
             appBar: AppBar(
-              title: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              titleSpacing: 16,
+              title: const Row(
                 children: [
-                  Text('Shift Calendar'),
-                  Text(
-                    'Sheets → Google Calendar',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                  CircleAvatar(
+                    radius: 20,
+                    child: Icon(Icons.calendar_month_rounded),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Phakphum Calendar',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Version 4.0 • Hospital Workspace',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -968,6 +989,11 @@ class _DashboardPageState extends State<_DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _VersionFourHero(
+                controller: controller,
+                openAlerts: widget.openAlerts,
+              ),
+              const SizedBox(height: 16),
               _GoogleAccountCard(
                 controller: controller,
                 perform: widget.perform,
@@ -1343,7 +1369,7 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
                   ? const Center(child: Text('ไม่พบ Google Sheets'))
                   : ListView.separated(
                       itemCount: files.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final file = files[index];
                         final alreadyAdded = widget.alreadyAddedSpreadsheetIds
@@ -1389,6 +1415,155 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
           label: Text('เพิ่ม ${_selectedIds.length} ไฟล์'),
         ),
       ],
+    );
+  }
+}
+
+class _VersionFourHero extends StatelessWidget {
+  const _VersionFourHero({required this.controller, required this.openAlerts});
+
+  final AppController controller;
+  final VoidCallback openAlerts;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.secondaryContainer,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 700;
+
+          final information = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Chip(
+                    avatar: Icon(Icons.auto_awesome, size: 18),
+                    label: Text('VERSION 4.0'),
+                  ),
+                  Chip(
+                    avatar: Icon(Icons.verified_outlined, size: 18),
+                    label: Text('Hospital Workspace'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'จัดการตารางเวรในที่เดียว',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'อ่านเวรจาก Google Sheets ตรวจรายการซ้ำ '
+                'จัดการการแจ้งเตือน และบันทึกลง Google Calendar '
+                'ด้วยขั้นตอนที่ตรวจสอบได้',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton.icon(
+                    onPressed: controller.pendingAlertCount > 0
+                        ? openAlerts
+                        : null,
+                    icon: const Icon(Icons.notifications_active_outlined),
+                    label: Text(
+                      controller.pendingAlertCount > 0
+                          ? 'ตรวจ ${controller.pendingAlertCount} การแจ้งเตือน'
+                          : 'ไม่มีการแจ้งเตือนค้าง',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: Icon(
+                      controller.auth.isSignedIn
+                          ? Icons.cloud_done_outlined
+                          : Icons.cloud_off_outlined,
+                    ),
+                    label: Text(
+                      controller.auth.isSignedIn
+                          ? 'เชื่อมต่อ Google แล้ว'
+                          : 'ยังไม่ได้เชื่อมต่อ Google',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+
+          final illustration = Container(
+            width: 190,
+            height: 170,
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.calendar_month_rounded,
+                  size: 108,
+                  color: colorScheme.primary,
+                ),
+                Positioned(
+                  right: 24,
+                  bottom: 24,
+                  child: CircleAvatar(
+                    radius: 26,
+                    backgroundColor: colorScheme.tertiaryContainer,
+                    child: Icon(
+                      Icons.medical_services_outlined,
+                      color: colorScheme.onTertiaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                information,
+                const SizedBox(height: 20),
+                Align(child: illustration),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: information),
+              const SizedBox(width: 24),
+              illustration,
+            ],
+          );
+        },
+      ),
     );
   }
 }

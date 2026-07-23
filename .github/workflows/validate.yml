@@ -2,16 +2,10 @@ name: Validate Flutter
 
 on:
   workflow_dispatch:
-
   pull_request:
-    branches:
-      - main
-      - develop
-
+    branches: [main, develop]
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
     paths:
       - "lib/**"
       - "test/**"
@@ -31,7 +25,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Format, Analyze and Test
+    name: Format, analyze and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -54,18 +48,10 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        shell: bash
-        run: |
-          targets=(lib test)
+        run: dart format --output=none --set-exit-if-changed lib test integration_test 2>/dev/null || dart format --output=none --set-exit-if-changed lib test
 
-          if [ -d integration_test ]; then
-            targets+=(integration_test)
-          fi
+      - name: Analyze
+        run: flutter analyze --fatal-infos
 
-          dart format --output=none --set-exit-if-changed "${targets[@]}"
-
-      - name: Analyze source
-        run: flutter analyze --no-fatal-infos --fatal-warnings
-
-      - name: Run unit tests
+      - name: Run tests
         run: flutter test --reporter expanded

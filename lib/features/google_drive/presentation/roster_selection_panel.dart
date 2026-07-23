@@ -98,7 +98,7 @@ class RosterSelectionPanel extends StatelessWidget {
               : ListView.separated(
                   shrinkWrap: true,
                   itemCount: controller.availableFiles.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final file = controller.availableFiles[index];
                     return ListTile(

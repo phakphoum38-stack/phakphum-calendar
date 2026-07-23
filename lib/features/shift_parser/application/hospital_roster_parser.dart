@@ -6,8 +6,8 @@ import '../domain/thai_roster_period_parser.dart';
 
 class HospitalRosterParser {
   const HospitalRosterParser({
-    ThaiRosterPeriodParser periodParser = const ThaiRosterPeriodParser(),
-  }) : _periodParser = periodParser;
+    this._periodParser = const ThaiRosterPeriodParser(),
+  });
 
   final ThaiRosterPeriodParser _periodParser;
 

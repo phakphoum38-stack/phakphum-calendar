@@ -48,7 +48,7 @@ class _SyncHistoryScreenState extends State<SyncHistoryScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: widget.controller.entries.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final entry = widget.controller.entries[index];
 
