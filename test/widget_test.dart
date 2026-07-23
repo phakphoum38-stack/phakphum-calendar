@@ -49,7 +49,9 @@ void main() {
     expect(find.text('รีเฟรช/อ่านใหม่ตอนนี้'), findsOneWidget);
     expect(find.text('ชื่อที่ต้องค้นหา'), findsOneWidget);
     expect(find.text('กรอกชื่อให้ตรงกับชื่อในตารางเวร'), findsOneWidget);
-    expect(find.text('เลือก Google Sheets'), findsOneWidget);
+    expect(find.text('ค้นหาไฟล์แรก'), findsOneWidget);
+    expect(find.text('แก้ไขล่าสุด'), findsOneWidget);
+    expect(find.text('วาง URL จากเบราว์เซอร์'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('${DateTime.now().year}'), findsNothing);
 
@@ -111,9 +113,9 @@ void main() {
     await tester.pumpWidget(PhakphumCalendarApp(controller: controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('ยังไม่ได้เลือก Google Sheets'), findsOneWidget);
-    expect(find.text('เลือก Google Sheets'), findsOneWidget);
-    expect(find.textContaining('ไม่ต้องวางลิงก์'), findsOneWidget);
+    expect(find.text('ยังไม่ได้เลือกแหล่งข้อมูลเวร'), findsOneWidget);
+    expect(find.text('ค้นหาไฟล์แรก'), findsOneWidget);
+    expect(find.text('วาง URL จากเบราว์เซอร์'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

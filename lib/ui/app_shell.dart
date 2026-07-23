@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
 import '../models/saved_sheet.dart';
+import '../models/roster_period.dart';
 import '../models/shift.dart';
 import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../services/calendar_service.dart';
+import '../services/calendar_color_service.dart';
 import '../services/drive_ownership_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/shift_color_service.dart';
@@ -115,7 +117,7 @@ class _AppShellState extends State<AppShell> {
               openAlerts: () => setState(() => selectedIndex = 2),
               configureGoogleOAuth: _configureGoogleOAuth,
             ),
-            _PreviewPage(controller: controller),
+            _PreviewPage(controller: controller, perform: _perform),
             _NotificationsPage(controller: controller, perform: _perform),
             _AuditPage(
               controller: controller,
@@ -180,7 +182,7 @@ class _AppShellState extends State<AppShell> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'Version 4.0 • Hospital Workspace',
+                          'Version 4.1 • Hospital Workspace',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -950,14 +952,16 @@ class _DashboardPageState extends State<_DashboardPage> {
         ),
       );
 
-  Future<void> _pickGoogleSheet() async {
+  Future<void> _pickGoogleSheet({
+    OwnedSheetOrder order = OwnedSheetOrder.recentlyModified,
+  }) async {
     final controller = widget.controller;
 
     if (!controller.auth.isSignedIn) {
       throw StateError('กรุณาเข้าสู่ระบบ Google ก่อนเลือกไฟล์');
     }
 
-    await controller.findAvailableSourceSheets();
+    await controller.findAvailableSourceSheets(order: order);
     if (!mounted) return;
 
     if (controller.recentOwnedSheets.isEmpty) {
@@ -968,6 +972,7 @@ class _DashboardPageState extends State<_DashboardPage> {
       context: context,
       builder: (context) => _GoogleSheetPickerDialog(
         files: controller.recentOwnedSheets,
+        order: order,
         alreadyAddedSpreadsheetIds: controller.savedSheetsForCurrentAccount
             .map((sheet) => sheet.spreadsheetId)
             .toSet(),
@@ -976,6 +981,88 @@ class _DashboardPageState extends State<_DashboardPage> {
 
     if (selected == null || selected.isEmpty || !mounted) return;
     await controller.selectRecentSourceSheets(selected);
+  }
+
+  Future<void> _pasteGoogleSheetUrl() async {
+    final input = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('วาง URL ของ Google Sheets'),
+        content: SizedBox(
+          width: 540,
+          child: TextField(
+            controller: input,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'URL ที่คัดลอกจากเบราว์เซอร์',
+              hintText: 'https://docs.google.com/spreadsheets/d/…/edit',
+              helperText:
+                  'บันทึกเฉพาะในเครื่องของบัญชีนี้ และไม่ส่ง URL ขึ้น GitHub',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, input.text.trim()),
+            child: const Text('ตรวจและใช้ไฟล์นี้'),
+          ),
+        ],
+      ),
+    );
+    input.dispose();
+    if (url == null || url.isEmpty) return;
+    await widget.controller.selectSourceForCurrentAccount(url);
+  }
+
+  Future<void> _addPeriod() async {
+    if (month == null || year == null) {
+      throw StateError('กรุณาเลือกเดือนและปี ค.ศ. ก่อนกดเพิ่ม');
+    }
+    final periods = <RosterPeriod>{
+      ...widget.controller.settings.periods,
+      RosterPeriod(year: year!, month: month!),
+    }.toList()..sort((left, right) => left.key.compareTo(right.key));
+    await widget.controller.updateSettings(
+      widget.controller.settings.copyWith(
+        targetName: searchName.text.trim(),
+        year: year,
+        month: month,
+        periods: periods,
+      ),
+    );
+  }
+
+  Future<void> _removePeriod(RosterPeriod period) =>
+      widget.controller.updateSettings(
+        widget.controller.settings.copyWith(
+          periods: widget.controller.settings.periods
+              .where((item) => item != period)
+              .toList(),
+        ),
+      );
+
+  Future<void> _addManualSourceItem() async {
+    await _saveSettings();
+    if (!mounted) return;
+    final result = await showDialog<_ManualSourceResult>(
+      context: context,
+      builder: (context) => const _ManualSourceDialog(),
+    );
+    if (result == null) return;
+    await widget.controller.addManualShift(
+      sourceKind: result.sourceKind,
+      title: result.title,
+      start: result.start,
+      end: result.end,
+      category: result.category,
+      colorCommand: result.colorCommand,
+    );
   }
 
   @override
@@ -1048,9 +1135,11 @@ class _DashboardPageState extends State<_DashboardPage> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      controller.hasSelectedSourceSheet
+                                      controller.localSourceLabel != null
+                                          ? 'อ่านในหน่วยความจำ • ไม่อัปโหลดไฟล์หรือชื่อไฟล์'
+                                          : controller.hasRosterSource
                                           ? 'ไฟล์หลักสำหรับอ่านตารางเวร • บันทึกไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
-                                          : 'เลือกไฟล์จาก Google Drive โดยไม่ต้องวางลิงก์',
+                                          : 'ค้นหาจาก Drive หรือวาง URL ที่คัดลอกจากเบราว์เซอร์',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -1058,31 +1147,67 @@ class _DashboardPageState extends State<_DashboardPage> {
                                   ],
                                 ),
                               ),
-                              if (controller.hasSelectedSourceSheet)
+                              if (controller.hasRosterSource)
                                 const Icon(Icons.check_circle_outline),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 10),
-                      FilledButton.icon(
-                        onPressed:
-                            controller.auth.isSignedIn && !controller.busy
-                            ? () => widget.perform(_pickGoogleSheet)
-                            : null,
-                        icon: controller.busy
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.add_to_drive_outlined),
-                        label: Text(
-                          controller.hasSelectedSourceSheet
-                              ? 'เพิ่ม Google Sheets'
-                              : 'เลือก Google Sheets',
-                        ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            onPressed:
+                                controller.auth.isSignedIn && !controller.busy
+                                ? () => widget.perform(
+                                    () => _pickGoogleSheet(
+                                      order: OwnedSheetOrder.firstCreated,
+                                    ),
+                                  )
+                                : null,
+                            icon: const Icon(Icons.history_outlined),
+                            label: const Text('ค้นหาไฟล์แรก'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                controller.auth.isSignedIn && !controller.busy
+                                ? () => widget.perform(_pickGoogleSheet)
+                                : null,
+                            icon: const Icon(Icons.update_outlined),
+                            label: const Text('แก้ไขล่าสุด'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                controller.auth.isSignedIn && !controller.busy
+                                ? () => widget.perform(_pasteGoogleSheetUrl)
+                                : null,
+                            icon: const Icon(Icons.link),
+                            label: const Text('วาง URL จากเบราว์เซอร์'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: controller.busy
+                                ? null
+                                : () => widget.perform(() async {
+                                    await _saveSettings();
+                                    await controller.importLocalRosterFile();
+                                  }),
+                            icon: const Icon(Icons.upload_file_outlined),
+                            label: const Text(
+                              'ไฟล์ .xlsx / .csv / .tsv / .txt',
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: controller.busy
+                                ? null
+                                : () => widget.perform(_addManualSourceItem),
+                            icon: const Icon(Icons.add_a_photo_outlined),
+                            label: const Text(
+                              'รูป / กล้อง / เว็บไซต์ (กรอกเอง)',
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -1170,6 +1295,36 @@ class _DashboardPageState extends State<_DashboardPage> {
                             ],
                           );
                         },
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: controller.busy
+                                ? null
+                                : () => widget.perform(_addPeriod),
+                            icon: const Icon(Icons.add),
+                            label: const Text('เพิ่มเดือน (ไม่จำกัด)'),
+                          ),
+                          for (final period in controller.settings.periods)
+                            InputChip(
+                              label: Text(
+                                '${_thaiMonths[period.month - 1]} ${period.year}',
+                              ),
+                              onDeleted: controller.busy
+                                  ? null
+                                  : () => widget.perform(
+                                      () => _removePeriod(period),
+                                    ),
+                            ),
+                          if (controller.settings.periods.isEmpty)
+                            const Text(
+                              'ถ้าไม่กดเพิ่ม แอปจะอ่านเดือนที่เลือก 1 เดือน',
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       _AutoRefreshControls(
@@ -1285,10 +1440,12 @@ class _DashboardPageState extends State<_DashboardPage> {
 class _GoogleSheetPickerDialog extends StatefulWidget {
   const _GoogleSheetPickerDialog({
     required this.files,
+    required this.order,
     required this.alreadyAddedSpreadsheetIds,
   });
 
   final List<RecentOwnedSheet> files;
+  final OwnedSheetOrder order;
   final Set<String> alreadyAddedSpreadsheetIds;
 
   @override
@@ -1303,7 +1460,7 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
 
   List<RecentOwnedSheet> get _filteredFiles {
     final query = _query.trim().toLowerCase();
-    if (query.isEmpty) return widget.files;
+    if (query.isEmpty) return widget.files.take(10).toList(growable: false);
     return widget.files
         .where((file) => file.name.toLowerCase().contains(query))
         .toList(growable: false);
@@ -1358,6 +1515,8 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
+                '${widget.order == OwnedSheetOrder.firstCreated ? 'เรียงจากไฟล์ที่สร้างก่อน' : 'เรียงจากไฟล์ที่แก้ไขล่าสุด'} • '
+                'แสดงหน้าแรก ${files.length}/${widget.files.length} ไฟล์ • '
                 'เลือกใหม่ ${_selectedIds.length} ไฟล์ • '
                 'เพิ่มไว้แล้ว ${widget.alreadyAddedSpreadsheetIds.length} ไฟล์',
                 style: Theme.of(context).textTheme.bodySmall,
@@ -1389,6 +1548,11 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
                           subtitle: Text(
                             alreadyAdded
                                 ? 'เพิ่มไว้แล้ว'
+                                : widget.order == OwnedSheetOrder.firstCreated
+                                ? file.createdAt == null
+                                      ? 'ไม่พบเวลาที่สร้างไฟล์'
+                                      : 'สร้าง ${_thaiDate(file.createdAt!)} '
+                                            '${_clock(file.createdAt!)}'
                                 : file.modifiedAt == null
                                 ? 'ไม่พบเวลาแก้ไขล่าสุด'
                                 : 'แก้ไขล่าสุด ${_thaiDate(file.modifiedAt!)} '
@@ -1457,7 +1621,7 @@ class _VersionFourHero extends StatelessWidget {
                 children: [
                   Chip(
                     avatar: Icon(Icons.auto_awesome, size: 18),
-                    label: Text('VERSION 4.0'),
+                    label: Text('VERSION 4.1'),
                   ),
                   Chip(
                     avatar: Icon(Icons.verified_outlined, size: 18),
@@ -1748,7 +1912,7 @@ class _AutoRefreshControls extends StatelessWidget {
             DropdownButton<int>(
               value: settings.refreshSeconds,
               items: [
-                for (var seconds = 1; seconds <= 10; seconds++)
+                for (var seconds = 1; seconds <= 60; seconds++)
                   DropdownMenuItem(
                     value: seconds,
                     child: Text('$seconds วินาที'),
@@ -1849,9 +2013,222 @@ class _StatCard extends StatelessWidget {
   );
 }
 
+class _ManualSourceResult {
+  const _ManualSourceResult({
+    required this.sourceKind,
+    required this.title,
+    required this.start,
+    required this.end,
+    required this.category,
+    required this.colorCommand,
+  });
+
+  final String sourceKind;
+  final String title;
+  final DateTime start;
+  final DateTime end;
+  final ShiftCategory category;
+  final String colorCommand;
+}
+
+class _ManualSourceDialog extends StatefulWidget {
+  const _ManualSourceDialog();
+
+  @override
+  State<_ManualSourceDialog> createState() => _ManualSourceDialogState();
+}
+
+class _ManualSourceDialogState extends State<_ManualSourceDialog> {
+  static const sourceKinds = [
+    'รูป/ภาพถ่าย',
+    'กล้อง',
+    'เว็บไซต์',
+    'Google Workspace อื่น',
+    'ไฟล์ชนิดอื่น',
+  ];
+
+  final title = TextEditingController();
+  final colorCommand = TextEditingController();
+  String sourceKind = sourceKinds.first;
+  DateTime date = DateTime.now();
+  TimeOfDay start = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay end = const TimeOfDay(hour: 16, minute: 0);
+  ShiftCategory category = ShiftCategory.own;
+
+  @override
+  void dispose() {
+    title.dispose();
+    colorCommand.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      firstDate: DateTime(date.year - 5),
+      lastDate: DateTime(date.year + 10, 12, 31),
+      initialDate: date,
+    );
+    if (selected != null) setState(() => date = selected);
+  }
+
+  Future<void> _pickTime({required bool isStart}) async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: isStart ? start : end,
+    );
+    if (selected == null) return;
+    setState(() {
+      if (isStart) {
+        start = selected;
+      } else {
+        end = selected;
+      }
+    });
+  }
+
+  void _submit() {
+    final startAt = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      start.hour,
+      start.minute,
+    );
+    var endAt = DateTime(date.year, date.month, date.day, end.hour, end.minute);
+    if (!endAt.isAfter(startAt)) {
+      endAt = endAt.add(const Duration(days: 1));
+    }
+    Navigator.pop(
+      context,
+      _ManualSourceResult(
+        sourceKind: sourceKind,
+        title: title.text.trim(),
+        start: startAt,
+        end: endAt,
+        category: category,
+        colorCommand: colorCommand.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('เพิ่มรายการจากต้นฉบับอื่น'),
+    content: SizedBox(
+      width: 560,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'แอปไม่เดาข้อความด้วย OCR กรุณาอ่านต้นฉบับและกรอกข้อมูล '
+              'จากนั้นตรวจอีกครั้งในแท็บตัวอย่างก่อนซิงก์',
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: sourceKind,
+              decoration: const InputDecoration(labelText: 'ชนิดต้นฉบับ'),
+              items: [
+                for (final value in sourceKinds)
+                  DropdownMenuItem(value: value, child: Text(value)),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => sourceKind = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: title,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'ชื่อเวร/ชื่อกิจกรรมตามต้นฉบับ',
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<ShiftCategory>(
+              initialValue: category,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'ประเภทรายการ'),
+              items: [
+                for (final value in ShiftCategory.values)
+                  DropdownMenuItem(value: value, child: Text(value.label)),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => category = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.today),
+                  label: Text(_thaiDate(date)),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _pickTime(isStart: true),
+                  icon: const Icon(Icons.schedule),
+                  label: Text('เริ่ม ${start.format(context)}'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _pickTime(isStart: false),
+                  icon: const Icon(Icons.schedule_outlined),
+                  label: Text('สิ้นสุด ${end.format(context)}'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: colorCommand,
+              decoration: const InputDecoration(
+                labelText: 'คำสั่งสี (ไม่กรอก = ค่าเริ่มต้น)',
+                hintText: 'เช่น แดง, tomato, สี=11',
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('ยกเลิก'),
+      ),
+      FilledButton.icon(
+        onPressed: _submit,
+        icon: const Icon(Icons.add),
+        label: const Text('เพิ่มไปตรวจในตัวอย่าง'),
+      ),
+    ],
+  );
+}
+
 class _PreviewPage extends StatelessWidget {
-  const _PreviewPage({required this.controller});
+  const _PreviewPage({required this.controller, required this.perform});
   final AppController controller;
+  final Future<void> Function(Future<void> Function()) perform;
+
+  Future<void> _editShift(BuildContext context, int index, Shift shift) async {
+    final result = await showDialog<_ShiftSettingsResult>(
+      context: context,
+      builder: (context) => _ShiftSettingsDialog(shift: shift),
+    );
+    if (result == null) return;
+    await perform(() async {
+      controller.customizeShift(
+        index,
+        title: result.title,
+        start: result.start,
+        end: result.end,
+        category: result.category,
+        colorCommand: result.colorCommand,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1872,7 +2249,12 @@ class _PreviewPage extends StatelessWidget {
           shift,
           controller.existingKeys,
         );
-        final color = Color(shift.category.colorValue);
+        final color = Color(
+          CalendarColorService.byId(
+                shift.effectiveCalendarColorId,
+              )?.colorValue ??
+              shift.category.colorValue,
+        );
         final sourceColor = ShiftColorService.classify(shift.sourceColorValue);
         return Card(
           child: Padding(
@@ -1880,30 +2262,12 @@ class _PreviewPage extends StatelessWidget {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final narrow = constraints.maxWidth < 620;
-                final selector = DropdownButtonFormField<ShiftCategory>(
-                  initialValue: shift.category,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'ประเภท/สี Calendar',
-                    isDense: true,
-                  ),
-                  items: [
-                    for (final category in ShiftCategory.values)
-                      DropdownMenuItem(
-                        value: category,
-                        child: Text(
-                          '${category.label} • ${category.colorName}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: shift.generated
+                final selector = OutlinedButton.icon(
+                  onPressed: shift.generated
                       ? null
-                      : (value) {
-                          if (value != null) {
-                            controller.updateShift(index, category: value);
-                          }
-                        },
+                      : () => _editShift(context, index, shift),
+                  icon: const Icon(Icons.palette_outlined),
+                  label: const Text('ตั้งชื่อ เวลา ประเภท และสี'),
                 );
                 final details = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1943,6 +2307,17 @@ class _PreviewPage extends StatelessWidget {
                               '${sourceColor?.sourceName ?? shift.sourceColorHex}',
                             ),
                           ),
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          avatar: CircleAvatar(
+                            backgroundColor: color,
+                            radius: 8,
+                          ),
+                          label: Text(
+                            'สี Calendar: '
+                            '${CalendarColorService.byId(shift.effectiveCalendarColorId)?.name ?? shift.category.colorName}',
+                          ),
+                        ),
                         if (sourceColor?.requiresReview == true)
                           const Chip(
                             visualDensity: VisualDensity.compact,
@@ -2017,11 +2392,199 @@ class _PreviewPage extends StatelessWidget {
   }
 }
 
+class _ShiftSettingsResult {
+  const _ShiftSettingsResult({
+    required this.title,
+    required this.start,
+    required this.end,
+    required this.category,
+    required this.colorCommand,
+  });
+
+  final String title;
+  final DateTime start;
+  final DateTime end;
+  final ShiftCategory category;
+  final String colorCommand;
+}
+
+class _ShiftSettingsDialog extends StatefulWidget {
+  const _ShiftSettingsDialog({required this.shift});
+
+  final Shift shift;
+
+  @override
+  State<_ShiftSettingsDialog> createState() => _ShiftSettingsDialogState();
+}
+
+class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
+  late final TextEditingController title = TextEditingController(
+    text: widget.shift.displayName,
+  );
+  late final TextEditingController colorCommand = TextEditingController(
+    text: widget.shift.calendarColorId ?? '',
+  );
+  late ShiftCategory category = widget.shift.category;
+  late TimeOfDay start = TimeOfDay.fromDateTime(widget.shift.start);
+  late TimeOfDay end = TimeOfDay.fromDateTime(widget.shift.end);
+
+  @override
+  void dispose() {
+    title.dispose();
+    colorCommand.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTime({required bool isStart}) async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: isStart ? start : end,
+    );
+    if (selected == null) return;
+    setState(() {
+      if (isStart) {
+        start = selected;
+      } else {
+        end = selected;
+      }
+    });
+  }
+
+  void _submit() {
+    final day = widget.shift.start;
+    final startAt = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      start.hour,
+      start.minute,
+    );
+    var endAt = DateTime(day.year, day.month, day.day, end.hour, end.minute);
+    if (!endAt.isAfter(startAt)) {
+      endAt = endAt.add(const Duration(days: 1));
+    }
+    Navigator.pop(
+      context,
+      _ShiftSettingsResult(
+        title: title.text.trim(),
+        start: startAt,
+        end: endAt,
+        category: category,
+        colorCommand: colorCommand.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('ตั้งค่ารายการก่อนใช้'),
+    content: SizedBox(
+      width: 560,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: title,
+              decoration: const InputDecoration(
+                labelText: 'ชื่อกิจกรรมใน Calendar',
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<ShiftCategory>(
+              initialValue: category,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'ประเภทรายการ'),
+              items: [
+                for (final value in ShiftCategory.values)
+                  DropdownMenuItem(value: value, child: Text(value.label)),
+              ],
+              onChanged: (value) {
+                if (value != null) setState(() => category = value);
+              },
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _pickTime(isStart: true),
+                  icon: const Icon(Icons.schedule),
+                  label: Text('เริ่ม ${start.format(context)}'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _pickTime(isStart: false),
+                  icon: const Icon(Icons.schedule_outlined),
+                  label: Text('สิ้นสุด ${end.format(context)}'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: colorCommand,
+              decoration: const InputDecoration(
+                labelText: 'คำสั่งสี (ไม่กรอก = ค่าเริ่มต้น)',
+                hintText: 'เช่น แดง, tomato, สี=11',
+                helperText:
+                    'ใช้เลข 1–11 หรือชื่อสี: ลาเวนเดอร์ เซจ องุ่น '
+                    'ฟลามิงโก กล้วย ส้ม นกยูง กราไฟต์ บลูเบอร์รี โหระพา มะเขือเทศ',
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('ยกเลิก'),
+      ),
+      FilledButton.icon(
+        onPressed: _submit,
+        icon: const Icon(Icons.check),
+        label: const Text('ใช้การตั้งค่านี้'),
+      ),
+    ],
+  );
+}
+
 class _NotificationsPage extends StatelessWidget {
   const _NotificationsPage({required this.controller, required this.perform});
 
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
+
+  Future<void> _deleteCalendarEvent(
+    BuildContext context,
+    ShiftAlert alert,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.delete_forever_outlined),
+        title: const Text('ลบกิจกรรมออกจาก Google Calendar?'),
+        content: const Text(
+          'รายการนี้จะถูกลบจากปฏิทินจริงของบัญชีที่ล็อกอิน '
+          'การลบจะเกิดเมื่อกดยืนยันเท่านั้น',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('ยืนยันลบกิจกรรม'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await perform(() => controller.deleteCalendarConflict(alert));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2069,6 +2632,12 @@ class _NotificationsPage extends StatelessWidget {
             alert: alert,
             onDecision: (decision) =>
                 perform(() => controller.resolveAlert(alert.id, decision)),
+            onOpen: alert.calendarEventUrl == null
+                ? null
+                : () => perform(() => controller.openCalendarConflict(alert)),
+            onDelete: alert.calendarEventId == null
+                ? null
+                : () => _deleteCalendarEvent(context, alert),
           ),
           const SizedBox(height: 10),
         ],
@@ -2078,10 +2647,17 @@ class _NotificationsPage extends StatelessWidget {
 }
 
 class _AlertCard extends StatelessWidget {
-  const _AlertCard({required this.alert, required this.onDecision});
+  const _AlertCard({
+    required this.alert,
+    required this.onDecision,
+    this.onOpen,
+    this.onDelete,
+  });
 
   final ShiftAlert alert;
   final Future<void> Function(ShiftAlertDecision decision) onDecision;
+  final Future<void> Function()? onOpen;
+  final Future<void> Function()? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -2165,6 +2741,18 @@ class _AlertCard extends StatelessWidget {
                           icon: const Icon(Icons.cancel_outlined),
                           label: const Text('ไม่นำเข้าปฏิทิน'),
                         ),
+                        if (onOpen != null)
+                          OutlinedButton.icon(
+                            onPressed: () => onOpen!(),
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('เปิดกิจกรรม'),
+                          ),
+                        if (onDelete != null)
+                          TextButton.icon(
+                            onPressed: () => onDelete!(),
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('ลบกิจกรรม'),
+                          ),
                       ],
                     ),
                   ],

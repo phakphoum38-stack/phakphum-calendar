@@ -79,6 +79,7 @@ class CalendarService {
             start: wallStart,
             end: wallEnd,
             legacyKey: _legacyKey(summary ?? '', wallStart),
+            htmlLink: event.htmlLink,
           ),
         );
       }
@@ -106,7 +107,7 @@ class CalendarService {
             '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
             'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
             'ประเภท: ${shift.category.label}',
-        colorId: shift.category.googleColorId,
+        colorId: shift.effectiveCalendarColorId,
         start: calendar.EventDateTime(
           dateTime: _bangkokInstant(shift.start),
           timeZone: timeZone,
@@ -127,6 +128,15 @@ class CalendarService {
       inserted++;
     }
     return inserted;
+  }
+
+  Future<void> deleteEvent(
+    GoogleApiClient client, {
+    required String eventId,
+  }) async {
+    await calendar.CalendarApi(
+      client,
+    ).events.delete('primary', eventId, sendUpdates: 'none');
   }
 
   static String keyFor(Shift shift) =>

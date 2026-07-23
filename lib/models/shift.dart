@@ -74,6 +74,8 @@ class Shift {
     this.generated = false,
     this.linkedShiftKey,
     this.sourceColorValue,
+    this.customTitle,
+    this.calendarColorId,
   });
 
   final String code;
@@ -88,15 +90,19 @@ class Shift {
   final bool generated;
   final String? linkedShiftKey;
   final int? sourceColorValue;
+  final String? customTitle;
+  final String? calendarColorId;
 
   bool get isNightShift =>
-      code.startsWith('N') &&
+      !isOffDuty &&
       start.hour == 0 &&
       end.difference(start) == const Duration(hours: 8);
   bool get isOffDuty => category == ShiftCategory.off || code == 'OFF';
 
   String get displayName {
     if (isOffDuty) return 'OFF — เวรออฟหลังเวรดึก';
+    final custom = customTitle?.trim() ?? '';
+    if (custom.isNotEmpty) return custom;
     final label = rowLabel.trim();
     if (label.isEmpty || label == code) return code;
     return '$label ($code)';
@@ -111,12 +117,23 @@ class Shift {
       '${start.month.toString().padLeft(2, '0')}-'
       '${start.day.toString().padLeft(2, '0')}|$code|$assignedName';
 
-  Shift copyWith({ShiftCategory? category, bool? excluded}) => Shift(
+  String get effectiveCalendarColorId =>
+      calendarColorId ?? category.googleColorId;
+
+  Shift copyWith({
+    ShiftCategory? category,
+    bool? excluded,
+    DateTime? start,
+    DateTime? end,
+    String? customTitle,
+    String? calendarColorId,
+    bool clearCalendarColor = false,
+  }) => Shift(
     code: code,
     rowLabel: rowLabel,
     assignedName: assignedName,
-    start: start,
-    end: end,
+    start: start ?? this.start,
+    end: end ?? this.end,
     sheetTitle: sheetTitle,
     cell: cell,
     category: category ?? this.category,
@@ -124,6 +141,10 @@ class Shift {
     generated: generated,
     linkedShiftKey: linkedShiftKey,
     sourceColorValue: sourceColorValue,
+    customTitle: customTitle ?? this.customTitle,
+    calendarColorId: clearCalendarColor
+        ? null
+        : calendarColorId ?? this.calendarColorId,
   );
 }
 

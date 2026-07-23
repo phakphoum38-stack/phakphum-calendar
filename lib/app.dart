@@ -40,7 +40,7 @@ class _PhakphumCalendarAppState extends State<PhakphumCalendarApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Phakphum Calendar v4.0',
+      title: 'Phakphum Calendar v4.1',
       themeMode: ThemeMode.system,
       theme: ThemeData(
         useMaterial3: true,

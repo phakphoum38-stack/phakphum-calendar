@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:phakphum_calendar/models/app_settings.dart';
 import 'package:phakphum_calendar/models/saved_sheet.dart';
+import 'package:phakphum_calendar/models/roster_period.dart';
 import 'package:phakphum_calendar/models/shift.dart';
 import 'package:phakphum_calendar/models/shift_alert.dart';
 import 'package:phakphum_calendar/models/tool_definition.dart';
@@ -137,6 +138,35 @@ void main() {
     expect(settings.month, isNull);
     expect(settings.year, isNull);
     expect(settings.targetName, isEmpty);
+    expect(settings.effectivePeriods, isEmpty);
+  });
+
+  test('supports an unlimited, sorted and de-duplicated period selection', () {
+    final settings = AppSettings.defaults().copyWith(
+      periods: const [
+        RosterPeriod(year: 2027, month: 1),
+        RosterPeriod(year: 2026, month: 12),
+        RosterPeriod(year: 2027, month: 1),
+      ],
+    );
+
+    expect(settings.effectivePeriods.map((period) => period.key), [
+      '2026-12',
+      '2027-01',
+    ]);
+  });
+
+  test('persists Auto refresh values from 1 through 60 seconds', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final service = SettingsService();
+
+    await service.save(
+      AppSettings.defaults().copyWith(autoRefresh: true, refreshSeconds: 60),
+    );
+
+    final settings = await service.load();
+    expect(settings.autoRefresh, isTrue);
+    expect(settings.refreshSeconds, 60);
   });
 
   test('removes old global Sheet, name, month and year values', () async {
@@ -199,6 +229,7 @@ void main() {
       ),
     );
 
+    final createdAt = DateTime.utc(2025, 1, 2, 8);
     final modifiedAt = DateTime.utc(2026, 7, 21, 8, 30);
     final recent = DriveOwnershipService.recentOwnedSheetsFromFiles([
       drive.File(
@@ -207,6 +238,7 @@ void main() {
         mimeType: DriveOwnershipService.googleSheetMimeType,
         ownedByMe: true,
         trashed: false,
+        createdTime: createdAt,
         modifiedByMeTime: modifiedAt,
       ),
       drive.File(
@@ -227,6 +259,7 @@ void main() {
     expect(recent, hasLength(1));
     expect(recent.single.id, 'owned-sheet-id');
     expect(recent.single.modifiedAt, modifiedAt);
+    expect(recent.single.createdAt, createdAt);
     expect(
       recent.single.url,
       'https://docs.google.com/spreadsheets/d/owned-sheet-id/edit',

@@ -24,6 +24,14 @@ void main() {
     expect(offShifts.first.displayName, 'OFF — เวรออฟหลังเวรดึก');
   });
 
+  test('creates OFF for a user-defined 00:00-08:00 duty code', () {
+    final shifts = service.addOffDutyPeriods([
+      _shift('CUSTOM', DateTime(2026, 8, 13), DateTime(2026, 8, 13, 8)),
+    ]);
+
+    expect(shifts.where((shift) => shift.isOffDuty), hasLength(1));
+  });
+
   test('flags a roster duty that overlaps OFF after a night shift', () {
     final shifts = service.addOffDutyPeriods([
       _shift('NP1', DateTime(2026, 8, 10), DateTime(2026, 8, 10, 8)),
@@ -57,6 +65,7 @@ void main() {
       calendarPeriods: [
         CalendarBusyPeriod(
           id: 'external-off-conflict',
+          htmlLink: 'https://calendar.google.com/calendar/event?eid=test',
           title: 'กิจกรรมทดสอบ',
           start: DateTime(2026, 8, 12, 9),
           end: DateTime(2026, 8, 12, 10),
@@ -73,6 +82,11 @@ void main() {
     expect(conflict.start, DateTime(2026, 8, 12, 9));
     expect(conflict.end, DateTime(2026, 8, 12, 10));
     expect(conflict.isPending, isTrue);
+    expect(conflict.calendarEventId, 'external-off-conflict');
+    expect(
+      conflict.calendarEventUrl,
+      'https://calendar.google.com/calendar/event?eid=test',
+    );
   });
 
   test('detects roster overlap and a busy Calendar overlap', () {

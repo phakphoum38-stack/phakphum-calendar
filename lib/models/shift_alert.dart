@@ -28,6 +28,8 @@ class ShiftAlert {
     this.primaryShiftKey,
     this.targetShiftKey,
     this.offShiftKey,
+    this.calendarEventId,
+    this.calendarEventUrl,
   });
 
   final String id;
@@ -40,6 +42,8 @@ class ShiftAlert {
   final String? primaryShiftKey;
   final String? targetShiftKey;
   final String? offShiftKey;
+  final String? calendarEventId;
+  final String? calendarEventUrl;
 
   bool get requiresDecision => type != ShiftAlertType.offAfterNight;
   bool get isPending =>

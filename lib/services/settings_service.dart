@@ -34,12 +34,13 @@ class SettingsService {
       targetName: defaults.targetName,
       year: null,
       month: null,
+      periods: const [],
       archiveOriginal: prefs.getBool(_archiveKey) ?? defaults.archiveOriginal,
       autoRefresh: prefs.getBool(_autoRefreshKey) ?? defaults.autoRefresh,
       refreshSeconds:
           (prefs.getInt(_refreshSecondsKey) ?? defaults.refreshSeconds).clamp(
             1,
-            10,
+            60,
           ),
       googleWebClientId:
           prefs.getString(_googleWebClientIdKey) ?? defaults.googleWebClientId,
@@ -54,7 +55,7 @@ class SettingsService {
       prefs.remove('target_month'),
       prefs.setBool(_archiveKey, settings.archiveOriginal),
       prefs.setBool(_autoRefreshKey, settings.autoRefresh),
-      prefs.setInt(_refreshSecondsKey, settings.refreshSeconds.clamp(1, 10)),
+      prefs.setInt(_refreshSecondsKey, settings.refreshSeconds.clamp(1, 60)),
       prefs.setString(_googleWebClientIdKey, settings.googleWebClientId),
     ]);
   }
