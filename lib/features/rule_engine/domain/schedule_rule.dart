@@ -1,6 +1,3 @@
-import 'package:flutter/foundation.dart';
-
-@immutable
 class ScheduledShift {
   const ScheduledShift({
     required this.id,
@@ -17,11 +14,12 @@ class ScheduledShift {
   final String kind;
 
   Duration get duration => end.difference(start);
+
+  bool get hasValidTimeRange => end.isAfter(start);
 }
 
 enum RuleSeverity { info, warning, blocking }
 
-@immutable
 class RuleViolation {
   const RuleViolation({
     required this.ruleId,
@@ -38,5 +36,6 @@ class RuleViolation {
 
 abstract interface class ScheduleRule {
   String get id;
+
   List<RuleViolation> evaluate(List<ScheduledShift> shifts);
 }
