@@ -9,7 +9,7 @@
 	<key>CFBundleIconFile</key>
 	<string></string>
 	<key>CFBundleDisplayName</key>
-	<string>Shift Calendar</string>
+	<string>Shift Tools</string>
 	<key>GIDClientID</key>
 	<string>REPLACE_WITH_MACOS_CLIENT_ID</string>
 	<key>CFBundleURLTypes</key>

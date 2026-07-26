@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/state/controller_state.dart';
 import '../domain/drive_gateway.dart';
 import '../domain/roster_file.dart';
 import 'roster_selection_state.dart';
 
-class RosterSelectionController extends ChangeNotifier {
+class RosterSelectionController extends ChangeNotifier
+    implements ControllerState {
   RosterSelectionController(this._gateway);
 
   final DriveGateway _gateway;
@@ -18,6 +20,18 @@ class RosterSelectionController extends ChangeNotifier {
   List<RosterFile> get availableFiles => _availableFiles;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  @override
+  bool get loading => _isLoading;
+
+  @override
+  Object? get error => _errorMessage;
+
+  @override
+  bool get success => !_isLoading && _errorMessage == null;
+
+  @override
+  String? get message => _errorMessage;
 
   Future<void> loadSpreadsheets() async {
     _isLoading = true;

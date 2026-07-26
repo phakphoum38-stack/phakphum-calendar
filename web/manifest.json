@@ -1,6 +1,6 @@
 {
-    "name": "Phakphum Shift Calendar",
-    "short_name": "Shift Calendar",
+    "name": "Shift Tools",
+    "short_name": "Shift Tools",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F2F7FF",

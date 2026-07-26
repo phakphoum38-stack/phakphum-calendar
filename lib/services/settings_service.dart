@@ -8,7 +8,21 @@ import '../models/saved_sheet.dart';
 import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 
-class SettingsService {
+/// Local settings and audit storage required by the legacy controller.
+abstract interface class AppSettingsStore {
+  Future<AppSettings> load();
+  Future<void> save(AppSettings settings);
+  Future<List<AuditEntry>> loadAudit();
+  Future<void> appendAudit(AuditEntry entry);
+  Future<Set<String>> loadPinnedToolIds();
+  Future<void> savePinnedToolIds(Iterable<String> ids);
+  Future<List<SavedSheet>> loadSavedSheets();
+  Future<void> saveSavedSheets(Iterable<SavedSheet> sheets);
+  Future<Map<String, ShiftAlertDecision>> loadAlertDecisions();
+  Future<void> saveAlertDecision(String alertId, ShiftAlertDecision decision);
+}
+
+class SettingsService implements AppSettingsStore {
   static const _nameKey = 'target_name';
   static const _archiveKey = 'archive_original';
   static const _autoRefreshKey = 'auto_refresh';
@@ -19,6 +33,7 @@ class SettingsService {
   static const _savedSheetsKey = 'saved_sheets';
   static const _alertDecisionsKey = 'shift_alert_decisions';
 
+  @override
   Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('passkey_sha256');
@@ -47,6 +62,7 @@ class SettingsService {
     );
   }
 
+  @override
   Future<void> save(AppSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
@@ -60,6 +76,7 @@ class SettingsService {
     ]);
   }
 
+  @override
   Future<List<AuditEntry>> loadAudit() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_auditKey) ?? const [];
@@ -77,6 +94,7 @@ class SettingsService {
         .toList();
   }
 
+  @override
   Future<void> appendAudit(AuditEntry entry) async {
     final prefs = await SharedPreferences.getInstance();
     final entries = prefs.getStringList(_auditKey) ?? <String>[];
@@ -85,6 +103,7 @@ class SettingsService {
     await prefs.setStringList(_auditKey, entries);
   }
 
+  @override
   Future<Set<String>> loadPinnedToolIds() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getStringList(_pinnedToolIdsKey);
@@ -92,6 +111,7 @@ class SettingsService {
     return saved.where((id) => toolById(id) != null).toSet();
   }
 
+  @override
   Future<void> savePinnedToolIds(Iterable<String> ids) async {
     final prefs = await SharedPreferences.getInstance();
     final validIds = ids.where((id) => toolById(id) != null).toSet().toList()
@@ -99,6 +119,7 @@ class SettingsService {
     await prefs.setStringList(_pinnedToolIdsKey, validIds);
   }
 
+  @override
   Future<List<SavedSheet>> loadSavedSheets() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_savedSheetsKey) ?? const [];
@@ -116,6 +137,7 @@ class SettingsService {
         .toList();
   }
 
+  @override
   Future<void> saveSavedSheets(Iterable<SavedSheet> sheets) async {
     final prefs = await SharedPreferences.getInstance();
     final records = sheets.toList()
@@ -126,6 +148,7 @@ class SettingsService {
     );
   }
 
+  @override
   Future<Map<String, ShiftAlertDecision>> loadAlertDecisions() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_alertDecisionsKey);
@@ -144,6 +167,7 @@ class SettingsService {
     }
   }
 
+  @override
   Future<void> saveAlertDecision(
     String alertId,
     ShiftAlertDecision decision,

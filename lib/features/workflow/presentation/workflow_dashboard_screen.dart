@@ -16,7 +16,7 @@ class WorkflowDashboardScreen extends StatelessWidget {
         final summary = preview?.simulation.summary;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Shift Calendar Engine')),
+          appBar: AppBar(title: const Text('Shift Tools')),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [

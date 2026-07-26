@@ -3,9 +3,20 @@ import '../models/shift.dart';
 import '../models/shift_alert.dart';
 import 'calendar_service.dart';
 
-class ShiftAlertService {
+/// Applies legacy shift-alert and generated-off-duty policy.
+abstract interface class ShiftAlertPolicy {
+  List<Shift> addOffDutyPeriods(List<Shift> sourceShifts);
+  List<ShiftAlert> build({
+    required List<Shift> shifts,
+    required List<CalendarBusyPeriod> calendarPeriods,
+    required Map<String, ShiftAlertDecision> decisions,
+  });
+}
+
+class ShiftAlertService implements ShiftAlertPolicy {
   const ShiftAlertService();
 
+  @override
   List<Shift> addOffDutyPeriods(List<Shift> sourceShifts) {
     final result = <Shift>[...sourceShifts];
     final offByDate = <String>{
@@ -39,6 +50,7 @@ class ShiftAlertService {
     return result;
   }
 
+  @override
   List<ShiftAlert> build({
     required List<Shift> shifts,
     required List<CalendarBusyPeriod> calendarPeriods,

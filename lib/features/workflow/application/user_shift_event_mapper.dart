@@ -113,7 +113,7 @@ class UserShiftEventMapper {
     };
 
     return <String>[
-      'จัดการโดย Shift Calendar Engine',
+      'จัดการโดย Shift Tools',
       'สถานะ: $relationship',
       'ชีต: ${assignment.sheetTitle}',
       'เซลล์ต้นทาง: ${assignment.sourceCell}',

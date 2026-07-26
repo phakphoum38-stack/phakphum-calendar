@@ -20,7 +20,20 @@ class RecentOwnedSheet {
   final DateTime? modifiedAt;
 }
 
-class DriveOwnershipService {
+/// Validates ownership and lists Google Sheets files in Drive.
+abstract interface class DriveOwnershipGateway {
+  Future<List<RecentOwnedSheet>> listOwnedSpreadsheets(
+    GoogleApiClient client, {
+    int limit = 20,
+    OwnedSheetOrder order = OwnedSheetOrder.recentlyModified,
+  });
+  Future<drive.File> requireOwnedSpreadsheet(
+    GoogleApiClient client,
+    String fileId,
+  );
+}
+
+class DriveOwnershipService implements DriveOwnershipGateway {
   const DriveOwnershipService();
 
   static const googleSheetMimeType = 'application/vnd.google-apps.spreadsheet';
@@ -28,6 +41,7 @@ class DriveOwnershipService {
       "mimeType = '$googleSheetMimeType' and trashed = false "
       "and 'me' in owners";
 
+  @override
   Future<List<RecentOwnedSheet>> listOwnedSpreadsheets(
     GoogleApiClient client, {
     int limit = 20,
@@ -76,6 +90,7 @@ class DriveOwnershipService {
         ),
   ];
 
+  @override
   Future<drive.File> requireOwnedSpreadsheet(
     GoogleApiClient client,
     String fileId,

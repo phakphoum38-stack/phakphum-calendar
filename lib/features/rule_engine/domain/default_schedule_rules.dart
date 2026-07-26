@@ -1,5 +1,27 @@
 import 'schedule_rule.dart';
 
+class InvalidShiftTimeRule implements ScheduleRule {
+  const InvalidShiftTimeRule();
+
+  @override
+  String get id => 'unknown_shift_time';
+
+  @override
+  List<RuleViolation> evaluate(List<ScheduledShift> shifts) {
+    return shifts
+        .where((shift) => !shift.end.isAfter(shift.start))
+        .map(
+          (shift) => RuleViolation(
+            ruleId: id,
+            message: 'เวลาเริ่มและสิ้นสุดของเวร ${shift.id} ไม่ถูกต้อง',
+            severity: RuleSeverity.blocking,
+            shiftIds: [shift.id],
+          ),
+        )
+        .toList(growable: false);
+  }
+}
+
 class OverlappingShiftRule implements ScheduleRule {
   const OverlappingShiftRule();
 

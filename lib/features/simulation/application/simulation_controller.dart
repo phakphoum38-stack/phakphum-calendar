@@ -1,17 +1,30 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/state/controller_state.dart';
 import '../domain/simulation_plan.dart';
 
 enum SimulationStatus { idle, loading, ready, confirming, completed, failure }
 
-class SimulationController extends ChangeNotifier {
+class SimulationController extends ChangeNotifier implements ControllerState {
   SimulationStatus _status = SimulationStatus.idle;
   SimulationPlan? _plan;
   String? _message;
 
   SimulationStatus get status => _status;
   SimulationPlan? get plan => _plan;
+  @override
   String? get message => _message;
+
+  @override
+  bool get loading =>
+      _status == SimulationStatus.loading ||
+      _status == SimulationStatus.confirming;
+
+  @override
+  Object? get error => _status == SimulationStatus.failure ? _message : null;
+
+  @override
+  bool get success => _status == SimulationStatus.completed;
 
   void load(SimulationPlan plan) {
     _plan = plan;

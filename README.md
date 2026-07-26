@@ -1,4 +1,4 @@
-# Phakphum Shift Calendar
+# Shift Tools
 
 แอป Flutter สำหรับอ่านตารางเวรจาก Google Sheets แบบ read-only ตรวจรายการก่อนบันทึก และเพิ่มเวรที่ยืนยันแล้วลง Google Calendar รองรับ UI บน Web, Android, iOS, Windows, macOS และ Linux
 
@@ -28,6 +28,21 @@
 ## เอกสารโครงการและ Wiki
 
 เริ่มอ่านเอกสารสำหรับนักพัฒนาและการเตรียม Production ได้ที่ [Project Wiki](docs/wiki/README.md) ซึ่งรวม Architecture, Coding Standards, Rule Engine Specification, Testing, Contributing, Release และ Security/Privacy
+
+- [คู่มือติดตั้งและใช้งานฉบับสมบูรณ์](docs/INSTALLATION_AND_USER_GUIDE.md)
+- [การตั้งค่า Google](docs/GOOGLE_SETUP.md)
+- [Laravel API](backend/README.md)
+
+## Flutter + Laravel
+
+repository นี้ประกอบด้วย:
+
+- แอป Flutter ใน `lib/` สำหรับ import, calendar, validation, reports และ Google Calendar workflow
+- Laravel API ใน `backend/` สำหรับ health, readiness และ diagnostic error intake
+
+Laravel เป็น operational/future server boundary และยังไม่เปลี่ยน canonical Schedule,
+local persistence หรือ Google Calendar synchronization ของแอป ดูวิธีติดตั้งและ API
+ทั้งหมดที่ [backend/README.md](backend/README.md)
 
 
 ## สถานะของแต่ละระบบ
@@ -216,7 +231,7 @@ Web Client ID ไม่ใช่ Client Secret แต่ควรใช้เฉ
 2. แตกไฟล์และตรวจ SHA-256 ของ `app-release.apk`
 3. ส่ง APK ไปยังโทรศัพท์แล้วเปิดไฟล์
 4. Android อาจขออนุญาต **Install unknown apps** สำหรับแอปที่ใช้เปิด APK ให้อนุญาตเฉพาะแหล่งที่เชื่อถือได้
-5. ติดตั้งแล้วเปิด **Shift Calendar**
+5. ติดตั้งแล้วเปิด **Shift Tools**
 
 ข้อจำกัด: workflow ปัจจุบัน build แบบ release แต่ลงนามด้วย debug key ของโปรเจกต์ จึงเหมาะสำหรับทดสอบ ไม่ใช่ไฟล์สำหรับเผยแพร่ Play Store การใช้งานจริงควรตั้ง release keystore และเก็บรหัสผ่านใน GitHub Secrets
 
@@ -431,7 +446,7 @@ dart run flutter_launcher_icons
 - แอปไม่เพิ่มผู้เข้าร่วม ไม่ส่งคำเชิญ และไม่สร้าง Google Meet
 - repository และ build artifacts ต้องมีเฉพาะซอร์ส/ไฟล์แอป ห้ามรวมไฟล์ชีต ผลลัพธ์เวร อีเมล token หรือข้อมูลบัญชี
 
-## Shift Calendar Engine production modules
+## Shift Tools production modules
 
 This application now includes the Sprint 6 SCE architecture under `lib/features/` and `lib/core/`:
 

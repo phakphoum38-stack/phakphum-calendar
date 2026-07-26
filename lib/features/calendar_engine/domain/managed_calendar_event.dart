@@ -6,6 +6,7 @@ class ManagedCalendarEvent {
     required this.start,
     required this.end,
     this.description,
+    this.colorId,
   });
 
   final String eventId;
@@ -14,4 +15,5 @@ class ManagedCalendarEvent {
   final DateTime start;
   final DateTime end;
   final String? description;
+  final String? colorId;
 }

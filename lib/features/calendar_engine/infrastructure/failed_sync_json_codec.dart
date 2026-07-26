@@ -25,6 +25,7 @@ class FailedSyncJsonCodec {
                     'start': value.command!.start.toIso8601String(),
                     'end': value.command!.end.toIso8601String(),
                     'description': value.command!.description,
+                    'colorId': value.command!.colorId,
                     'calendarId': value.command!.calendarId,
                   },
           },
@@ -54,6 +55,7 @@ class FailedSyncJsonCodec {
                   start: DateTime.parse(commandJson['start']! as String),
                   end: DateTime.parse(commandJson['end']! as String),
                   description: commandJson['description'] as String?,
+                  colorId: commandJson['colorId'] as String?,
                   calendarId: commandJson['calendarId'] as String? ?? 'primary',
                 );
           return FailedSyncOperation(

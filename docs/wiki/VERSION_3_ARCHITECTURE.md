@@ -1,6 +1,6 @@
 # Version 3.0 SaaS Architecture
 
-Version 3.0 evolves Phakphum Calendar into a multi-tenant hospital scheduling platform.
+Version 3.0 evolves Shift Tools into a multi-tenant hospital scheduling platform.
 
 ## Trust boundaries
 

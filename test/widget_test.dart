@@ -3,16 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/controller/app_controller.dart';
+import 'package:phakphum_calendar/core/di/app_dependencies.dart';
+import 'package:phakphum_calendar/features/excel_import/presentation/pages/import_excel_page.dart';
 import 'package:phakphum_calendar/models/shift_alert.dart';
+import 'package:phakphum_calendar/ui/app_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  AppController demoController() =>
+      AppDependencies.production().createDemoAppController();
+
   test(
     'accepting an OFF conflict keeps duty and excludes generated OFF',
     () async {
-      final controller = AppController.demo();
+      final controller = demoController();
       final conflict = controller.alerts.singleWhere(
         (alert) => alert.type == ShiftAlertType.offConflict,
       );
@@ -37,12 +43,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      PhakphumCalendarApp(controller: AppController.demo()),
-    );
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Phakphum Calendar'), findsOneWidget);
+    expect(find.text('Shift Tools'), findsOneWidget);
     expect(find.text('แหล่งข้อมูลเวร'), findsOneWidget);
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.text('เข้าสู่ระบบด้วย Google'), findsOneWidget);
@@ -91,14 +95,24 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      PhakphumCalendarApp(controller: AppController.demo()),
-    );
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Auto refresh'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Import Excel named route remains available', (tester) async {
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
+    await tester.pumpAndSettle();
+
+    final shellContext = tester.element(find.byType(AppShell));
+    Navigator.of(shellContext).pushNamed(ImportExcelPage.routeName);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ImportExcelPage), findsOneWidget);
+    expect(find.text('เลือกไฟล์ Excel'), findsOneWidget);
   });
 
   testWidgets('Google Sheets picker entry remains usable on a phone', (
@@ -107,10 +121,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final controller = AppController.demo();
+    final controller = demoController();
     addTearDown(controller.dispose);
 
-    await tester.pumpWidget(PhakphumCalendarApp(controller: controller));
+    await tester.pumpWidget(ShiftToolsApp(controller: controller));
     await tester.pumpAndSettle();
 
     expect(find.text('ยังไม่ได้เลือกแหล่งข้อมูลเวร'), findsOneWidget);
@@ -125,9 +139,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      PhakphumCalendarApp(controller: AppController.demo()),
-    );
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(NavigationDestination).at(3));
@@ -145,9 +157,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(844, 390));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      PhakphumCalendarApp(controller: AppController.demo()),
-    );
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(NavigationDestination).last);
@@ -166,9 +176,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1280, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(
-        PhakphumCalendarApp(controller: AppController.demo()),
-      );
+      await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
       await tester.pumpAndSettle();
 
       expect(find.text('Google Login ใช้ผ่าน Web'), findsOneWidget);

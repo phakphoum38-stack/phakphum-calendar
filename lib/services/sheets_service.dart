@@ -19,7 +19,23 @@ class SheetReference {
   final String url;
 }
 
-class SheetsService {
+/// Google Sheets operations required by the legacy roster workflow.
+abstract interface class RosterSheetsGateway {
+  String parseSpreadsheetId(String input);
+  Future<SheetReference> describeSpreadsheet(
+    GoogleApiClient client,
+    String sourceUrl,
+  );
+  Future<List<SheetSnapshot>> readAll(GoogleApiClient client, String sourceUrl);
+  Future<SheetReference> duplicateSheet(
+    GoogleApiClient client, {
+    required String sourceUrl,
+    required String templateTitle,
+    required String newTitle,
+  });
+}
+
+class SheetsService implements RosterSheetsGateway {
   final Map<String, List<String>> _titleCache = {};
 
   static String spreadsheetIdFromUrl(String input) {
@@ -31,6 +47,9 @@ class SheetsService {
     throw const FormatException('ลิงก์ Google Sheets ไม่ถูกต้อง');
   }
 
+  @override
+  String parseSpreadsheetId(String input) => spreadsheetIdFromUrl(input);
+
   static int? sheetIdFromUrl(String input) {
     final match = RegExp(r'(?:[?#&]gid=)(\d+)').firstMatch(input);
     return match == null ? null : int.tryParse(match.group(1)!);
@@ -40,6 +59,7 @@ class SheetsService {
       'https://docs.google.com/spreadsheets/d/$spreadsheetId/edit'
       '${sheetId == null ? '' : '#gid=$sheetId'}';
 
+  @override
   Future<SheetReference> describeSpreadsheet(
     GoogleApiClient client,
     String sourceUrl,
@@ -66,6 +86,7 @@ class SheetsService {
     );
   }
 
+  @override
   Future<List<SheetSnapshot>> readAll(
     GoogleApiClient client,
     String sourceUrl,
@@ -164,6 +185,7 @@ class SheetsService {
   static int _colorChannel(double? value) =>
       (((value ?? 0) * 255).round()).clamp(0, 255);
 
+  @override
   Future<SheetReference> duplicateSheet(
     GoogleApiClient client, {
     required String sourceUrl,

@@ -6,9 +6,40 @@ import 'package:googleapis/drive/v3.dart' as drive;
 
 import 'google_api_client.dart';
 
-class GoogleAuthService extends ChangeNotifier {
+/// Authentication boundary required by the legacy application workflow.
+abstract interface class GoogleAuthGateway implements Listenable {
+  GoogleSignInAccount? get account;
+  bool get isSignedIn;
+  bool get initialized;
+  bool get signInReady;
+  String? get error;
+  bool get checkingReadAccess;
+  bool get readAccessGranted;
+  String get webClientId;
+  bool get canConfigureWebOAuth;
+  bool get platformSupported;
+  String? get oauthUnavailableMessage;
+  bool get oauthConfigured;
+
+  bool validateWebClientId(String value);
+  Future<void> initialize({String? webClientId});
+  Future<void> configureWebClientId(String value);
+  Future<void> signIn();
+  Future<void> requestReadAccess();
+  Future<void> signOut();
+  Future<GoogleApiClient> clientFor(
+    List<String> scopes, {
+    bool promptIfNecessary = true,
+  });
+  void dispose();
+}
+
+class GoogleAuthService extends ChangeNotifier implements GoogleAuthGateway {
+  static const spreadsheetsReadOnlyScope =
+      'https://www.googleapis.com/auth/spreadsheets.readonly';
+
   static const readAccessScopes = <String>[
-    'https://www.googleapis.com/auth/spreadsheets.readonly',
+    spreadsheetsReadOnlyScope,
     'https://www.googleapis.com/auth/calendar.events.readonly',
     drive.DriveApi.driveMetadataReadonlyScope,
   ];
@@ -31,22 +62,33 @@ class GoogleAuthService extends ChangeNotifier {
   bool _checkingReadAccess = false;
   bool _readAccessGranted = false;
 
+  @override
   GoogleSignInAccount? get account => _account;
+  @override
   bool get isSignedIn => _account != null;
+  @override
   bool get initialized => _initialized;
+  @override
   bool get signInReady => _pluginInitialized;
+  @override
   String? get error => _error;
+  @override
   bool get checkingReadAccess => _checkingReadAccess;
+  @override
   bool get readAccessGranted => _readAccessGranted;
+  @override
   String get webClientId =>
       _webClientId.isNotEmpty ? _webClientId : _runtimeWebClientId.trim();
+  @override
   bool get canConfigureWebOAuth =>
       kIsWeb && _webClientId.isEmpty && !_pluginInitialized;
+  @override
   bool get platformSupported =>
       kIsWeb ||
       defaultTargetPlatform == TargetPlatform.android ||
       defaultTargetPlatform == TargetPlatform.iOS ||
       defaultTargetPlatform == TargetPlatform.macOS;
+  @override
   String? get oauthUnavailableMessage {
     if (!platformSupported) {
       return 'Google Sign-In ยังไม่รองรับ Windows/Linux โดยแพ็กเกจที่ใช้ '
@@ -58,6 +100,7 @@ class GoogleAuthService extends ChangeNotifier {
     return null;
   }
 
+  @override
   bool get oauthConfigured => oauthUnavailableMessage == null;
 
   static bool isValidWebClientId(String value) {
@@ -68,6 +111,10 @@ class GoogleAuthService extends ChangeNotifier {
         ).hasMatch(clientId);
   }
 
+  @override
+  bool validateWebClientId(String value) => isValidWebClientId(value);
+
+  @override
   Future<void> initialize({String? webClientId}) async {
     if (_initialized) return;
     _runtimeWebClientId = webClientId?.trim() ?? _runtimeWebClientId;
@@ -82,6 +129,7 @@ class GoogleAuthService extends ChangeNotifier {
     await _initializePlugin();
   }
 
+  @override
   Future<void> configureWebClientId(String value) async {
     final clientId = value.trim();
     if (!kIsWeb) {
@@ -154,6 +202,7 @@ class GoogleAuthService extends ChangeNotifier {
     // Authentication must only begin after the user presses the Google button.
   }
 
+  @override
   Future<void> signIn() async {
     _error = null;
     notifyListeners();
@@ -173,6 +222,7 @@ class GoogleAuthService extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> signOut() async {
     await GoogleSignIn.instance.signOut();
     _account = null;
@@ -181,6 +231,7 @@ class GoogleAuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   Future<void> requestReadAccess() async {
     final current = _account;
     if (current == null) {
@@ -222,6 +273,7 @@ class GoogleAuthService extends ChangeNotifier {
     }
   }
 
+  @override
   Future<GoogleApiClient> clientFor(
     List<String> scopes, {
     bool promptIfNecessary = true,

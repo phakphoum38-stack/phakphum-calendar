@@ -1,3 +1,4 @@
+import '../../../core/validation/rule_evaluator.dart';
 import '../domain/schedule_rule.dart';
 
 class RuleEvaluationResult {
@@ -13,14 +14,23 @@ class RuleEvaluationResult {
 }
 
 class RuleEngine {
-  const RuleEngine(this.rules);
+  const RuleEngine(this.rules, {this.evaluator = const RuleEvaluator()});
 
   final List<ScheduleRule> rules;
+  final RuleEvaluator evaluator;
 
   RuleEvaluationResult evaluate(List<ScheduledShift> shifts) {
     final violations = <RuleViolation>[];
-    for (final rule in rules) {
-      violations.addAll(rule.evaluate(shifts));
+    final evaluations = evaluator
+        .evaluate<ScheduleRule, List<ScheduledShift>, RuleViolation>(
+          rules: rules,
+          context: shifts,
+          ruleId: (rule) => rule.id,
+          evaluateRule: (rule, scheduledShifts) =>
+              rule.evaluate(scheduledShifts),
+        );
+    for (final evaluation in evaluations) {
+      violations.addAll(evaluation.violations);
     }
     return RuleEvaluationResult(List.unmodifiable(violations));
   }

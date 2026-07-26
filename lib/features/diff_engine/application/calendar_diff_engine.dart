@@ -8,6 +8,8 @@ class CalendarDiffEngine {
     required List<CalendarEventCandidate> desired,
     required List<CalendarEventCandidate> existing,
   }) {
+    _validateCandidates(desired, 'desired');
+    _validateCandidates(existing, 'existing');
     final desiredById = {for (final event in desired) event.syncId: event};
     final existingById = {for (final event in existing) event.syncId: event};
 
@@ -43,10 +45,42 @@ class CalendarDiffEngine {
     }
 
     return CalendarDiff(
-      toAdd: toAdd,
-      toUpdate: toUpdate,
-      toDelete: toDelete,
-      unchanged: unchanged,
+      toAdd: _ordered(toAdd),
+      toUpdate: _ordered(toUpdate),
+      toDelete: _ordered(toDelete),
+      unchanged: _ordered(unchanged),
     );
+  }
+
+  void _validateCandidates(
+    List<CalendarEventCandidate> candidates,
+    String collection,
+  ) {
+    final ids = <String>{};
+    for (final candidate in candidates) {
+      if (candidate.syncId.trim().isEmpty) {
+        throw ArgumentError.value(
+          candidate.syncId,
+          '$collection.syncId',
+          'Sync ID must not be empty.',
+        );
+      }
+      if (!ids.add(candidate.syncId)) {
+        throw ArgumentError.value(
+          candidate.syncId,
+          '$collection.syncId',
+          'Duplicate Sync ID.',
+        );
+      }
+    }
+  }
+
+  List<CalendarEventCandidate> _ordered(
+    List<CalendarEventCandidate> candidates,
+  ) {
+    return candidates..sort((left, right) {
+      final byStart = left.start.compareTo(right.start);
+      return byStart != 0 ? byStart : left.syncId.compareTo(right.syncId);
+    });
   }
 }

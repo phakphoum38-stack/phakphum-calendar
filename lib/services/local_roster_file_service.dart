@@ -13,13 +13,19 @@ class LocalRosterDocument {
   final List<SheetSnapshot> snapshots;
 }
 
-class LocalRosterFileService {
+/// Selects and reads roster files from the local device.
+abstract interface class LocalRosterSource {
+  Future<LocalRosterDocument?> pickAndRead();
+}
+
+class LocalRosterFileService implements LocalRosterSource {
   const LocalRosterFileService();
 
   static const supportedExtensions = ['xlsx', 'csv', 'tsv', 'txt'];
   static const maxBytes = 15 * 1024 * 1024;
   static const maxCells = 200000;
 
+  @override
   Future<LocalRosterDocument?> pickAndRead() async {
     final file = await openFile(
       acceptedTypeGroups: const [

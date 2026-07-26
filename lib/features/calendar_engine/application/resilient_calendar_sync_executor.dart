@@ -2,6 +2,8 @@ import '../../history/domain/sync_history_entry.dart';
 import '../../history/domain/sync_history_repository.dart';
 import '../domain/calendar_sync_gateway.dart';
 import '../domain/calendar_sync_operation_result.dart';
+import '../domain/failed_sync_operation.dart';
+import '../domain/failed_sync_repository.dart';
 import 'calendar_sync_plan.dart';
 
 class ResilientCalendarSyncResult {
@@ -20,11 +22,13 @@ class ResilientCalendarSyncExecutor {
   const ResilientCalendarSyncExecutor({
     required this._gateway,
     required this._historyRepository,
+    this.failedRepository,
     this.maxAttempts = 2,
   });
 
   final CalendarSyncGateway _gateway;
   final SyncHistoryRepository _historyRepository;
+  final FailedSyncRepository? failedRepository;
   final int maxAttempts;
 
   Future<ResilientCalendarSyncResult> execute(CalendarSyncPlan plan) async {
@@ -44,6 +48,7 @@ class ResilientCalendarSyncExecutor {
     await _historyRepository.save(history);
 
     final operations = <CalendarSyncOperationResult>[];
+    final failedOperations = <FailedSyncOperation>[];
     var inserted = 0;
     var updated = 0;
     var deleted = 0;
@@ -56,6 +61,18 @@ class ResilientCalendarSyncExecutor {
         operation: () => _gateway.insert(command),
       );
       operations.add(result);
+      if (!result.success) {
+        failedOperations.add(
+          FailedSyncOperation(
+            historyId: historyId,
+            type: CalendarSyncOperationType.insert,
+            referenceId: command.syncId,
+            attempts: maxAttempts,
+            command: command,
+            message: result.message,
+          ),
+        );
+      }
       result.success ? inserted++ : failed++;
     }
 
@@ -69,6 +86,19 @@ class ResilientCalendarSyncExecutor {
         ),
       );
       operations.add(result);
+      if (!result.success) {
+        failedOperations.add(
+          FailedSyncOperation(
+            historyId: historyId,
+            type: CalendarSyncOperationType.update,
+            referenceId: operation.command.syncId,
+            attempts: maxAttempts,
+            command: operation.command,
+            eventId: operation.eventId,
+            message: result.message,
+          ),
+        );
+      }
       result.success ? updated++ : failed++;
     }
 
@@ -82,6 +112,19 @@ class ResilientCalendarSyncExecutor {
         ),
       );
       operations.add(result);
+      if (!result.success) {
+        failedOperations.add(
+          FailedSyncOperation(
+            historyId: historyId,
+            type: CalendarSyncOperationType.delete,
+            referenceId: operation.eventId,
+            attempts: maxAttempts,
+            eventId: operation.eventId,
+            calendarId: operation.calendarId,
+            message: result.message,
+          ),
+        );
+      }
       result.success ? deleted++ : failed++;
     }
 
@@ -103,6 +146,7 @@ class ResilientCalendarSyncExecutor {
           : 'Synchronization completed with $failed failed operation(s).',
     );
 
+    await failedRepository?.replaceForHistory(historyId, failedOperations);
     await _historyRepository.save(history);
 
     return ResilientCalendarSyncResult(

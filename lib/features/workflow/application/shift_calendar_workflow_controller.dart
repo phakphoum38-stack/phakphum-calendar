@@ -1,30 +1,65 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/state/controller_state.dart';
+import '../../../domain/entities/schedule.dart';
 import '../../calendar_engine/application/resilient_calendar_sync_executor.dart';
+import '../../calendar_engine/application/resume_sync_service.dart';
 import '../../diff_engine/domain/calendar_event_candidate.dart';
 import '../../relationship_engine/domain/user_shift_change.dart';
+import '../../rules/application/schedule_validation_service.dart';
+import '../../rules/domain/rule_result.dart';
 import '../domain/workflow_preview.dart';
 import 'calendar_sync_coordinator.dart';
 import 'workflow_preview_builder.dart';
 
-class ShiftCalendarWorkflowController extends ChangeNotifier {
+class ShiftCalendarWorkflowController extends ChangeNotifier
+    implements ControllerState {
   ShiftCalendarWorkflowController({
     required this._previewBuilder,
     required this._syncCoordinator,
+    required this.validationService,
+    this.resumeSyncService,
+    this.onDispose,
   });
 
   final WorkflowPreviewBuilder _previewBuilder;
   final CalendarSyncCoordinator _syncCoordinator;
+  final ScheduleValidationService validationService;
+  final ResumeSyncService? resumeSyncService;
+  final VoidCallback? onDispose;
 
   WorkflowPreview? _preview;
   bool _isBusy = false;
   String? _message;
   ResilientCalendarSyncResult? _lastResult;
+  RuleResult? _validationResult;
+  CalendarSyncPreparation? _schedulePreparation;
+  Schedule? _schedule;
 
   WorkflowPreview? get preview => _preview;
   bool get isBusy => _isBusy;
+  @override
   String? get message => _message;
   ResilientCalendarSyncResult? get lastResult => _lastResult;
+  RuleResult? get validationResult => _validationResult;
+  CalendarSyncPreparation? get schedulePreparation => _schedulePreparation;
+  Schedule? get schedule => _schedule;
+  bool get hasBlockingFailures =>
+      _validationResult != null && _validationResult!.errors.isNotEmpty;
+  bool get requiresConfirmation =>
+      _schedulePreparation != null && !hasBlockingFailures;
+
+  @override
+  bool get loading => _isBusy;
+
+  @override
+  Object? get error =>
+      _message != null && (_lastResult == null || _lastResult!.hasFailures)
+      ? _message
+      : null;
+
+  @override
+  bool get success => _lastResult != null && !_lastResult!.hasFailures;
 
   void preparePreview({
     required List<UserShiftChange> changes,
@@ -35,7 +70,73 @@ class ShiftCalendarWorkflowController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Prepares a compatibility preview from pre-mapped event candidates.
+  Future<void> prepareCandidatePreview({
+    required List<CalendarEventCandidate> desired,
+    String calendarId = 'primary',
+  }) async {
+    _isBusy = true;
+    _message = null;
+    notifyListeners();
+    try {
+      final existing = await _syncCoordinator.listExistingCandidates(
+        desired,
+        calendarId: calendarId,
+      );
+      _preview = _previewBuilder.buildCandidates(
+        desired: desired,
+        existing: existing,
+      );
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Validates and compares one canonical schedule before confirmation.
+  Future<void> prepareSchedule(
+    Schedule schedule, {
+    String calendarId = 'primary',
+  }) async {
+    _isBusy = true;
+    _message = null;
+    _lastResult = null;
+    _schedule = schedule;
+    _schedulePreparation = null;
+    notifyListeners();
+    try {
+      _validationResult = validationService.validateSchedule(schedule);
+      if (hasBlockingFailures) {
+        _message = 'ตารางเวรไม่ผ่านการตรวจสอบ จึงยังไม่สามารถซิงก์ได้';
+        return;
+      }
+      _schedulePreparation = await _syncCoordinator.prepareSchedule(
+        schedule,
+        calendarId: calendarId,
+      );
+      _message = _validationResult!.warnings.isEmpty
+          ? 'พร้อมยืนยันการซิงก์'
+          : 'พบคำเตือน กรุณาตรวจสอบก่อนยืนยันการซิงก์';
+    } catch (_) {
+      _message = 'ตรวจสอบ Google Calendar ไม่สำเร็จ';
+      rethrow;
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> synchronize({String calendarId = 'primary'}) async {
+    final schedulePreparation = _schedulePreparation;
+    if (_schedule != null) {
+      if (hasBlockingFailures || schedulePreparation == null) {
+        _message = 'ยังไม่มีแผนที่ผ่านการตรวจสอบสำหรับซิงก์';
+        notifyListeners();
+        return;
+      }
+      await _executeSchedulePreparation(schedulePreparation);
+      return;
+    }
     final current = _preview;
     if (current == null) {
       _message = 'ยังไม่มีผลการตรวจสอบสำหรับซิงก์';
@@ -68,5 +169,40 @@ class ShiftCalendarWorkflowController extends ChangeNotifier {
       _isBusy = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _executeSchedulePreparation(
+    CalendarSyncPreparation preparation,
+  ) async {
+    _isBusy = true;
+    _message = null;
+    notifyListeners();
+    try {
+      _lastResult = await _syncCoordinator.execute(preparation);
+      _message = _lastResult!.hasFailures
+          ? 'ซิงก์สำเร็จบางส่วน กรุณาตรวจสอบประวัติ'
+          : 'ซิงก์ Google Calendar สำเร็จ';
+    } catch (_) {
+      _message = 'ซิงก์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตและสิทธิ์ Google';
+      rethrow;
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// Resumes failed operations recorded by the resilient executor.
+  Future<ResumeSyncResult> resume(String historyId) {
+    final service = resumeSyncService;
+    if (service == null) {
+      throw StateError('Resume synchronization is not configured.');
+    }
+    return service.resume(historyId);
+  }
+
+  @override
+  void dispose() {
+    onDispose?.call();
+    super.dispose();
   }
 }

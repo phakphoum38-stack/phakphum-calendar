@@ -2,7 +2,7 @@
 
 ## 1. Project identity
 
-- Product: Shift Calendar Engine
+- Product: Shift Tools
 - Short name: SCE
 - Codename: Nightingale
 - Initial release target: 1.0

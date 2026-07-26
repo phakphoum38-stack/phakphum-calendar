@@ -1,9 +1,21 @@
 import '../models/shift.dart';
 import 'shift_color_service.dart';
 
-class ShiftParser {
+/// Converts roster snapshots into legacy shift records.
+abstract interface class RosterShiftParser {
+  List<Shift> parse({
+    required List<SheetSnapshot> snapshots,
+    required String targetName,
+    Iterable<String> targetAliases = const [],
+    required int year,
+    required int month,
+  });
+}
+
+class ShiftParser implements RosterShiftParser {
   const ShiftParser();
 
+  @override
   List<Shift> parse({
     required List<SheetSnapshot> snapshots,
     required String targetName,

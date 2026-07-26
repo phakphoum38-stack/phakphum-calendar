@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/state/controller_state.dart';
 import '../domain/authentication_service.dart';
 import '../domain/authentication_state.dart';
 
-class AuthenticationController extends ChangeNotifier {
+class AuthenticationController extends ChangeNotifier
+    implements ControllerState {
   AuthenticationController(this._service);
 
   final AuthenticationService _service;
@@ -11,6 +13,19 @@ class AuthenticationController extends ChangeNotifier {
   AuthenticationState _state = const AuthenticationState.uninitialized();
 
   AuthenticationState get state => _state;
+
+  @override
+  bool get loading => _state.status == AuthenticationStatus.signingIn;
+
+  @override
+  Object? get error =>
+      _state.status == AuthenticationStatus.failure ? _state.message : null;
+
+  @override
+  bool get success => _state.status == AuthenticationStatus.signedIn;
+
+  @override
+  String? get message => _state.message;
 
   Future<void> initialize() async {
     try {

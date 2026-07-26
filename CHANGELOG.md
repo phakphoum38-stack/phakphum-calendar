@@ -1,167 +1,141 @@
 # Changelog
 
-## 3.0.0+9
+All notable changes to Shift Tools are documented here.
 
-- Added multi-tenant SaaS foundation and strict tenant isolation guard.
-- Added public API contracts, cursor pagination and idempotency service.
-- Added plugin SDK and registry foundation.
-- Added platform admin metrics foundation.
-- Added Version 3.0 tests and architecture documentation.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Released versions follow semantic versioning where practical.
+
+## [Unreleased]
+
+### Added
+
+- Shift Tools user-facing branding.
+- Excel `.xlsx` import with worksheet selection, preview, column mapping,
+  conversion issues, and import summaries.
+- Canonical scheduling entities and repository/service contracts.
+- Material 3 month, week, and day schedule views.
+- Manual and deterministic automatic schedule-assignment foundations.
+- Employee availability, coverage, department capacity, and conflict detection.
+- Reusable scheduling rule engine and validation-result UI.
+- Typed result/failure hierarchy and standardized controller state.
+- Explicit dependency composition without a global service locator.
+- `.codex` project context and root project-governance documentation.
+
+### Changed
+
+- Schedule feature imports resolve to canonical domain entities through
+  compatibility exports.
+- ChangeNotifier controllers expose loading, error, success, and message state.
+
+### Fixed
+
+- Thai roster-period parsing supports numeric characters, flexible spacing, and
+  abbreviated Buddhist-year ranges.
+
+## [3.0.0+9] - 2026-07-22
+
+### Added
+
+- Multi-tenant SaaS foundation and tenant-isolation guard.
+- Public API contracts, cursor pagination, and idempotency service.
+- Plugin SDK and registry foundation.
+- Platform-administration metrics foundation.
+- Version 3 architecture documentation and tests.
 
 ## [2.0.0] - 2026-07-22
 
 ### Added
+
 - Multi-hospital and department domain models.
-- Role-based access control for Staff, Incharge, Manager and Admin.
-- Shift exchange request lifecycle and approval application service.
-- Audit event contract for organization-scoped traceability.
-- Rule Engine 2.0 foundation with overlap, minimum-rest and weekly-hours rules.
-- Version 2.0 unit tests and architecture documentation.
-
-## Unreleased
-
-### Fixed
-- แก้ Thai roster period parser ให้ regex อ่านตัวเลขและช่องว่างจริง รองรับ `16 กค69-15 สค.69`
-
-### Documentation
-- เพิ่ม Project Wiki สำหรับ architecture, coding standards, Rule Engine, testing, contribution, release, security และ privacy
-
-
-## [Unreleased]
-
-### Added
-- End-to-end mapping from user shift changes to Calendar candidates.
-- Blocking behavior for unknown shift times.
-- Workflow preview builder and controller.
-- Dashboard foundation for preview and confirmation.
-- Tests for received, given-away, blocked, and preview behavior.
-- ADR-0013 and workflow documentation.
+- Role-based access control for Staff, Incharge, Manager, and Admin.
+- Shift-exchange lifecycle and approval service.
+- Organization-scoped audit event contract.
+- Rule Engine 2.0 overlap, minimum-rest, and weekly-hours rules.
+- Version 2 architecture documentation and tests.
 
 ## [0.7.0] - 2026-07-22
 
 ### Added
-- Sprint 6 end-to-end workflow foundation.
 
-## [Unreleased]
-
-### Added
-- Real hospital roster parser based on the supplied workbook.
-- Thai Buddhist calendar period parser.
-- Flexible date-header row detection.
-- Stable assignment position keys.
-- Original/current roster comparison engine.
-- User received/given-away shift classifier.
-- Real-roster parser tests and documentation.
-- ADR-0012 for text-first comparison.
+- User shift-change to Calendar-candidate mapping.
+- Blocking behavior for unknown shift times.
+- Workflow preview builder, controller, and dashboard.
+- Received, given-away, blocked, and preview regression tests.
+- ADR-0013 and workflow documentation.
 
 ## [0.6.0] - 2026-07-22
 
 ### Added
-- Sprint 5 real roster parser foundation.
 
-## [Unreleased]
+- Hospital roster and Thai Buddhist roster-period parsers.
+- Flexible date-header detection and stable assignment-position keys.
+- Original/current roster comparison and user shift-change classification.
+- Parser/comparison tests and ADR-0012.
 
-### Added
-- Durable sync history using SharedPreferencesAsync.
-- Durable failed-operation payload storage.
-- Resume synchronization service.
-- Calendar sync coordinator.
-- JSON serialization tests.
-- ADR-0011.
-
-## [Unreleased]
+## [0.5.0] - 2026-07-22
 
 ### Added
-- CalendarDiff-to-CalendarSyncPlan builder.
-- Deterministic SHA-256 based Sync ID factory.
-- Per-operation synchronization results.
-- Resilient Calendar synchronization executor.
-- Independent retry for insert, update, and delete operations.
-- Success, partial-success, and failure history statuses.
-- Synchronization history repository contract.
-- In-memory history repository.
-- Synchronization history controller and screen.
-- Unit tests for plan mapping, Sync ID stability, retry, and history.
-- Synchronization reliability documentation.
-- ADR-0010 for retry and history behavior.
 
-### Pending
-- Durable history storage.
-- Resume failed operations.
-- Duplicate-safe insert recovery after ambiguous network failures.
-- Wiring the resilient executor into the preview screen.
-- Real roster parsing and production OAuth validation.
+- Durable synchronization history and failed-operation payload storage.
+- Resume synchronization service and Calendar sync coordinator.
+- Calendar-diff to synchronization-plan mapping.
+- Deterministic SHA-256 synchronization IDs.
+- Per-operation results, retries, and partial-failure history.
+- History repository, controller, screen, serialization tests, ADR-0010, and
+  ADR-0011.
 
 ## [0.4.0] - 2026-07-22
 
 ### Added
-- Simulation item and simulation plan models.
-- Simulation plan builder.
-- Simulation controller with confirmation state.
-- Preview screen for add, update, delete, unchanged, warning, and blocked counts.
-- Calendar synchronization command and managed-event models.
-- Calendar synchronization gateway contract.
-- Google Calendar insert, update, delete, and managed-event listing adapter.
-- Sequential synchronization executor.
-- Unit tests for simulation-plan building and sync execution.
-- Calendar preview and synchronization documentation.
-- ADR-0009 for SCE-managed Calendar events.
+
+- Simulation models, plan builder, controller, and preview screen.
+- Calendar synchronization commands and managed-event models.
+- Google Calendar insert, update, delete, and listing adapter.
+- Sequential synchronization executor and unit tests.
+- Calendar preview/synchronization documentation and ADR-0009.
 
 ## [0.3.1] - 2026-07-22
 
 ### Added
-- Configurable roster layout profile model.
-- Known shift-time catalog for confirmed shift categories and periods.
-- Relationship resolution contracts and conservative default resolver.
-- Calendar event candidate and diff models.
-- Diff engine for add, update, delete, and unchanged classification.
-- Simulation summary model.
-- Unit tests for shift times, relationships, and diff behavior.
-- Comparison foundation documentation.
-- ADR-0008 for simulation before synchronization.
+
+- Configurable roster layout profile and shift-time catalog.
+- Relationship resolution and Calendar diff models.
+- Add, update, delete, and unchanged classification.
+- Simulation summary, unit tests, and ADR-0008.
 
 ## [0.3.0] - 2026-07-22
 
 ### Added
-- Typed sheet-cell, color, and merged-range models.
-- A1 coordinate conversion utility.
-- Google Sheets adapter extraction for effective values, formulas, formatting,
-  background colors, number formats, and merged ranges.
-- Spreadsheet-to-parser normalization layer.
-- Configurable shift-color matching model.
-- Parser domain contracts.
-- Unit tests for coordinates, ranges, colors, and normalization.
-- Parser foundation documentation.
-- ADR-0007 for Google Sheets normalization.
+
+- Typed Sheet cells, colors, merged ranges, and A1 conversion.
+- Google Sheets normalization for values, formulas, formats, and merges.
+- Configurable shift-color matching and parser contracts.
+- Normalization tests and ADR-0007.
 
 ## [0.2.1] - 2026-07-22
 
 ### Added
+
 - Authorized Google API client factory.
-- Drive API gateway for listing Google Sheets files.
-- Original/current roster selection controller and UI.
-- Typed Google Sheets snapshot models and gateway.
-- Google Calendar access verification gateway.
-- API foundation documentation.
-- ADR-0006 for Drive spreadsheet selection.
+- Drive spreadsheet listing and original/current selection.
+- Typed Sheets snapshot and Calendar access gateways.
+- API foundation documentation and ADR-0006.
 
 ## [0.2.0] - 2026-07-22
 
 ### Added
-- Sprint 1 Google authentication domain and infrastructure scaffold.
-- Official `google_sign_in` 7.x initialization flow.
-- Drive, Sheets, and Calendar OAuth scope definitions.
-- Authentication UI and controller.
-- Google Drive Picker domain contract.
-- Sheets and Calendar gateway contracts.
-- Google Cloud setup guide.
-- ADR-0005 for Google authentication and authorization.
+
+- Google authentication domain/infrastructure scaffold.
+- Official `google_sign_in` 7.x initialization.
+- Drive, Sheets, and Calendar OAuth scopes.
+- Authentication UI/controller and Drive Picker contract.
+- Google Cloud setup documentation and ADR-0005.
 
 ## [0.1.0] - 2026-07-22
 
 ### Added
-- Initial Sprint 0 repository foundation.
-- Core project documentation.
-- Architecture Decision Record templates.
-- Initial domain model placeholders.
-- GitHub Actions analysis and test workflow template.
+
+- Initial repository foundation.
+- Core project documentation and ADR templates.
+- Initial domain placeholders.
+- GitHub Actions analysis/test workflow template.
