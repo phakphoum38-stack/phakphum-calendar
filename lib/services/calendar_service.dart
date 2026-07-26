@@ -147,6 +147,14 @@ class CalendarService {
 
   static String summaryFor(Shift shift) => shift.displayName;
 
+  static String descriptionFor(Shift shift) =>
+      '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
+      'ชื่อเวรจากชีต: ${shift.rowLabel}\n'
+      'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}\n'
+      '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
+      'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
+      'ประเภท: ${shift.category.label}';
+
   static String displayLegacyKeyFor(Shift shift) =>
       _legacyKey(summaryFor(shift), shift.start);
 

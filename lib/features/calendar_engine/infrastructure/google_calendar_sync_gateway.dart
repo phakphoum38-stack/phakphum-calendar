@@ -1,5 +1,5 @@
 import 'package:googleapis/calendar/v3.dart' as calendar;
-import 'package:googleapis_auth/googleapis_auth.dart' as auth;
+import 'package:http/http.dart' as http;
 
 import '../domain/calendar_sync_command.dart';
 import '../domain/calendar_sync_gateway.dart';
@@ -10,7 +10,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
 
   static const String syncIdKey = 'sceSyncId';
 
-  final auth.AuthClient _client;
+  final http.Client _client;
 
   @override
   Future<List<ManagedCalendarEvent>> listManagedEvents({
@@ -25,21 +25,22 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
       timeMin: timeMin.toUtc(),
       timeMax: timeMax.toUtc(),
       singleEvents: true,
-      privateExtendedProperty: <String>[syncIdKey],
+      showDeleted: false,
+      maxResults: 2500,
     );
 
     return (events.items ?? const <calendar.Event>[])
         .where(
           (event) =>
               event.id != null &&
-              event.extendedProperties?.private?[syncIdKey] != null &&
+              _syncId(event) != null &&
               event.start?.dateTime != null &&
               event.end?.dateTime != null,
         )
         .map(
           (event) => ManagedCalendarEvent(
             eventId: event.id!,
-            syncId: event.extendedProperties!.private![syncIdKey]!,
+            syncId: _syncId(event)!,
             title: event.summary ?? '',
             start: event.start!.dateTime!,
             end: event.end!.dateTime!,
@@ -91,7 +92,11 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
       start: calendar.EventDateTime(dateTime: command.start),
       end: calendar.EventDateTime(dateTime: command.end),
       extendedProperties: calendar.EventExtendedProperties(
-        private: <String, String>{syncIdKey: command.syncId},
+        private: <String, String>{
+          syncIdKey: command.syncId,
+          'sourceApp': 'phakphum_shift_calendar',
+          'sourceKey': command.syncId,
+        },
       ),
     );
   }
@@ -99,11 +104,19 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
   ManagedCalendarEvent _toManaged(calendar.Event event, String fallbackSyncId) {
     return ManagedCalendarEvent(
       eventId: event.id ?? '',
-      syncId: event.extendedProperties?.private?[syncIdKey] ?? fallbackSyncId,
+      syncId: _syncId(event) ?? fallbackSyncId,
       title: event.summary ?? '',
       start: event.start?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
       end: event.end?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
       description: event.description,
     );
+  }
+
+  String? _syncId(calendar.Event event) {
+    final properties = event.extendedProperties?.private;
+    final current = properties?[syncIdKey];
+    if (current != null && current.isNotEmpty) return current;
+    if (properties?['sourceApp'] != 'phakphum_shift_calendar') return null;
+    return properties?['sourceKey'];
   }
 }
