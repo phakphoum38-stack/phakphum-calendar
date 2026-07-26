@@ -6,6 +6,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../features/workflow/application/calendar_workflow_facade.dart';
 import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
 import '../models/calendar_busy_period.dart';
@@ -19,7 +20,6 @@ import '../services/calendar_color_service.dart';
 import '../services/drive_archive_service.dart';
 import '../services/drive_ownership_service.dart';
 import '../services/google_auth_service.dart';
-import '../services/google_api_client.dart';
 import '../services/local_roster_file_service.dart';
 import '../services/settings_service.dart';
 import '../services/sheets_service.dart';
@@ -34,6 +34,7 @@ class AppController extends ChangeNotifier {
     ShiftParser? parser,
     ShiftAlertService? alertService,
     CalendarService? calendarService,
+    CalendarWorkflowFacade? calendarWorkflowFacade,
     DriveArchiveService? archiveService,
     DriveOwnershipService? ownershipService,
     LocalRosterFileService? localFileService,
@@ -43,6 +44,8 @@ class AppController extends ChangeNotifier {
        _parser = parser ?? const ShiftParser(),
        _alertService = alertService ?? const ShiftAlertService(),
        _calendarService = calendarService ?? const CalendarService(),
+       _calendarWorkflowFacade =
+           calendarWorkflowFacade ?? const CalendarWorkflowFacade(),
        _archiveService = archiveService ?? const DriveArchiveService(),
        _ownershipService = ownershipService ?? const DriveOwnershipService(),
        _localFileService = localFileService ?? const LocalRosterFileService();
@@ -54,6 +57,7 @@ class AppController extends ChangeNotifier {
       _parser = const ShiftParser(),
       _alertService = const ShiftAlertService(),
       _calendarService = const CalendarService(),
+      _calendarWorkflowFacade = const CalendarWorkflowFacade(),
       _archiveService = const DriveArchiveService(),
       _ownershipService = const DriveOwnershipService(),
       _localFileService = const LocalRosterFileService() {
@@ -111,6 +115,7 @@ class AppController extends ChangeNotifier {
   final ShiftParser _parser;
   final ShiftAlertService _alertService;
   final CalendarService _calendarService;
+  final CalendarWorkflowFacade _calendarWorkflowFacade;
   final DriveArchiveService _archiveService;
   final DriveOwnershipService _ownershipService;
   final LocalRosterFileService _localFileService;
@@ -615,9 +620,13 @@ class AppController extends ChangeNotifier {
         calendar.CalendarApi.calendarEventsReadonlyScope,
       ]);
       try {
-        final snapshot = await _readCalendarPeriods(client, periods);
-        existingKeys = snapshot.sourceKeys;
-        calendarPeriods = snapshot.busyPeriods;
+        final comparison = await _calendarWorkflowFacade.compare(
+          client: client,
+          shifts: shifts,
+          periods: periods,
+        );
+        existingKeys = comparison.sourceKeys;
+        calendarPeriods = comparison.busyPeriods;
         _rebuildAlerts();
         status =
             'มีแล้ว $existingCount รายการ • เตรียมเพิ่ม $newCount รายการ • '
@@ -652,9 +661,13 @@ class AppController extends ChangeNotifier {
         calendar.CalendarApi.calendarEventsScope,
       ]);
       try {
-        final snapshot = await _readCalendarPeriods(calendarClient, periods);
-        existingKeys = snapshot.sourceKeys;
-        calendarPeriods = snapshot.busyPeriods;
+        final comparison = await _calendarWorkflowFacade.compare(
+          client: calendarClient,
+          shifts: shifts,
+          periods: periods,
+        );
+        existingKeys = comparison.sourceKeys;
+        calendarPeriods = comparison.busyPeriods;
         _rebuildAlerts();
         if (pendingAlertCount > 0) {
           throw StateError(
@@ -692,16 +705,22 @@ class AppController extends ChangeNotifier {
           );
         }
 
-        final inserted = await _calendarService.insertMissing(
-          calendarClient,
-          shifts,
-          existingKeys,
+        final result = await _calendarWorkflowFacade.synchronizePrepared(
+          comparison,
         );
-        status = 'เพิ่ม Google Calendar $inserted รายการสำเร็จ';
+        final history = result.historyEntry;
+        existingKeys.addAll(
+          shifts.where((shift) => !shift.excluded).map(CalendarService.keyFor),
+        );
+        status =
+            'ซิงก์ Google Calendar สำเร็จ: เพิ่ม ${history.inserted} • '
+            'อัปเดต ${history.updated} • ลบ ${history.deleted}'
+            '${history.failed == 0 ? '' : ' • ไม่สำเร็จ ${history.failed}'}';
         await _addAudit(
           'calendar.write',
-          'เพิ่ม $inserted รายการ; ข้ามรายการเดิมและรายการที่ไม่เลือก',
-          true,
+          'เพิ่ม ${history.inserted}, อัปเดต ${history.updated}, '
+              'ลบ ${history.deleted}, ไม่สำเร็จ ${history.failed}',
+          history.failed == 0,
         );
       } finally {
         calendarClient.close();
@@ -1069,31 +1088,6 @@ class AppController extends ChangeNotifier {
       customTitle: override.customTitle,
       calendarColorId: override.calendarColorId,
       clearCalendarColor: override.calendarColorId == null,
-    );
-  }
-
-  Future<CalendarReadResult> _readCalendarPeriods(
-    GoogleApiClient client,
-    List<RosterPeriod> periods,
-  ) async {
-    final sourceKeys = <String>{};
-    final busyByKey = <String, CalendarBusyPeriod>{};
-    for (final period in periods) {
-      final snapshot = await _calendarService.readCalendar(
-        client,
-        year: period.year,
-        month: period.month,
-      );
-      sourceKeys.addAll(snapshot.sourceKeys);
-      for (final busyPeriod in snapshot.busyPeriods) {
-        busyByKey['${busyPeriod.id}|${busyPeriod.start.toIso8601String()}'] =
-            busyPeriod;
-      }
-    }
-    return CalendarReadResult(
-      sourceKeys: sourceKeys,
-      busyPeriods: busyByKey.values.toList()
-        ..sort((left, right) => left.start.compareTo(right.start)),
     );
   }
 

@@ -35,6 +35,38 @@ class ShiftCalendarWorkflowController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> prepareCandidatePreview({
+    required List<CalendarEventCandidate> desired,
+    String calendarId = 'primary',
+  }) async {
+    final emptyPreview = _previewBuilder.buildCandidates(
+      desired: desired,
+      existing: const [],
+    );
+    final existing = await _syncCoordinator.loadExistingEvents(
+      timeMin: emptyPreview.timeMin,
+      timeMax: emptyPreview.timeMax,
+      calendarId: calendarId,
+    );
+    _preview = _previewBuilder.buildCandidates(
+      desired: desired,
+      existing: existing
+          .map(
+            (event) => CalendarEventCandidate(
+              syncId: event.syncId,
+              title: event.title,
+              start: event.start,
+              end: event.end,
+              description: event.description,
+              shouldExist: true,
+            ),
+          )
+          .toList(growable: false),
+    );
+    _message = null;
+    notifyListeners();
+  }
+
   Future<void> synchronize({String calendarId = 'primary'}) async {
     final current = _preview;
     if (current == null) {

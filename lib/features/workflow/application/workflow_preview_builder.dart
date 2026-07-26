@@ -21,17 +21,29 @@ class WorkflowPreviewBuilder {
     required List<CalendarEventCandidate> existing,
   }) {
     final mapping = mapper.mapChanges(changes);
-    final diff = diffEngine.compare(
+    return buildCandidates(
       desired: mapping.candidates,
       existing: existing,
-    );
-    final simulation = simulationBuilder.build(
-      diff: diff,
+      changes: changes,
       warningCount: mapping.warnings.length,
       blockedCount: mapping.blockedCount,
     );
+  }
 
-    final dates = mapping.candidates
+  WorkflowPreview buildCandidates({
+    required List<CalendarEventCandidate> desired,
+    required List<CalendarEventCandidate> existing,
+    List<UserShiftChange> changes = const [],
+    int warningCount = 0,
+    int blockedCount = 0,
+  }) {
+    final diff = diffEngine.compare(desired: desired, existing: existing);
+    final simulation = simulationBuilder.build(
+      diff: diff,
+      warningCount: warningCount,
+      blockedCount: blockedCount,
+    );
+    final dates = desired
         .expand((event) => <DateTime>[event.start, event.end])
         .toList(growable: false);
     final now = DateTime.now();

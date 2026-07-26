@@ -1,6 +1,7 @@
 import '../../calendar_engine/application/calendar_sync_plan_builder.dart';
 import '../../calendar_engine/application/resilient_calendar_sync_executor.dart';
 import '../../calendar_engine/domain/calendar_sync_gateway.dart';
+import '../../calendar_engine/domain/managed_calendar_event.dart';
 import '../../diff_engine/domain/calendar_diff.dart';
 
 class CalendarSyncCoordinator {
@@ -14,13 +15,23 @@ class CalendarSyncCoordinator {
   final CalendarSyncPlanBuilder _planBuilder;
   final ResilientCalendarSyncExecutor _executor;
 
+  Future<List<ManagedCalendarEvent>> loadExistingEvents({
+    required DateTime timeMin,
+    required DateTime timeMax,
+    String calendarId = 'primary',
+  }) => _gateway.listManagedEvents(
+    timeMin: timeMin,
+    timeMax: timeMax,
+    calendarId: calendarId,
+  );
+
   Future<ResilientCalendarSyncResult> synchronize({
     required CalendarDiff diff,
     required DateTime timeMin,
     required DateTime timeMax,
     String calendarId = 'primary',
   }) async {
-    final existing = await _gateway.listManagedEvents(
+    final existing = await loadExistingEvents(
       timeMin: timeMin,
       timeMax: timeMax,
       calendarId: calendarId,
