@@ -182,6 +182,9 @@ class _ShiftToolsAppState extends State<ShiftToolsApp> {
         shiftExchangeControllerFactory:
             dependencies.createShiftExchangeController,
         dashboardSummaryService: dependencies.dashboardSummaryService,
+        shiftTemplateControllerFactory:
+            dependencies.createShiftTemplateController,
+        scheduleControllerFactory: dependencies.createRosterEditorController,
       ),
     );
   }

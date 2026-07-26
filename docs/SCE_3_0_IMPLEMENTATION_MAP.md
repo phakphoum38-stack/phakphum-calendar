@@ -8,11 +8,11 @@
 | Canonical roster | Complete foundation | `domain/entities/schedule.dart`, `ScheduleRepository` | Extend metadata without breaking schema |
 | Responsive shell | Partial | `app.dart`, `ui/app_shell.dart` | Align six destinations and extract pages |
 | Dashboard | Partial | `_DashboardPage` in `app_shell.dart` | Move to feature and add SCE cards |
-| Schedule views | Partial | `features/schedule/` | Adopt as roster viewer/editor |
-| Employee directory | Domain partial | canonical employee entities | Add repository/controller/UI |
+| Schedule views | Phase 2 editor slice | `features/schedule/` | Extend selection, templates and drag preparation |
+| Employee directory | Phase 2 production slice | `features/employees/` | Add profiles, permissions and import/export |
 | Shift exchange | Domain/service partial | `features/shift_exchange/` | Add repository, workflow and UI |
 | Reports/A4 | Partial production slice | `features/reports/` | Add report families and exports |
-| Settings | Partial legacy | `_SettingsPage`, settings services | Split workspace/profile/template settings |
+| Settings | Phase 2 template slice | `_SettingsPage`, `features/shift_templates/` | Split workspace/profile settings |
 | Rule engine | Strong foundation | `RuleEvaluator`, validation service | Configurable registrations and severities |
 | Conflict engine | Partial | schedule generation/conflict services | Canonical conflict result boundary |
 | Policy engine | Missing | none | Implement after rule/conflict contract |
@@ -33,6 +33,6 @@
 
 1. Keep release workflows green, including Android.
 2. Extract top-level navigation and Dashboard from legacy `AppShell`.
-3. Introduce Employee Directory through canonical abstractions.
-4. Complete canonical roster editor and shift-template configuration.
-5. Add configurable Conflict/Policy/Preview boundaries.
+3. Extend the canonical manual editor with bulk selection and repeat actions.
+4. Add configurable Conflict/Policy/Preview boundaries.
+5. Add employee availability and department capacity.

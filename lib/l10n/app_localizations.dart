@@ -781,6 +781,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Please try again.'**
   String get unexpectedError;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @deactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get deactivate;
+
+  /// No description provided for @requiredField.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required.'**
+  String get requiredField;
+
+  /// No description provided for @invalidNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid non-negative number.'**
+  String get invalidNumber;
+
+  /// No description provided for @addEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Add employee'**
+  String get addEmployee;
+
+  /// No description provided for @editEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit employee'**
+  String get editEmployee;
+
+  /// No description provided for @deactivateEmployee.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate employee'**
+  String get deactivateEmployee;
+
+  /// No description provided for @deactivateEmployeeConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate {name}? Existing schedule assignments will be retained.'**
+  String deactivateEmployeeConfirmation(String name);
+
+  /// No description provided for @employeeCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee code'**
+  String get employeeCode;
+
+  /// No description provided for @firstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get firstName;
+
+  /// No description provided for @lastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get lastName;
+
+  /// No description provided for @nickname.
+  ///
+  /// In en, this message translates to:
+  /// **'Nickname'**
+  String get nickname;
+
+  /// No description provided for @position.
+  ///
+  /// In en, this message translates to:
+  /// **'Position'**
+  String get position;
+
+  /// No description provided for @departmentCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Department code'**
+  String get departmentCode;
+
+  /// No description provided for @departmentName.
+  ///
+  /// In en, this message translates to:
+  /// **'Department name'**
+  String get departmentName;
+
+  /// No description provided for @shiftTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift templates'**
+  String get shiftTemplates;
+
+  /// No description provided for @shiftTemplatesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure reusable shift codes, times, colors, and rates.'**
+  String get shiftTemplatesDescription;
+
+  /// No description provided for @addShiftTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Add shift template'**
+  String get addShiftTemplate;
+
+  /// No description provided for @editShiftTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit shift template'**
+  String get editShiftTemplate;
+
+  /// No description provided for @shiftCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift code'**
+  String get shiftCode;
+
+  /// No description provided for @shiftName.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift name'**
+  String get shiftName;
+
+  /// No description provided for @shortName.
+  ///
+  /// In en, this message translates to:
+  /// **'Short name'**
+  String get shortName;
+
+  /// No description provided for @startTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get startTime;
+
+  /// No description provided for @endTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get endTime;
+
+  /// No description provided for @workingHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Working hours'**
+  String get workingHours;
+
+  /// No description provided for @shiftRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift rate'**
+  String get shiftRate;
+
+  /// No description provided for @overnight.
+  ///
+  /// In en, this message translates to:
+  /// **'Overnight'**
+  String get overnight;
+
+  /// No description provided for @manualRosterEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual roster editor'**
+  String get manualRosterEditor;
+
+  /// No description provided for @addAssignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Add assignment'**
+  String get addAssignment;
+
+  /// No description provided for @selectDayToEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a day to edit its assignments.'**
+  String get selectDayToEdit;
+
+  /// No description provided for @rosterCatalogRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Add employees and shift templates before creating assignments.'**
+  String get rosterCatalogRequired;
+
+  /// No description provided for @previewChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview changes'**
+  String get previewChanges;
+
+  /// No description provided for @deleteAssignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete assignment'**
+  String get deleteAssignment;
+
+  /// No description provided for @deleteAssignmentConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {employee} from shift {shift}?'**
+  String deleteAssignmentConfirmation(String employee, String shift);
+
+  /// No description provided for @scheduleSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule saved.'**
+  String get scheduleSaved;
+
+  /// No description provided for @location.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get location;
+
+  /// No description provided for @notes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notes;
 }
 
 class _AppLocalizationsDelegate

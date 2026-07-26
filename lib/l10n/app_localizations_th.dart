@@ -358,4 +358,121 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get unexpectedError => 'เกิดข้อผิดพลาด โปรดลองอีกครั้ง';
+
+  @override
+  String get edit => 'แก้ไข';
+
+  @override
+  String get deactivate => 'ปิดใช้งาน';
+
+  @override
+  String get requiredField => 'จำเป็นต้องกรอกข้อมูลนี้';
+
+  @override
+  String get invalidNumber => 'กรุณากรอกตัวเลขตั้งแต่ศูนย์ขึ้นไป';
+
+  @override
+  String get addEmployee => 'เพิ่มบุคลากร';
+
+  @override
+  String get editEmployee => 'แก้ไขบุคลากร';
+
+  @override
+  String get deactivateEmployee => 'ปิดใช้งานบุคลากร';
+
+  @override
+  String deactivateEmployeeConfirmation(String name) {
+    return 'ปิดใช้งาน $name ใช่หรือไม่ รายการเวรเดิมจะยังคงอยู่';
+  }
+
+  @override
+  String get employeeCode => 'รหัสพนักงาน';
+
+  @override
+  String get firstName => 'ชื่อ';
+
+  @override
+  String get lastName => 'นามสกุล';
+
+  @override
+  String get nickname => 'ชื่อเล่น';
+
+  @override
+  String get position => 'ตำแหน่ง';
+
+  @override
+  String get departmentCode => 'รหัสหน่วยงาน';
+
+  @override
+  String get departmentName => 'ชื่อหน่วยงาน';
+
+  @override
+  String get shiftTemplates => 'แม่แบบเวร';
+
+  @override
+  String get shiftTemplatesDescription =>
+      'กำหนดรหัส เวลา สี และอัตราของเวรที่นำกลับมาใช้ได้';
+
+  @override
+  String get addShiftTemplate => 'เพิ่มแม่แบบเวร';
+
+  @override
+  String get editShiftTemplate => 'แก้ไขแม่แบบเวร';
+
+  @override
+  String get shiftCode => 'รหัสเวร';
+
+  @override
+  String get shiftName => 'ชื่อเวร';
+
+  @override
+  String get shortName => 'ชื่อย่อ';
+
+  @override
+  String get startTime => 'เวลาเริ่ม';
+
+  @override
+  String get endTime => 'เวลาสิ้นสุด';
+
+  @override
+  String get workingHours => 'ชั่วโมงทำงาน';
+
+  @override
+  String get shiftRate => 'อัตราเงินเวร';
+
+  @override
+  String get overnight => 'ข้ามวัน';
+
+  @override
+  String get manualRosterEditor => 'จัดตารางเวรด้วยตนเอง';
+
+  @override
+  String get addAssignment => 'เพิ่มผู้ปฏิบัติงาน';
+
+  @override
+  String get selectDayToEdit => 'เลือกวันที่เพื่อแก้ไขรายการเวร';
+
+  @override
+  String get rosterCatalogRequired =>
+      'เพิ่มบุคลากรและแม่แบบเวรก่อนสร้างรายการเวร';
+
+  @override
+  String get previewChanges => 'ตรวจสอบการเปลี่ยนแปลง';
+
+  @override
+  String get deleteAssignment => 'ลบรายการเวร';
+
+  @override
+  String deleteAssignmentConfirmation(String employee, String shift) {
+    return 'ลบ $employee ออกจากเวร $shift ใช่หรือไม่';
+  }
+
+  @override
+  String get scheduleSaved => 'บันทึกตารางเวรแล้ว';
+
+  @override
+  String get location => 'สถานที่';
+
+  @override
+  String get notes => 'หมายเหตุ';
 }

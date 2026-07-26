@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../../domain/entities/department.dart';
+import '../../../../domain/entities/employee.dart';
 import '../../../../domain/entities/schedule.dart';
 import '../../../../l10n/l10n.dart';
 import '../controllers/employee_directory_controller.dart';
@@ -27,6 +31,12 @@ class _EmployeeDirectoryPageState extends State<EmployeeDirectoryPage> {
   final searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    unawaited(controller.load());
+  }
+
+  @override
   void didUpdateWidget(covariant EmployeeDirectoryPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     controller.updateSchedule(widget.schedule);
@@ -47,12 +57,41 @@ class _EmployeeDirectoryPageState extends State<EmployeeDirectoryPage> {
       return ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(
-            context.l10n.employees,
-            style: Theme.of(context).textTheme.headlineSmall,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.employees,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: controller.loading
+                    ? null
+                    : () => _editEmployee(context),
+                icon: const Icon(Icons.person_add_outlined),
+                label: Text(context.l10n.addEmployee),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(context.l10n.employeeDirectoryDescription),
+          if (controller.error case final error?) ...[
+            const SizedBox(height: 12),
+            MaterialBanner(
+              content: Text(error),
+              actions: [
+                TextButton(
+                  onPressed: controller.load,
+                  child: Text(context.l10n.retry),
+                ),
+              ],
+            ),
+          ],
+          if (controller.loading) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(),
+          ],
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,
@@ -124,7 +163,35 @@ class _EmployeeDirectoryPageState extends State<EmployeeDirectoryPage> {
                         ].where((value) => value.trim().isNotEmpty).join(' • '),
                       ),
                       trailing: employees[index].active
-                          ? const Icon(Icons.check_circle_outline)
+                          ? PopupMenuButton<_EmployeeAction>(
+                              onSelected: (action) {
+                                if (action == _EmployeeAction.edit) {
+                                  unawaited(
+                                    _editEmployee(
+                                      context,
+                                      employee: employees[index],
+                                    ),
+                                  );
+                                } else {
+                                  unawaited(
+                                    _confirmDeactivate(
+                                      context,
+                                      employees[index],
+                                    ),
+                                  );
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: _EmployeeAction.edit,
+                                  child: Text(context.l10n.edit),
+                                ),
+                                PopupMenuItem(
+                                  value: _EmployeeAction.deactivate,
+                                  child: Text(context.l10n.deactivate),
+                                ),
+                              ],
+                            )
                           : const Icon(Icons.block_outlined),
                     ),
                     if (index != employees.length - 1) const Divider(height: 1),
@@ -136,6 +203,187 @@ class _EmployeeDirectoryPageState extends State<EmployeeDirectoryPage> {
       );
     },
   );
+
+  Future<void> _editEmployee(BuildContext context, {Employee? employee}) async {
+    final result = await showDialog<Employee>(
+      context: context,
+      builder: (context) => _EmployeeDialog(employee: employee),
+    );
+    if (result == null) return;
+    await controller.saveEmployee(result);
+  }
+
+  Future<void> _confirmDeactivate(
+    BuildContext context,
+    Employee employee,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.deactivateEmployee),
+        content: Text(
+          context.l10n.deactivateEmployeeConfirmation(employee.displayName),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await controller.deactivateEmployee(employee);
+    }
+  }
+}
+
+enum _EmployeeAction { edit, deactivate }
+
+class _EmployeeDialog extends StatefulWidget {
+  const _EmployeeDialog({this.employee});
+
+  final Employee? employee;
+
+  @override
+  State<_EmployeeDialog> createState() => _EmployeeDialogState();
+}
+
+class _EmployeeDialogState extends State<_EmployeeDialog> {
+  final formKey = GlobalKey<FormState>();
+  late final code = TextEditingController(
+    text: widget.employee?.employeeCode ?? '',
+  );
+  late final firstName = TextEditingController(
+    text: widget.employee?.firstName ?? '',
+  );
+  late final lastName = TextEditingController(
+    text: widget.employee?.lastName ?? '',
+  );
+  late final nickname = TextEditingController(
+    text: widget.employee?.nickname ?? '',
+  );
+  late final position = TextEditingController(
+    text: widget.employee?.position ?? '',
+  );
+  late final departmentCode = TextEditingController(
+    text: widget.employee?.department.code ?? '',
+  );
+  late final departmentName = TextEditingController(
+    text: widget.employee?.department.name ?? '',
+  );
+
+  @override
+  void dispose() {
+    code.dispose();
+    firstName.dispose();
+    lastName.dispose();
+    nickname.dispose();
+    position.dispose();
+    departmentCode.dispose();
+    departmentName.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(
+      widget.employee == null
+          ? context.l10n.addEmployee
+          : context.l10n.editEmployee,
+    ),
+    content: SizedBox(
+      width: 560,
+      child: Form(
+        key: formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _requiredField(context, code, context.l10n.employeeCode),
+              const SizedBox(height: 12),
+              _requiredField(context, firstName, context.l10n.firstName),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: lastName,
+                decoration: InputDecoration(labelText: context.l10n.lastName),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: nickname,
+                decoration: InputDecoration(labelText: context.l10n.nickname),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: position,
+                decoration: InputDecoration(labelText: context.l10n.position),
+              ),
+              const SizedBox(height: 12),
+              _requiredField(
+                context,
+                departmentCode,
+                context.l10n.departmentCode,
+              ),
+              const SizedBox(height: 12),
+              _requiredField(
+                context,
+                departmentName,
+                context.l10n.departmentName,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text(context.l10n.cancel),
+      ),
+      FilledButton(onPressed: _submit, child: Text(context.l10n.save)),
+    ],
+  );
+
+  TextFormField _requiredField(
+    BuildContext context,
+    TextEditingController controller,
+    String label,
+  ) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: '$label *'),
+      validator: (value) => value == null || value.trim().isEmpty
+          ? context.l10n.requiredField
+          : null,
+    );
+  }
+
+  void _submit() {
+    if (!formKey.currentState!.validate()) return;
+    final normalizedDepartmentCode = departmentCode.text.trim();
+    final id =
+        widget.employee?.id ?? 'employee:${code.text.trim().toLowerCase()}';
+    Navigator.pop(
+      context,
+      Employee(
+        id: id,
+        employeeCode: code.text.trim(),
+        firstName: firstName.text.trim(),
+        lastName: lastName.text.trim(),
+        nickname: nickname.text.trim(),
+        position: position.text.trim(),
+        active: widget.employee?.active ?? true,
+        department: Department(
+          id: 'department:${normalizedDepartmentCode.toLowerCase()}',
+          code: normalizedDepartmentCode,
+          name: departmentName.text.trim(),
+        ),
+      ),
+    );
+  }
 }
 
 class _EmployeeEmptyState extends StatelessWidget {

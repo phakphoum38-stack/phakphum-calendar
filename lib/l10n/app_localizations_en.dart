@@ -363,4 +363,121 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unexpectedError => 'Something went wrong. Please try again.';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get deactivate => 'Deactivate';
+
+  @override
+  String get requiredField => 'This field is required.';
+
+  @override
+  String get invalidNumber => 'Enter a valid non-negative number.';
+
+  @override
+  String get addEmployee => 'Add employee';
+
+  @override
+  String get editEmployee => 'Edit employee';
+
+  @override
+  String get deactivateEmployee => 'Deactivate employee';
+
+  @override
+  String deactivateEmployeeConfirmation(String name) {
+    return 'Deactivate $name? Existing schedule assignments will be retained.';
+  }
+
+  @override
+  String get employeeCode => 'Employee code';
+
+  @override
+  String get firstName => 'First name';
+
+  @override
+  String get lastName => 'Last name';
+
+  @override
+  String get nickname => 'Nickname';
+
+  @override
+  String get position => 'Position';
+
+  @override
+  String get departmentCode => 'Department code';
+
+  @override
+  String get departmentName => 'Department name';
+
+  @override
+  String get shiftTemplates => 'Shift templates';
+
+  @override
+  String get shiftTemplatesDescription =>
+      'Configure reusable shift codes, times, colors, and rates.';
+
+  @override
+  String get addShiftTemplate => 'Add shift template';
+
+  @override
+  String get editShiftTemplate => 'Edit shift template';
+
+  @override
+  String get shiftCode => 'Shift code';
+
+  @override
+  String get shiftName => 'Shift name';
+
+  @override
+  String get shortName => 'Short name';
+
+  @override
+  String get startTime => 'Start time';
+
+  @override
+  String get endTime => 'End time';
+
+  @override
+  String get workingHours => 'Working hours';
+
+  @override
+  String get shiftRate => 'Shift rate';
+
+  @override
+  String get overnight => 'Overnight';
+
+  @override
+  String get manualRosterEditor => 'Manual roster editor';
+
+  @override
+  String get addAssignment => 'Add assignment';
+
+  @override
+  String get selectDayToEdit => 'Select a day to edit its assignments.';
+
+  @override
+  String get rosterCatalogRequired =>
+      'Add employees and shift templates before creating assignments.';
+
+  @override
+  String get previewChanges => 'Preview changes';
+
+  @override
+  String get deleteAssignment => 'Delete assignment';
+
+  @override
+  String deleteAssignmentConfirmation(String employee, String shift) {
+    return 'Delete $employee from shift $shift?';
+  }
+
+  @override
+  String get scheduleSaved => 'Schedule saved.';
+
+  @override
+  String get location => 'Location';
+
+  @override
+  String get notes => 'Notes';
 }
