@@ -59,13 +59,22 @@ void main() {
     expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('${DateTime.now().year}'), findsNothing);
 
-    await tester.tap(find.text('แจ้งเตือน'));
+    expect(find.text('แดชบอร์ด'), findsOneWidget);
+    expect(find.text('ตารางเวร'), findsOneWidget);
+    expect(find.text('บุคลากร'), findsOneWidget);
+    expect(find.text('แลกเวร'), findsOneWidget);
+    expect(find.text('รายงาน'), findsOneWidget);
+    expect(find.text('ตั้งค่า'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('แจ้งเตือน').last);
     await tester.pumpAndSettle();
     expect(find.text('ศูนย์แจ้งเตือนเวร'), findsOneWidget);
     expect(find.text('รับทราบและคงไว้'), findsWidgets);
     expect(find.text('ไม่นำเข้าปฏิทิน'), findsWidgets);
 
-    await tester.tap(find.text('หน้าแรก'));
+    Navigator.of(tester.element(find.text('ศูนย์แจ้งเตือนเวร'))).pop();
     await tester.pumpAndSettle();
 
     final yearDropdown = find.byType(DropdownButtonFormField<int>).last;
@@ -77,13 +86,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('${DateTime.now().year + 1}'), findsOneWidget);
 
-    await tester.tap(find.text('เครื่องมือ'));
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('เครื่องมือ').last);
     await tester.pumpAndSettle();
     expect(find.text('คลังเครื่องมือ'), findsOneWidget);
     expect(find.text('Gmail'), findsWidgets);
     expect(find.text('VS Code Web'), findsWidgets);
     expect(find.text('ติดตั้งในแถบ'), findsWidgets);
 
+    Navigator.of(tester.element(find.text('คลังเครื่องมือ'))).pop();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('ตั้งค่า'));
     await tester.pumpAndSettle();
     expect(find.text('สร้างชีตเดือนล่วงหน้า'), findsOneWidget);
@@ -142,7 +155,9 @@ void main() {
     await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(NavigationDestination).at(3));
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('บันทึก').last);
     await tester.pumpAndSettle();
 
     expect(find.text('ชีตที่บันทึก'), findsOneWidget);
@@ -160,7 +175,9 @@ void main() {
     await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(NavigationDestination).last);
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('เครื่องมือ').last);
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsOneWidget);

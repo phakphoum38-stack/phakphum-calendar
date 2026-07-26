@@ -39,6 +39,107 @@ class AppLocalizationsTh extends AppLocalizations {
   String get tools => 'เครื่องมือ';
 
   @override
+  String get dashboard => 'แดชบอร์ด';
+
+  @override
+  String get schedule => 'ตารางเวร';
+
+  @override
+  String get employees => 'บุคลากร';
+
+  @override
+  String get shiftExchange => 'แลกเวร';
+
+  @override
+  String get more => 'เพิ่มเติม';
+
+  @override
+  String get clear => 'ล้าง';
+
+  @override
+  String get all => 'ทั้งหมด';
+
+  @override
+  String get pending => 'รอดำเนินการ';
+
+  @override
+  String get approved => 'อนุมัติแล้ว';
+
+  @override
+  String get rejected => 'ปฏิเสธ';
+
+  @override
+  String get cancelled => 'ยกเลิก';
+
+  @override
+  String get employeeDirectoryDescription =>
+      'บุคลากรที่อ้างอิงอยู่ในตารางเวรหลักปัจจุบัน';
+
+  @override
+  String get searchEmployees => 'ค้นหาจากชื่อ รหัส หรือตำแหน่ง';
+
+  @override
+  String get activeEmployeesOnly => 'เฉพาะบุคลากรที่ใช้งาน';
+
+  @override
+  String get noEmployeesMatch => 'ไม่พบบุคลากรที่ตรงกับตัวกรอง';
+
+  @override
+  String get noEmployeesInSchedule => 'ตารางเวรปัจจุบันยังไม่มีข้อมูลบุคลากร';
+
+  @override
+  String get shiftExchangeDescription => 'ตรวจคำขอแลกเวรและสถานะการอนุมัติ';
+
+  @override
+  String get noExchangeRequests => 'ยังไม่มีคำขอแลกเวร';
+
+  @override
+  String get exchangeApprovalBoundary =>
+      'การสร้างและอนุมัติคำขอจะดำเนินการผ่าน workflow ที่มีการตรวจสิทธิ์';
+
+  @override
+  String get myNextShift => 'เวรถัดไปของฉัน';
+
+  @override
+  String get todaySummary => 'เวรวันนี้';
+
+  @override
+  String get tomorrowSummary => 'เวรพรุ่งนี้';
+
+  @override
+  String get monthlyAssignments => 'เวรเดือนนี้';
+
+  @override
+  String get calendarSyncStatus => 'สถานะปฏิทิน';
+
+  @override
+  String get conflictWarning => 'แจ้งเตือนความขัดแย้ง';
+
+  @override
+  String get assignmentCount => 'รายการเวร';
+
+  @override
+  String get noUpcomingShift => 'ไม่มีเวรถัดไป';
+
+  @override
+  String get noScheduleData => 'ไม่มีข้อมูลตารางเวร';
+
+  @override
+  String get connected => 'เชื่อมต่อแล้ว';
+
+  @override
+  String get notConnected => 'ยังไม่เชื่อมต่อ';
+
+  @override
+  String get neverSynced => 'ยังไม่เคยซิงก์';
+
+  @override
+  String get noPendingConflicts => 'ไม่มีความขัดแย้งค้าง';
+
+  @override
+  String get requiresReview => 'ต้องตรวจสอบ';
+
+  @override
   String get cancel => 'ยกเลิก';
 
   @override

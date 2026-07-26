@@ -13,12 +13,14 @@ import '../../domain/services/google_sheets_service.dart';
 import '../../domain/services/import_service.dart';
 import '../../domain/services/notification_service.dart';
 import '../../features/excel_import/application/import_engine.dart';
+import '../../features/dashboard/application/dashboard_summary_service.dart';
 import '../../features/excel_import/data/excel_reader_service.dart';
 import '../../features/excel_import/data/google_sheets_import_data_source.dart';
 import '../../features/excel_import/presentation/controllers/column_mapping_controller.dart';
 import '../../features/excel_import/presentation/controllers/excel_import_controller.dart';
 import '../../features/excel_import/domain/shift_record.dart';
 import '../../features/google_sheets/infrastructure/google_sheets_gateway.dart';
+import '../../features/employees/presentation/controllers/employee_directory_controller.dart';
 import '../../features/calendar_engine/application/calendar_sync_plan_builder.dart';
 import '../../features/calendar_engine/application/resilient_calendar_sync_executor.dart';
 import '../../features/calendar_engine/application/resume_sync_service.dart';
@@ -47,6 +49,7 @@ import '../../features/schedule/data/legacy_schedule_adapter.dart';
 import '../../features/schedule/data/schedule_service.dart';
 import '../../features/schedule/data/shared_preferences_schedule_repository.dart';
 import '../../features/schedule/presentation/controllers/schedule_controller.dart';
+import '../../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
 import '../../features/workflow/application/calendar_sync_coordinator.dart';
 import '../../features/workflow/application/shift_calendar_workflow_controller.dart';
 import '../../features/workflow/application/workflow_preview_builder.dart';
@@ -82,6 +85,7 @@ class AppDependencies {
     ExcelReaderService? excelReaderService,
     ImportEngine? importEngine,
     ImportedScheduleAdapter? importedScheduleAdapter,
+    DashboardSummaryService? dashboardSummaryService,
     LegacyScheduleAdapter? legacyScheduleAdapter,
     AuthorizedGoogleClientFactory? authorizedGoogleClientFactory,
     GoogleSheetsImportDataSource Function(auth.AuthClient)?
@@ -118,6 +122,8 @@ class AppDependencies {
        importEngine = importEngine ?? const ImportEngine(),
        importedScheduleAdapter =
            importedScheduleAdapter ?? const ImportedScheduleAdapter(),
+       dashboardSummaryService =
+           dashboardSummaryService ?? const DashboardSummaryService(),
        legacyScheduleAdapter =
            legacyScheduleAdapter ?? const LegacyScheduleAdapter(),
        authorizedGoogleClientFactory =
@@ -167,6 +173,7 @@ class AppDependencies {
   final ExcelReaderService excelReaderService;
   final ImportEngine importEngine;
   final ImportedScheduleAdapter importedScheduleAdapter;
+  final DashboardSummaryService dashboardSummaryService;
   final LegacyScheduleAdapter legacyScheduleAdapter;
   final AuthorizedGoogleClientFactory authorizedGoogleClientFactory;
   final GoogleSheetsImportDataSource Function(auth.AuthClient)
@@ -244,6 +251,18 @@ class AppDependencies {
   /// Creates the in-memory column-mapping controller.
   ColumnMappingController createColumnMappingController() {
     return ColumnMappingController();
+  }
+
+  /// Creates one independently owned employee-directory controller.
+  EmployeeDirectoryController createEmployeeDirectoryController(
+    Schedule schedule,
+  ) {
+    return EmployeeDirectoryController(schedule: schedule);
+  }
+
+  /// Creates one independently owned exchange workspace controller.
+  ShiftExchangeController createShiftExchangeController() {
+    return ShiftExchangeController();
   }
 
   /// Converts imported rows into the canonical in-memory schedule aggregate.

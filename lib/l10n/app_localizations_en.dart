@@ -39,6 +39,109 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tools => 'Tools';
 
   @override
+  String get dashboard => 'Dashboard';
+
+  @override
+  String get schedule => 'Schedule';
+
+  @override
+  String get employees => 'Employees';
+
+  @override
+  String get shiftExchange => 'Shift exchange';
+
+  @override
+  String get more => 'More';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get pending => 'Pending';
+
+  @override
+  String get approved => 'Approved';
+
+  @override
+  String get rejected => 'Rejected';
+
+  @override
+  String get cancelled => 'Cancelled';
+
+  @override
+  String get employeeDirectoryDescription =>
+      'People referenced by the active canonical schedule.';
+
+  @override
+  String get searchEmployees => 'Search by name, code or position';
+
+  @override
+  String get activeEmployeesOnly => 'Active only';
+
+  @override
+  String get noEmployeesMatch => 'No employees match the active filters.';
+
+  @override
+  String get noEmployeesInSchedule =>
+      'No employees are referenced by the current schedule.';
+
+  @override
+  String get shiftExchangeDescription =>
+      'Review shift-exchange requests and their approval status.';
+
+  @override
+  String get noExchangeRequests => 'No shift-exchange requests are available.';
+
+  @override
+  String get exchangeApprovalBoundary =>
+      'New requests and approvals use the protected exchange workflow.';
+
+  @override
+  String get myNextShift => 'My next shift';
+
+  @override
+  String get todaySummary => 'Today';
+
+  @override
+  String get tomorrowSummary => 'Tomorrow';
+
+  @override
+  String get monthlyAssignments => 'This month';
+
+  @override
+  String get calendarSyncStatus => 'Calendar sync';
+
+  @override
+  String get conflictWarning => 'Conflict warning';
+
+  @override
+  String get assignmentCount => 'assignments';
+
+  @override
+  String get noUpcomingShift => 'No upcoming shift';
+
+  @override
+  String get noScheduleData => 'No schedule data';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String get notConnected => 'Not connected';
+
+  @override
+  String get neverSynced => 'Never synced';
+
+  @override
+  String get noPendingConflicts => 'No pending conflicts';
+
+  @override
+  String get requiresReview => 'Requires review';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

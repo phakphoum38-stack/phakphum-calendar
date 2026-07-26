@@ -177,6 +177,11 @@ class _ShiftToolsAppState extends State<ShiftToolsApp> {
         onLocaleChanged: (locale) => setState(() => _locale = locale),
         reportControllerFactory:
             dependencies.createMonthlyScheduleReportController,
+        employeeDirectoryControllerFactory:
+            dependencies.createEmployeeDirectoryController,
+        shiftExchangeControllerFactory:
+            dependencies.createShiftExchangeController,
+        dashboardSummaryService: dependencies.dashboardSummaryService,
       ),
     );
   }
