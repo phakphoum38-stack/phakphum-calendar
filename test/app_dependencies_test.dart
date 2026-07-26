@@ -80,6 +80,27 @@ void main() {
     expect(dependencies.importEngine, same(importEngine));
   });
 
+  test('composition root owns SCE top-level controller construction', () {
+    final dependencies = AppDependencies.production();
+    final schedule = Schedule(id: 'schedule', name: 'Schedule');
+
+    final employees = dependencies.createEmployeeDirectoryController(schedule);
+    final exchanges = dependencies.createShiftExchangeController();
+    final otherEmployees = dependencies.createEmployeeDirectoryController(
+      schedule,
+    );
+    final otherExchanges = dependencies.createShiftExchangeController();
+    addTearDown(employees.dispose);
+    addTearDown(exchanges.dispose);
+    addTearDown(otherEmployees.dispose);
+    addTearDown(otherExchanges.dispose);
+
+    expect(employees.employees, isEmpty);
+    expect(exchanges.requests, isEmpty);
+    expect(otherEmployees, isNot(same(employees)));
+    expect(otherExchanges, isNot(same(exchanges)));
+  });
+
   test('composition root accepts an interface-only legacy service fake', () {
     final parser = _FakeRosterShiftParser();
     final dependencies = AppDependencies(shiftParser: parser);

@@ -158,6 +158,204 @@ abstract class AppLocalizations {
   /// **'Tools'**
   String get tools;
 
+  /// No description provided for @dashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get dashboard;
+
+  /// No description provided for @schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get schedule;
+
+  /// No description provided for @employees.
+  ///
+  /// In en, this message translates to:
+  /// **'Employees'**
+  String get employees;
+
+  /// No description provided for @shiftExchange.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift exchange'**
+  String get shiftExchange;
+
+  /// No description provided for @more.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get more;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @approved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get approved;
+
+  /// No description provided for @rejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get rejected;
+
+  /// No description provided for @cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get cancelled;
+
+  /// No description provided for @employeeDirectoryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'People referenced by the active canonical schedule.'**
+  String get employeeDirectoryDescription;
+
+  /// No description provided for @searchEmployees.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, code or position'**
+  String get searchEmployees;
+
+  /// No description provided for @activeEmployeesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Active only'**
+  String get activeEmployeesOnly;
+
+  /// No description provided for @noEmployeesMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No employees match the active filters.'**
+  String get noEmployeesMatch;
+
+  /// No description provided for @noEmployeesInSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'No employees are referenced by the current schedule.'**
+  String get noEmployeesInSchedule;
+
+  /// No description provided for @shiftExchangeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Review shift-exchange requests and their approval status.'**
+  String get shiftExchangeDescription;
+
+  /// No description provided for @noExchangeRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'No shift-exchange requests are available.'**
+  String get noExchangeRequests;
+
+  /// No description provided for @exchangeApprovalBoundary.
+  ///
+  /// In en, this message translates to:
+  /// **'New requests and approvals use the protected exchange workflow.'**
+  String get exchangeApprovalBoundary;
+
+  /// No description provided for @myNextShift.
+  ///
+  /// In en, this message translates to:
+  /// **'My next shift'**
+  String get myNextShift;
+
+  /// No description provided for @todaySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get todaySummary;
+
+  /// No description provided for @tomorrowSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get tomorrowSummary;
+
+  /// No description provided for @monthlyAssignments.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get monthlyAssignments;
+
+  /// No description provided for @calendarSyncStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar sync'**
+  String get calendarSyncStatus;
+
+  /// No description provided for @conflictWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflict warning'**
+  String get conflictWarning;
+
+  /// No description provided for @assignmentCount.
+  ///
+  /// In en, this message translates to:
+  /// **'assignments'**
+  String get assignmentCount;
+
+  /// No description provided for @noUpcomingShift.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming shift'**
+  String get noUpcomingShift;
+
+  /// No description provided for @noScheduleData.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule data'**
+  String get noScheduleData;
+
+  /// No description provided for @connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get connected;
+
+  /// No description provided for @notConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get notConnected;
+
+  /// No description provided for @neverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Never synced'**
+  String get neverSynced;
+
+  /// No description provided for @noPendingConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'No pending conflicts'**
+  String get noPendingConflicts;
+
+  /// No description provided for @requiresReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires review'**
+  String get requiresReview;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:

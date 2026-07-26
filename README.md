@@ -1,5 +1,12 @@
 # Shift Tools
 
+Shift Tools is implementing the **Shift Calendar Engine (SCE) 3.0**
+architecture. The canonical product specification and incremental migration
+status are maintained in:
+
+- [SCE 3.0 system design](docs/SCE_3_0_SYSTEM_DESIGN.md)
+- [SCE 3.0 implementation map](docs/SCE_3_0_IMPLEMENTATION_MAP.md)
+
 แอป Flutter สำหรับอ่านตารางเวรจาก Google Sheets แบบ read-only ตรวจรายการก่อนบันทึก และเพิ่มเวรที่ยืนยันแล้วลง Google Calendar รองรับ UI บน Web, Android, iOS, Windows, macOS และ Linux
 
 - แอปไม่ฝังลิงก์ชีต บัญชี Google, OAuth Client ID, token หรือผลลัพธ์ตารางเวรไว้ในซอร์สโค้ด

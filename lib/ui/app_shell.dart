@@ -6,6 +6,12 @@ import '../controller/app_controller.dart';
 import '../domain/entities/schedule.dart';
 import '../features/reports/presentation/controllers/monthly_schedule_report_controller.dart';
 import '../features/reports/presentation/pages/monthly_schedule_report_page.dart';
+import '../features/employees/presentation/pages/employee_directory_page.dart';
+import '../features/employees/presentation/controllers/employee_directory_controller.dart';
+import '../features/dashboard/application/dashboard_summary_service.dart';
+import '../features/dashboard/presentation/widgets/dashboard_summary_grid.dart';
+import '../features/shift_exchange/presentation/pages/shift_exchange_page.dart';
+import '../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
 import '../l10n/l10n.dart';
 import '../models/saved_sheet.dart';
 import '../models/roster_period.dart';
@@ -19,6 +25,18 @@ import '../services/google_auth_service.dart';
 import '../services/shift_color_service.dart';
 import 'google_sign_in_button.dart';
 
+enum _UtilityPage {
+  notifications,
+  history,
+  tools;
+
+  String label(BuildContext context) => switch (this) {
+    notifications => context.l10n.notifications,
+    history => context.l10n.history,
+    tools => context.l10n.tools,
+  };
+}
+
 class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
@@ -26,6 +44,9 @@ class AppShell extends StatefulWidget {
     required this.reportControllerFactory,
     required this.locale,
     required this.onLocaleChanged,
+    required this.employeeDirectoryControllerFactory,
+    required this.shiftExchangeControllerFactory,
+    required this.dashboardSummaryService,
   });
 
   final AppController controller;
@@ -33,6 +54,10 @@ class AppShell extends StatefulWidget {
   reportControllerFactory;
   final Locale locale;
   final ValueChanged<Locale> onLocaleChanged;
+  final EmployeeDirectoryController Function(Schedule)
+  employeeDirectoryControllerFactory;
+  final ShiftExchangeController Function() shiftExchangeControllerFactory;
+  final DashboardSummaryService dashboardSummaryService;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -49,28 +74,19 @@ class _AppShellState extends State<AppShell> {
   ) => [
     NavigationDestination(
       icon: const Icon(Icons.dashboard_outlined),
-      label: context.l10n.home,
+      label: context.l10n.dashboard,
     ),
     NavigationDestination(
       icon: const Icon(Icons.event_note_outlined),
-      label: context.l10n.preview,
+      label: context.l10n.schedule,
     ),
     NavigationDestination(
-      icon: Badge(
-        isLabelVisible: controller.pendingAlertCount > 0,
-        label: Text('${controller.pendingAlertCount}'),
-        child: const Icon(Icons.notifications_outlined),
-      ),
-      selectedIcon: Badge(
-        isLabelVisible: controller.pendingAlertCount > 0,
-        label: Text('${controller.pendingAlertCount}'),
-        child: const Icon(Icons.notifications),
-      ),
-      label: context.l10n.notifications,
+      icon: const Icon(Icons.groups_outlined),
+      label: context.l10n.employees,
     ),
     NavigationDestination(
-      icon: const Icon(Icons.history_outlined),
-      label: context.l10n.history,
+      icon: const Icon(Icons.swap_horiz_outlined),
+      label: context.l10n.shiftExchange,
     ),
     NavigationDestination(
       icon: const Icon(Icons.print_outlined),
@@ -79,10 +95,6 @@ class _AppShellState extends State<AppShell> {
     NavigationDestination(
       icon: const Icon(Icons.settings_outlined),
       label: context.l10n.settings,
-    ),
-    NavigationDestination(
-      icon: const Icon(Icons.apps_outlined),
-      label: context.l10n.tools,
     ),
   ];
 
@@ -135,17 +147,19 @@ class _AppShellState extends State<AppShell> {
               perform: _perform,
               compareCalendar: _compareCalendar,
               sync: _sync,
-              openAlerts: () => setState(() => selectedIndex = 2),
+              openAlerts: () =>
+                  unawaited(_openUtilityPage(_UtilityPage.notifications)),
               configureGoogleOAuth: _configureGoogleOAuth,
+              dashboardSummaryService: widget.dashboardSummaryService,
             ),
             _PreviewPage(controller: controller, perform: _perform),
-            _NotificationsPage(controller: controller, perform: _perform),
-            _AuditPage(
-              controller: controller,
-              saveCurrentSheet: _saveCurrentSheet,
-              activateSavedSheet: _activateSavedSheet,
-              openSavedSheet: _openSavedSheet,
-              deleteSavedSheet: _deleteSavedSheet,
+            EmployeeDirectoryPage(
+              schedule: controller.canonicalSchedule,
+              controllerFactory: widget.employeeDirectoryControllerFactory,
+            ),
+            ShiftExchangePage(
+              schedule: controller.canonicalSchedule,
+              controllerFactory: widget.shiftExchangeControllerFactory,
             ),
             MonthlyScheduleReportPage(
               schedule: controller.canonicalSchedule,
@@ -154,11 +168,6 @@ class _AppShellState extends State<AppShell> {
             _SettingsPage(
               controller: controller,
               createFutureSheet: _createFutureSheet,
-            ),
-            _ToolsPage(
-              controller: controller,
-              openTool: _openTool,
-              togglePinned: _togglePinnedTool,
             ),
           ];
           final content = IndexedStack(index: selectedIndex, children: pages);
@@ -231,6 +240,40 @@ class _AppShellState extends State<AppShell> {
                   ),
                   icon: const Icon(Icons.language),
                 ),
+                PopupMenuButton<_UtilityPage>(
+                  tooltip: context.l10n.more,
+                  onSelected: (page) => unawaited(_openUtilityPage(page)),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: _UtilityPage.notifications,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Badge(
+                          isLabelVisible: controller.pendingAlertCount > 0,
+                          label: Text('${controller.pendingAlertCount}'),
+                          child: const Icon(Icons.notifications_outlined),
+                        ),
+                        title: Text(context.l10n.notifications),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _UtilityPage.history,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.history_outlined),
+                        title: Text(context.l10n.history),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _UtilityPage.tools,
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.apps_outlined),
+                        title: Text(context.l10n.tools),
+                      ),
+                    ),
+                  ],
+                ),
                 if (controller.auth.account != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
@@ -248,7 +291,8 @@ class _AppShellState extends State<AppShell> {
                 _PinnedToolsBar(
                   tools: controller.pinnedTools.toList(),
                   openTool: _openTool,
-                  manageTools: () => setState(() => selectedIndex = 6),
+                  manageTools: () =>
+                      unawaited(_openUtilityPage(_UtilityPage.tools)),
                 ),
                 const Divider(height: 1),
                 Expanded(child: mainContent),
@@ -269,6 +313,35 @@ class _AppShellState extends State<AppShell> {
       );
     },
   );
+
+  Future<void> _openUtilityPage(_UtilityPage page) {
+    final child = switch (page) {
+      _UtilityPage.notifications => _NotificationsPage(
+        controller: widget.controller,
+        perform: _perform,
+      ),
+      _UtilityPage.history => _AuditPage(
+        controller: widget.controller,
+        saveCurrentSheet: _saveCurrentSheet,
+        activateSavedSheet: _activateSavedSheet,
+        openSavedSheet: _openSavedSheet,
+        deleteSavedSheet: _deleteSavedSheet,
+      ),
+      _UtilityPage.tools => _ToolsPage(
+        controller: widget.controller,
+        openTool: _openTool,
+        togglePinned: _togglePinnedTool,
+      ),
+    };
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: Text(page.label(context))),
+          body: child,
+        ),
+      ),
+    );
+  }
 
   Future<void> _perform(Future<void> Function() action) async {
     await _performWithResult(action);
@@ -481,7 +554,7 @@ class _AppShellState extends State<AppShell> {
       ),
     );
     if (inspect == true && mounted) {
-      setState(() => selectedIndex = 2);
+      await _openUtilityPage(_UtilityPage.notifications);
     }
   }
 
@@ -931,6 +1004,7 @@ class _DashboardPage extends StatefulWidget {
     required this.sync,
     required this.openAlerts,
     required this.configureGoogleOAuth,
+    required this.dashboardSummaryService,
   });
 
   final AppController controller;
@@ -939,6 +1013,7 @@ class _DashboardPage extends StatefulWidget {
   final Future<void> Function() sync;
   final VoidCallback openAlerts;
   final Future<void> Function() configureGoogleOAuth;
+  final DashboardSummaryService dashboardSummaryService;
 
   @override
   State<_DashboardPage> createState() => _DashboardPageState();
@@ -1118,9 +1193,19 @@ class _DashboardPageState extends State<_DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _VersionFourHero(
+              _SceDashboardHero(
                 controller: controller,
                 openAlerts: widget.openAlerts,
+              ),
+              const SizedBox(height: 16),
+              DashboardSummaryGrid(
+                summary: widget.dashboardSummaryService.build(
+                  schedule: controller.canonicalSchedule,
+                  now: DateTime.now(),
+                  conflictCount: controller.pendingAlertCount,
+                ),
+                googleConnected: controller.auth.isSignedIn,
+                lastSync: controller.lastRefresh,
               ),
               const SizedBox(height: 16),
               _GoogleAccountCard(
@@ -1625,8 +1710,8 @@ class _GoogleSheetPickerDialogState extends State<_GoogleSheetPickerDialog> {
   }
 }
 
-class _VersionFourHero extends StatelessWidget {
-  const _VersionFourHero({required this.controller, required this.openAlerts});
+class _SceDashboardHero extends StatelessWidget {
+  const _SceDashboardHero({required this.controller, required this.openAlerts});
 
   final AppController controller;
   final VoidCallback openAlerts;
@@ -1663,7 +1748,7 @@ class _VersionFourHero extends StatelessWidget {
                 children: [
                   Chip(
                     avatar: Icon(Icons.auto_awesome, size: 18),
-                    label: Text('VERSION 4.1'),
+                    label: Text('SCE 3.0'),
                   ),
                   Chip(
                     avatar: Icon(Icons.verified_outlined, size: 18),
