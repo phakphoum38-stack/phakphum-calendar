@@ -21,13 +21,13 @@ void main() {
     await tester.pumpWidget(ShiftToolsApp(controller: controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('หน้าแรก'), findsOneWidget);
+    expect(find.text('แดชบอร์ด'), findsOneWidget);
     expect(find.text('รายงาน'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('locale-switch')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
     expect(find.text('Reports'), findsOneWidget);
   });
 
