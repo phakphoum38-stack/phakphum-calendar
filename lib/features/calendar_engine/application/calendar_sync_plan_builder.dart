@@ -70,6 +70,7 @@ class CalendarSyncPlanBuilder {
       start: candidate.start,
       end: candidate.end,
       description: candidate.description,
+      colorId: candidate.colorId,
       calendarId: calendarId,
     );
   }

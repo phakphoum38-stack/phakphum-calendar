@@ -50,4 +50,37 @@ class WorkflowPreviewBuilder {
       timeMax: timeMax,
     );
   }
+
+  /// Builds a compatibility preview from already mapped event candidates.
+  WorkflowPreview buildCandidates({
+    required List<CalendarEventCandidate> desired,
+    required List<CalendarEventCandidate> existing,
+  }) {
+    final desiredIds = desired.map((event) => event.syncId).toSet();
+    final relevantExisting = existing
+        .where((event) => desiredIds.contains(event.syncId))
+        .toList(growable: false);
+    final diff = diffEngine.compare(
+      desired: desired,
+      existing: relevantExisting,
+    );
+    final simulation = simulationBuilder.build(diff: diff);
+    final dates = desired
+        .expand((event) => <DateTime>[event.start, event.end])
+        .toList(growable: false);
+    final now = DateTime.now();
+    final timeMin = dates.isEmpty
+        ? DateTime(now.year, now.month, now.day)
+        : dates.reduce((left, right) => left.isBefore(right) ? left : right);
+    final timeMax = dates.isEmpty
+        ? timeMin.add(const Duration(days: 1))
+        : dates.reduce((left, right) => left.isAfter(right) ? left : right);
+    return WorkflowPreview(
+      changes: const [],
+      diff: diff,
+      simulation: simulation,
+      timeMin: timeMin,
+      timeMax: timeMax,
+    );
+  }
 }

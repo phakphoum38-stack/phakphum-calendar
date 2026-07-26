@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../controller/app_controller.dart';
+import '../domain/entities/schedule.dart';
+import '../features/reports/presentation/controllers/monthly_schedule_report_controller.dart';
+import '../features/reports/presentation/pages/monthly_schedule_report_page.dart';
+import '../l10n/l10n.dart';
 import '../models/saved_sheet.dart';
 import '../models/roster_period.dart';
 import '../models/shift.dart';
@@ -16,9 +20,19 @@ import '../services/shift_color_service.dart';
 import 'google_sign_in_button.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.controller});
+  const AppShell({
+    super.key,
+    required this.controller,
+    required this.reportControllerFactory,
+    required this.locale,
+    required this.onLocaleChanged,
+  });
 
   final AppController controller;
+  final MonthlyScheduleReportController Function(Schedule)
+  reportControllerFactory;
+  final Locale locale;
+  final ValueChanged<Locale> onLocaleChanged;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -29,14 +43,17 @@ class _AppShellState extends State<AppShell> {
   bool _permissionDialogOpen = false;
   String? _permissionDialogShownForEmail;
 
-  List<NavigationDestination> _destinations(AppController controller) => [
-    const NavigationDestination(
-      icon: Icon(Icons.dashboard_outlined),
-      label: 'หน้าแรก',
+  List<NavigationDestination> _destinations(
+    BuildContext context,
+    AppController controller,
+  ) => [
+    NavigationDestination(
+      icon: const Icon(Icons.dashboard_outlined),
+      label: context.l10n.home,
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.event_note_outlined),
-      label: 'ตัวอย่าง',
+    NavigationDestination(
+      icon: const Icon(Icons.event_note_outlined),
+      label: context.l10n.preview,
     ),
     NavigationDestination(
       icon: Badge(
@@ -49,19 +66,23 @@ class _AppShellState extends State<AppShell> {
         label: Text('${controller.pendingAlertCount}'),
         child: const Icon(Icons.notifications),
       ),
-      label: 'แจ้งเตือน',
+      label: context.l10n.notifications,
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.history_outlined),
-      label: 'บันทึก',
+    NavigationDestination(
+      icon: const Icon(Icons.history_outlined),
+      label: context.l10n.history,
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.settings_outlined),
-      label: 'ตั้งค่า',
+    NavigationDestination(
+      icon: const Icon(Icons.print_outlined),
+      label: context.l10n.reports,
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.apps_outlined),
-      label: 'เครื่องมือ',
+    NavigationDestination(
+      icon: const Icon(Icons.settings_outlined),
+      label: context.l10n.settings,
+    ),
+    NavigationDestination(
+      icon: const Icon(Icons.apps_outlined),
+      label: context.l10n.tools,
     ),
   ];
 
@@ -107,7 +128,7 @@ class _AppShellState extends State<AppShell> {
       return LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 900;
-          final destinations = _destinations(controller);
+          final destinations = _destinations(context, controller);
           final pages = <Widget>[
             _DashboardPage(
               controller: controller,
@@ -125,6 +146,10 @@ class _AppShellState extends State<AppShell> {
               activateSavedSheet: _activateSavedSheet,
               openSavedSheet: _openSavedSheet,
               deleteSavedSheet: _deleteSavedSheet,
+            ),
+            MonthlyScheduleReportPage(
+              schedule: controller.canonicalSchedule,
+              controllerFactory: widget.reportControllerFactory,
             ),
             _SettingsPage(
               controller: controller,
@@ -165,24 +190,24 @@ class _AppShellState extends State<AppShell> {
           return Scaffold(
             appBar: AppBar(
               titleSpacing: 16,
-              title: const Row(
+              title: Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 20,
                     child: Icon(Icons.calendar_month_rounded),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Phakphum Calendar',
+                          context.l10n.appTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'Version 4.1 • Hospital Workspace',
+                          context.l10n.appSubtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -196,6 +221,16 @@ class _AppShellState extends State<AppShell> {
                 ],
               ),
               actions: [
+                IconButton(
+                  key: const Key('locale-switch'),
+                  tooltip: context.l10n.switchLanguage,
+                  onPressed: () => widget.onLocaleChanged(
+                    widget.locale.languageCode == 'th'
+                        ? const Locale('en')
+                        : const Locale('th'),
+                  ),
+                  icon: const Icon(Icons.language),
+                ),
                 if (controller.auth.account != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
@@ -213,7 +248,7 @@ class _AppShellState extends State<AppShell> {
                 _PinnedToolsBar(
                   tools: controller.pinnedTools.toList(),
                   openTool: _openTool,
-                  manageTools: () => setState(() => selectedIndex = 5),
+                  manageTools: () => setState(() => selectedIndex = 6),
                 ),
                 const Divider(height: 1),
                 Expanded(child: mainContent),
@@ -269,7 +304,7 @@ class _AppShellState extends State<AppShell> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('อนุญาตการเข้าถึง Google'),
+        title: Text(context.l10n.googleAccessTitle),
         content: SizedBox(
           width: 460,
           child: Column(
@@ -312,7 +347,7 @@ class _AppShellState extends State<AppShell> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('ไว้ภายหลัง'),
+            child: Text(context.l10n.googleAccessLater),
           ),
           FilledButton.icon(
             onPressed: () {
@@ -320,7 +355,7 @@ class _AppShellState extends State<AppShell> {
               unawaited(_perform(widget.controller.authorizeReadAccess));
             },
             icon: const Icon(Icons.verified_user_outlined),
-            label: const Text('อนุญาตการเข้าถึง'),
+            label: Text(context.l10n.googleAccessAllow),
           ),
         ],
       ),
@@ -365,8 +400,15 @@ class _AppShellState extends State<AppShell> {
       await _showConflictWarningDialog();
       return;
     }
+    final prepared = await _performWithResult(
+      widget.controller.prepareCalendarSync,
+    );
+    if (!prepared) return;
     final confirmed = await _showSyncConfirmationDialog();
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      widget.controller.cancelCalendarSyncPreparation();
+      return;
+    }
     final synced = await _performWithResult(widget.controller.syncCalendar);
     if (!synced && widget.controller.pendingAlertCount > 0) {
       await _showConflictWarningDialog();
@@ -533,7 +575,7 @@ class _AppShellState extends State<AppShell> {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ยืนยันการเขียนข้อมูล'),
+        title: Text(context.l10n.googleSyncConfirmTitle),
         content: SizedBox(
           width: 430,
           child: Column(
@@ -555,11 +597,11 @@ class _AppShellState extends State<AppShell> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('ยกเลิก'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('ยืนยันและทำต่อ'),
+            child: Text(context.l10n.googleSyncConfirm),
           ),
         ],
       ),

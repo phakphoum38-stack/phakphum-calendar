@@ -16,7 +16,17 @@ class DriveArchiveResult {
   final bool alreadyExisted;
 }
 
-class DriveArchiveService {
+/// Creates idempotent monthly archive copies in Google Drive.
+abstract interface class DriveArchiveGateway {
+  Future<DriveArchiveResult> copyMonthlyOriginal(
+    GoogleApiClient client, {
+    required String sourceFileId,
+    required int year,
+    required int month,
+  });
+}
+
+class DriveArchiveService implements DriveArchiveGateway {
   const DriveArchiveService();
 
   static const sourceApp = 'phakphum_shift_calendar';
@@ -30,6 +40,7 @@ class DriveArchiveService {
       "and value='$sourceFileId' } and appProperties has { key='period' "
       "and value='$period' }";
 
+  @override
   Future<DriveArchiveResult> copyMonthlyOriginal(
     GoogleApiClient client, {
     required String sourceFileId,
@@ -64,7 +75,7 @@ class DriveArchiveService {
     final request = drive.File(
       name: name,
       description:
-          'สำเนาต้นฉบับประจำเดือน สร้างโดย Phakphum Shift Calendar; '
+          'สำเนาต้นฉบับประจำเดือน สร้างโดย Shift Tools; '
           'แอปไม่ได้แก้ไขไฟล์ต้นฉบับ',
       appProperties: {
         'sourceApp': sourceApp,

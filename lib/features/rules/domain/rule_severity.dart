@@ -1,0 +1,1 @@
+enum RuleSeverity { warning, error }

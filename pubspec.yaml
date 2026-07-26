@@ -1,5 +1,5 @@
 name: phakphum_calendar
-description: "Read-only duty roster to guarded Google Calendar sync."
+description: "Shift Tools for read-only duty roster review and guarded Google Calendar sync."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -30,7 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   excel: ^4.0.6
+  file_picker: ^11.0.2
   file_selector: ^1.1.0
 
   # The following adds the Cupertino Icons font to your application.
@@ -44,7 +47,9 @@ dependencies:
   http: ^1.6.0
   shared_preferences: ^2.5.5
   crypto: ^3.0.7
-  intl: ^0.20.3
+  intl: ^0.20.2
+  pdf: ^3.11.3
+  printing: ^5.14.2
   url_launcher: 6.3.2
 
 dev_dependencies:
@@ -64,6 +69,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

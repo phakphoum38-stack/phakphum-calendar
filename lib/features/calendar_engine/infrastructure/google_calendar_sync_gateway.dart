@@ -1,5 +1,5 @@
 import 'package:googleapis/calendar/v3.dart' as calendar;
-import 'package:googleapis_auth/googleapis_auth.dart' as auth;
+import 'package:http/http.dart' as http;
 
 import '../domain/calendar_sync_command.dart';
 import '../domain/calendar_sync_gateway.dart';
@@ -10,7 +10,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
 
   static const String syncIdKey = 'sceSyncId';
 
-  final auth.AuthClient _client;
+  final http.Client _client;
 
   @override
   Future<List<ManagedCalendarEvent>> listManagedEvents({
@@ -44,6 +44,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
             start: event.start!.dateTime!,
             end: event.end!.dateTime!,
             description: event.description,
+            colorId: event.colorId,
           ),
         )
         .toList(growable: false);
@@ -88,6 +89,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
     return calendar.Event(
       summary: command.title,
       description: command.description,
+      colorId: command.colorId,
       start: calendar.EventDateTime(dateTime: command.start),
       end: calendar.EventDateTime(dateTime: command.end),
       extendedProperties: calendar.EventExtendedProperties(
@@ -104,6 +106,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
       start: event.start?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
       end: event.end?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
       description: event.description,
+      colorId: event.colorId,
     );
   }
 }

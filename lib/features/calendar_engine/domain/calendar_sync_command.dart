@@ -5,6 +5,7 @@ class CalendarSyncCommand {
     required this.start,
     required this.end,
     this.description,
+    this.colorId,
     this.calendarId = 'primary',
   });
 
@@ -13,5 +14,6 @@ class CalendarSyncCommand {
   final DateTime start;
   final DateTime end;
   final String? description;
+  final String? colorId;
   final String calendarId;
 }

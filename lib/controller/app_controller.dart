@@ -14,6 +14,10 @@ import '../models/saved_sheet.dart';
 import '../models/shift.dart';
 import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
+import '../domain/entities/schedule.dart';
+import '../domain/repositories/schedule_repository.dart';
+import '../features/schedule/data/legacy_schedule_adapter.dart';
+import '../features/workflow/application/shift_calendar_workflow_controller.dart';
 import '../services/calendar_service.dart';
 import '../services/calendar_color_service.dart';
 import '../services/drive_archive_service.dart';
@@ -25,38 +29,89 @@ import '../services/settings_service.dart';
 import '../services/sheets_service.dart';
 import '../services/shift_alert_service.dart';
 import '../services/shift_parser.dart';
+import '../core/state/controller_state.dart';
 
-class AppController extends ChangeNotifier {
-  AppController({
-    GoogleAuthService? auth,
-    SettingsService? settingsService,
-    SheetsService? sheetsService,
-    ShiftParser? parser,
-    ShiftAlertService? alertService,
-    CalendarService? calendarService,
-    DriveArchiveService? archiveService,
-    DriveOwnershipService? ownershipService,
-    LocalRosterFileService? localFileService,
-  }) : auth = auth ?? GoogleAuthService(),
-       _settingsService = settingsService ?? SettingsService(),
-       _sheetsService = sheetsService ?? SheetsService(),
-       _parser = parser ?? const ShiftParser(),
-       _alertService = alertService ?? const ShiftAlertService(),
-       _calendarService = calendarService ?? const CalendarService(),
-       _archiveService = archiveService ?? const DriveArchiveService(),
-       _ownershipService = ownershipService ?? const DriveOwnershipService(),
-       _localFileService = localFileService ?? const LocalRosterFileService();
+class AppController extends ChangeNotifier implements ControllerState {
+  factory AppController({
+    required GoogleAuthGateway auth,
+    required AppSettingsStore settingsService,
+    required RosterSheetsGateway sheetsService,
+    required RosterShiftParser parser,
+    required ShiftAlertPolicy alertService,
+    required LegacyCalendarGateway calendarService,
+    required DriveArchiveGateway archiveService,
+    required DriveOwnershipGateway ownershipService,
+    required LocalRosterSource localFileService,
+    required ScheduleRepository scheduleRepository,
+    required LegacyScheduleAdapter legacyScheduleAdapter,
+    required Future<ShiftCalendarWorkflowController> Function()
+    calendarWorkflowControllerFactory,
+  }) {
+    return AppController._(
+      auth: auth,
+      settingsService: settingsService,
+      sheetsService: sheetsService,
+      parser: parser,
+      alertService: alertService,
+      calendarService: calendarService,
+      archiveService: archiveService,
+      ownershipService: ownershipService,
+      localFileService: localFileService,
+      scheduleRepository: scheduleRepository,
+      legacyScheduleAdapter: legacyScheduleAdapter,
+      calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
+    );
+  }
 
-  AppController.demo()
-    : auth = GoogleAuthService(),
-      _settingsService = SettingsService(),
-      _sheetsService = SheetsService(),
-      _parser = const ShiftParser(),
-      _alertService = const ShiftAlertService(),
-      _calendarService = const CalendarService(),
-      _archiveService = const DriveArchiveService(),
-      _ownershipService = const DriveOwnershipService(),
-      _localFileService = const LocalRosterFileService() {
+  factory AppController.demo({
+    required GoogleAuthGateway auth,
+    required AppSettingsStore settingsService,
+    required RosterSheetsGateway sheetsService,
+    required RosterShiftParser parser,
+    required ShiftAlertPolicy alertService,
+    required LegacyCalendarGateway calendarService,
+    required DriveArchiveGateway archiveService,
+    required DriveOwnershipGateway ownershipService,
+    required LocalRosterSource localFileService,
+    required ScheduleRepository scheduleRepository,
+    required LegacyScheduleAdapter legacyScheduleAdapter,
+    required Future<ShiftCalendarWorkflowController> Function()
+    calendarWorkflowControllerFactory,
+  }) {
+    final controller = AppController(
+      auth: auth,
+      settingsService: settingsService,
+      sheetsService: sheetsService,
+      parser: parser,
+      alertService: alertService,
+      calendarService: calendarService,
+      archiveService: archiveService,
+      ownershipService: ownershipService,
+      localFileService: localFileService,
+      scheduleRepository: scheduleRepository,
+      legacyScheduleAdapter: legacyScheduleAdapter,
+      calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
+    );
+    controller._initializeDemo();
+    return controller;
+  }
+
+  AppController._({
+    required this.auth,
+    required this._settingsService,
+    required this._sheetsService,
+    required this._parser,
+    required this._alertService,
+    required this._calendarService,
+    required this._archiveService,
+    required this._ownershipService,
+    required this._localFileService,
+    required this._scheduleRepository,
+    required this._legacyScheduleAdapter,
+    required this._calendarWorkflowControllerFactory,
+  });
+
+  void _initializeDemo() {
     initialized = true;
     settings = AppSettings.defaults();
     final sourceShifts = [
@@ -101,22 +156,41 @@ class AppController extends ChangeNotifier {
         category: ShiftCategory.own,
       ),
     ];
-    shifts = _alertService.addOffDutyPeriods(sourceShifts);
+    _replaceLegacyShifts(
+      _alertService.addOffDutyPeriods(sourceShifts),
+      persist: false,
+    );
     _rebuildAlerts();
   }
 
-  final GoogleAuthService auth;
-  final SettingsService _settingsService;
-  final SheetsService _sheetsService;
-  final ShiftParser _parser;
-  final ShiftAlertService _alertService;
-  final CalendarService _calendarService;
-  final DriveArchiveService _archiveService;
-  final DriveOwnershipService _ownershipService;
-  final LocalRosterFileService _localFileService;
+  final GoogleAuthGateway auth;
+  final AppSettingsStore _settingsService;
+  final RosterSheetsGateway _sheetsService;
+  final RosterShiftParser _parser;
+  final ShiftAlertPolicy _alertService;
+  final LegacyCalendarGateway _calendarService;
+  final DriveArchiveGateway _archiveService;
+  final DriveOwnershipGateway _ownershipService;
+  final LocalRosterSource _localFileService;
+  final ScheduleRepository _scheduleRepository;
+  final LegacyScheduleAdapter _legacyScheduleAdapter;
+  final Future<ShiftCalendarWorkflowController> Function()
+  _calendarWorkflowControllerFactory;
 
   AppSettings settings = AppSettings.defaults();
-  List<Shift> shifts = [];
+  late LegacyScheduleConversion _legacySchedule = _legacyScheduleAdapter
+      .toCanonical(
+        const [],
+        id: _runtimeScheduleId,
+        name: _runtimeScheduleName,
+      );
+  Future<void> _pendingScheduleWrite = Future.value();
+
+  /// Canonical runtime schedule used by all legacy schedule orchestration.
+  Schedule get canonicalSchedule => _legacySchedule.schedule;
+
+  /// Read-only compatibility projection consumed by the legacy shell.
+  List<Shift> get shifts => _legacySchedule.toLegacyShifts();
   List<ShiftAlert> alerts = [];
   List<CalendarBusyPeriod> calendarPeriods = [];
   Map<String, ShiftAlertDecision> alertDecisions = {};
@@ -130,22 +204,38 @@ class AppController extends ChangeNotifier {
   bool busy = false;
   bool recentSheetHistoryLoaded = false;
   String? status;
+  @override
   String? error;
   DateTime? lastRefresh;
   Timer? _autoRefreshTimer;
   String? _observedAccountId;
   String? localSourceLabel;
   final Map<String, _ShiftOverride> _shiftOverrides = {};
+  ShiftCalendarWorkflowController? _pendingCalendarWorkflow;
+
+  static const _runtimeScheduleId = 'legacy-runtime';
+  static const _runtimeScheduleName = 'Legacy runtime schedule';
+
+  @override
+  bool get loading => busy;
+
+  @override
+  bool get success => initialized && !busy && error == null;
+
+  @override
+  String? get message => error ?? status;
 
   int get includedCount => shifts.where((shift) => !shift.excluded).length;
   int get existingCount => shifts
-      .where((shift) => CalendarService.matchesExisting(shift, existingKeys))
+      .where(
+        (shift) => _calendarService.matchesExistingShift(shift, existingKeys),
+      )
       .length;
   int get newCount => shifts
       .where(
         (shift) =>
             !shift.excluded &&
-            !CalendarService.matchesExisting(shift, existingKeys),
+            !_calendarService.matchesExistingShift(shift, existingKeys),
       )
       .length;
   int get pendingAlertCount => alerts.where((alert) => alert.isPending).length;
@@ -215,7 +305,7 @@ class AppController extends ChangeNotifier {
   Future<void> signOut() async {
     await auth.signOut();
     _autoRefreshTimer?.cancel();
-    shifts = [];
+    _replaceLegacyShifts(const []);
     alerts = [];
     calendarPeriods = [];
     existingKeys = {};
@@ -231,7 +321,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> configureGoogleWebClientId(String value) async {
     final clientId = value.trim();
-    if (!GoogleAuthService.isValidWebClientId(clientId)) {
+    if (!auth.validateWebClientId(clientId)) {
       throw const FormatException(
         'รูปแบบ Google Web OAuth Client ID ไม่ถูกต้อง',
       );
@@ -409,7 +499,7 @@ class AppController extends ChangeNotifier {
     final account = auth.account;
     if (account == null) throw StateError('กรุณาล็อกอิน Google ก่อน');
     final normalizedUrl = sourceUrl.trim();
-    final spreadsheetId = SheetsService.spreadsheetIdFromUrl(normalizedUrl);
+    final spreadsheetId = _sheetsService.parseSpreadsheetId(normalizedUrl);
     await _run('ตรวจและเลือกไฟล์ชีตหลักของบัญชีนี้', () async {
       final client = await auth.clientFor([
         sheets.SheetsApi.spreadsheetsReadonlyScope,
@@ -466,7 +556,7 @@ class AppController extends ChangeNotifier {
       savedSheets.removeWhere((item) => item.key == sheet.key);
       await _settingsService.saveSavedSheets(savedSheets);
       if (wasCurrent) {
-        shifts = [];
+        _replaceLegacyShifts(const []);
         alerts = [];
         calendarPeriods = [];
         existingKeys = {};
@@ -502,7 +592,7 @@ class AppController extends ChangeNotifier {
         drive.DriveApi.driveMetadataReadonlyScope,
       ], promptIfNecessary: !background);
       try {
-        final spreadsheetId = SheetsService.spreadsheetIdFromUrl(sourceUrl);
+        final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
         await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final snapshots = await _sheetsService.readAll(client, sourceUrl);
         final parsedByKey = <String, Shift>{};
@@ -520,7 +610,7 @@ class AppController extends ChangeNotifier {
         }
         final parsed = parsedByKey.values.toList()
           ..sort((left, right) => left.start.compareTo(right.start));
-        shifts = _alertService.addOffDutyPeriods(parsed);
+        _replaceLegacyShifts(_alertService.addOffDutyPeriods(parsed));
         localSourceLabel = null;
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
         existingKeys = {};
@@ -580,7 +670,7 @@ class AppController extends ChangeNotifier {
       }
       final parsed = parsedByKey.values.toList()
         ..sort((left, right) => left.start.compareTo(right.start));
-      shifts = _alertService.addOffDutyPeriods(parsed);
+      _replaceLegacyShifts(_alertService.addOffDutyPeriods(parsed));
       sheetTitles = document.snapshots.map((sheet) => sheet.title).toList();
       localSourceLabel = 'ไฟล์ .${document.extension} ในเครื่อง';
       existingKeys = {};
@@ -648,28 +738,17 @@ class AppController extends ChangeNotifier {
         throw StateError('ไม่พบแหล่งข้อมูลเวรของรอบนี้');
       }
       final periods = _requirePeriods();
-      final calendarClient = await auth.clientFor([
-        calendar.CalendarApi.calendarEventsScope,
-      ]);
+      final workflow =
+          _pendingCalendarWorkflow ?? await _createPreparedCalendarWorkflow();
+      _pendingCalendarWorkflow = null;
       try {
-        final snapshot = await _readCalendarPeriods(calendarClient, periods);
-        existingKeys = snapshot.sourceKeys;
-        calendarPeriods = snapshot.busyPeriods;
-        _rebuildAlerts();
-        if (pendingAlertCount > 0) {
-          throw StateError(
-            'พบเวรหรือช่วง OFF ชนกับ Calendar $pendingAlertCount รายการ '
-            'จึงยังไม่บันทึก กรุณาตรวจแจ้งเตือนก่อน',
-          );
-        }
-
         if (settings.archiveOriginal && sourceUrl.isNotEmpty) {
           final driveClient = await auth.clientFor([drive.DriveApi.driveScope]);
           try {
             for (final period in periods) {
               final archive = await _archiveService.copyMonthlyOriginal(
                 driveClient,
-                sourceFileId: SheetsService.spreadsheetIdFromUrl(sourceUrl),
+                sourceFileId: _sheetsService.parseSpreadsheetId(sourceUrl),
                 year: period.year,
                 month: period.month,
               );
@@ -692,21 +771,70 @@ class AppController extends ChangeNotifier {
           );
         }
 
-        final inserted = await _calendarService.insertMissing(
-          calendarClient,
-          shifts,
-          existingKeys,
-        );
-        status = 'เพิ่ม Google Calendar $inserted รายการสำเร็จ';
+        await workflow.synchronize();
+        final result = workflow.lastResult;
+        if (result == null) {
+          throw StateError(
+            workflow.message ?? 'ซิงก์ Google Calendar ไม่สำเร็จ',
+          );
+        }
+        final inserted = result.historyEntry.inserted;
+        final updated = result.historyEntry.updated;
+        final deleted = result.historyEntry.deleted;
+        status = result.hasFailures
+            ? 'ซิงก์ Google Calendar สำเร็จบางส่วน กรุณาตรวจสอบประวัติ'
+            : 'ซิงก์ Google Calendar สำเร็จ';
         await _addAudit(
           'calendar.write',
-          'เพิ่ม $inserted รายการ; ข้ามรายการเดิมและรายการที่ไม่เลือก',
-          true,
+          'เพิ่ม $inserted แก้ไข $updated ลบ $deleted '
+              'ล้มเหลว ${result.historyEntry.failed}',
+          !result.hasFailures,
         );
       } finally {
-        calendarClient.close();
+        workflow.dispose();
       }
     });
+  }
+
+  /// Validates and prepares the canonical diff before the existing UI asks
+  /// the user to confirm execution.
+  Future<void> prepareCalendarSync() async {
+    await _run('ตรวจสอบตารางเวรและเตรียมแผนซิงก์', () async {
+      _pendingCalendarWorkflow?.dispose();
+      _pendingCalendarWorkflow = null;
+      _pendingCalendarWorkflow = await _createPreparedCalendarWorkflow();
+      final warnings =
+          _pendingCalendarWorkflow!.validationResult?.warnings.length ?? 0;
+      status = warnings == 0
+          ? 'ตรวจสอบแล้ว พร้อมยืนยันการซิงก์'
+          : 'ตรวจสอบแล้ว พบคำเตือน $warnings รายการ พร้อมให้ผู้ใช้ยืนยัน';
+    });
+  }
+
+  /// Releases an authorized prepared workflow when confirmation is cancelled.
+  void cancelCalendarSyncPreparation() {
+    _pendingCalendarWorkflow?.dispose();
+    _pendingCalendarWorkflow = null;
+  }
+
+  Future<ShiftCalendarWorkflowController>
+  _createPreparedCalendarWorkflow() async {
+    final workflow = await _calendarWorkflowControllerFactory();
+    try {
+      await workflow.prepareSchedule(canonicalSchedule);
+      if (workflow.hasBlockingFailures) {
+        throw StateError(
+          workflow.validationResult?.errors
+                  .map((violation) => violation.message)
+                  .join('\n') ??
+              'ตารางเวรไม่ผ่านการตรวจสอบ',
+        );
+      }
+      return workflow;
+    } catch (_) {
+      workflow.dispose();
+      rethrow;
+    }
   }
 
   Future<void> createFutureSheet({
@@ -726,7 +854,7 @@ class AppController extends ChangeNotifier {
         drive.DriveApi.driveMetadataReadonlyScope,
       ]);
       try {
-        final spreadsheetId = SheetsService.spreadsheetIdFromUrl(sourceUrl);
+        final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
         await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final created = await _sheetsService.duplicateSheet(
           client,
@@ -755,13 +883,21 @@ class AppController extends ChangeNotifier {
   }
 
   void updateShift(int index, {ShiftCategory? category, bool? excluded}) {
-    final shift = shifts[index];
-    shifts[index] = shift.copyWith(category: category, excluded: excluded);
+    final updatedShifts = shifts.toList();
+    final shift = updatedShifts[index];
+    updatedShifts[index] = shift.copyWith(
+      category: category,
+      excluded: excluded,
+    );
     if (!shift.generated) {
-      _rememberShiftOverride(shifts[index]);
-      shifts = _alertService.addOffDutyPeriods(
-        shifts.where((item) => !item.generated).toList(),
+      _rememberShiftOverride(updatedShifts[index]);
+      _replaceLegacyShifts(
+        _alertService.addOffDutyPeriods(
+          updatedShifts.where((item) => !item.generated).toList(),
+        ),
       );
+    } else {
+      _replaceLegacyShifts(updatedShifts);
     }
     _rebuildAlerts();
     notifyListeners();
@@ -775,7 +911,8 @@ class AppController extends ChangeNotifier {
     required ShiftCategory category,
     required String colorCommand,
   }) {
-    final shift = shifts[index];
+    final updatedShifts = shifts.toList();
+    final shift = updatedShifts[index];
     if (shift.generated) {
       throw StateError('รายการ OFF อัตโนมัติปรับจากเวรดึกต้นทางเท่านั้น');
     }
@@ -791,10 +928,12 @@ class AppController extends ChangeNotifier {
       calendarColorId: color?.id,
       clearCalendarColor: color == null,
     );
-    shifts[index] = updated;
+    updatedShifts[index] = updated;
     _rememberShiftOverride(updated);
-    shifts = _alertService.addOffDutyPeriods(
-      shifts.where((item) => !item.generated).toList(),
+    _replaceLegacyShifts(
+      _alertService.addOffDutyPeriods(
+        updatedShifts.where((item) => !item.generated).toList(),
+      ),
     );
     calendarPeriods = [];
     existingKeys = {};
@@ -842,10 +981,12 @@ class AppController extends ChangeNotifier {
       customTitle: normalizedTitle,
       calendarColorId: color?.id,
     );
-    shifts = _alertService.addOffDutyPeriods([
-      ...shifts.where((item) => !item.generated),
-      shift,
-    ]);
+    _replaceLegacyShifts(
+      _alertService.addOffDutyPeriods([
+        ...shifts.where((item) => !item.generated),
+        shift,
+      ]),
+    );
     localSourceLabel = 'รายการจาก $sourceKind (ผู้ใช้ตรวจแล้ว)';
     existingKeys = {};
     calendarPeriods = [];
@@ -959,8 +1100,14 @@ class AppController extends ChangeNotifier {
 
   void _setExcluded(String? sourceKey, bool excluded) {
     if (sourceKey == null) return;
-    final index = shifts.indexWhere((shift) => shift.sourceKey == sourceKey);
-    if (index >= 0) shifts[index] = shifts[index].copyWith(excluded: excluded);
+    final updatedShifts = shifts.toList();
+    final index = updatedShifts.indexWhere(
+      (shift) => shift.sourceKey == sourceKey,
+    );
+    if (index >= 0) {
+      updatedShifts[index] = updatedShifts[index].copyWith(excluded: excluded);
+      _replaceLegacyShifts(updatedShifts);
+    }
   }
 
   Future<SavedSheet> _saveSheetReference(
@@ -1025,7 +1172,7 @@ class AppController extends ChangeNotifier {
       _observedAccountId = accountId;
       settings = settings.clearRosterSelection();
       _autoRefreshTimer?.cancel();
-      shifts = [];
+      _replaceLegacyShifts(const []);
       alerts = [];
       calendarPeriods = [];
       existingKeys = {};
@@ -1115,9 +1262,28 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  void _replaceLegacyShifts(List<Shift> next, {bool persist = true}) {
+    final conversion = _legacyScheduleAdapter.toCanonical(
+      next,
+      id: _runtimeScheduleId,
+      name: _runtimeScheduleName,
+    );
+    _legacySchedule = conversion;
+    if (persist) {
+      _pendingScheduleWrite = _pendingScheduleWrite.then((_) async {
+        await _scheduleRepository.save(conversion.schedule);
+      });
+    }
+  }
+
+  /// Waits until canonical schedule mutations queued by synchronous legacy
+  /// compatibility APIs have reached the repository.
+  Future<void> flushSchedulePersistence() => _pendingScheduleWrite;
+
   @override
   void dispose() {
     _autoRefreshTimer?.cancel();
+    _pendingCalendarWorkflow?.dispose();
     auth.removeListener(_onAuthChanged);
     auth.dispose();
     super.dispose();

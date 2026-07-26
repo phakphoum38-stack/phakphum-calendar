@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
 
 import 'controller/app_controller.dart';
+import 'core/di/app_dependencies.dart';
+import 'features/excel_import/presentation/pages/import_excel_page.dart';
+import 'l10n/app_localizations.dart';
 import 'ui/app_shell.dart';
 
-class PhakphumCalendarApp extends StatefulWidget {
-  const PhakphumCalendarApp({super.key, this.controller});
+class ShiftToolsApp extends StatefulWidget {
+  const ShiftToolsApp({
+    super.key,
+    this.controller,
+    this.dependencies,
+    this.locale,
+  });
 
   final AppController? controller;
+  final AppDependencies? dependencies;
+  final Locale? locale;
 
   @override
-  State<PhakphumCalendarApp> createState() => _PhakphumCalendarAppState();
+  State<ShiftToolsApp> createState() => _ShiftToolsAppState();
 }
 
-class _PhakphumCalendarAppState extends State<PhakphumCalendarApp> {
-  late final AppController controller = widget.controller ?? AppController();
+class _ShiftToolsAppState extends State<ShiftToolsApp> {
+  late final AppDependencies dependencies =
+      widget.dependencies ?? AppDependencies.production();
+  late final AppController controller =
+      widget.controller ?? dependencies.createAppController();
   late final bool ownsController = widget.controller == null;
+  late Locale _locale = widget.locale ?? const Locale('th');
 
   @override
   void initState() {
@@ -31,6 +45,14 @@ class _PhakphumCalendarAppState extends State<PhakphumCalendarApp> {
   }
 
   @override
+  void didUpdateWidget(covariant ShiftToolsApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.locale != null && widget.locale != oldWidget.locale) {
+      _locale = widget.locale!;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     const seedColor = Color(0xFF0F5F5C);
     final colorScheme = ColorScheme.fromSeed(
@@ -40,7 +62,10 @@ class _PhakphumCalendarAppState extends State<PhakphumCalendarApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Phakphum Calendar v4.1',
+      locale: _locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       themeMode: ThemeMode.system,
       theme: ThemeData(
         useMaterial3: true,
@@ -131,7 +156,28 @@ class _PhakphumCalendarAppState extends State<PhakphumCalendarApp> {
           thickness: 1,
         ),
       ),
-      home: AppShell(controller: controller),
+      routes: {
+        ImportExcelPage.routeName: (context) => ImportExcelPage(
+          controllerFactory: dependencies.createExcelImportController,
+          mappingControllerFactory: dependencies.createColumnMappingController,
+          googleAuthService: controller.auth,
+          authorizedGoogleClientFactory:
+              dependencies.authorizedGoogleClientFactory,
+          googleSheetsImportDataSourceFactory:
+              dependencies.googleSheetsImportDataSourceFactory,
+          importedScheduleFactory: dependencies.createImportedSchedule,
+          scheduleControllerFactory:
+              dependencies.createImportedScheduleController,
+          scheduleSaver: dependencies.saveImportedSchedule,
+        ),
+      },
+      home: AppShell(
+        controller: controller,
+        locale: _locale,
+        onLocaleChanged: (locale) => setState(() => _locale = locale),
+        reportControllerFactory:
+            dependencies.createMonthlyScheduleReportController,
+      ),
     );
   }
 }

@@ -2,27 +2,44 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
+import 'package:http/http.dart' as http;
 
 import '../models/calendar_busy_period.dart';
 import '../models/shift.dart';
-import 'google_api_client.dart';
 
-class CalendarService {
+/// Calendar operations required by the legacy application workflow.
+abstract interface class LegacyCalendarGateway {
+  bool matchesExistingShift(Shift shift, Set<String> keys);
+  Future<CalendarReadResult> readCalendar(
+    http.Client client, {
+    required int year,
+    required int month,
+  });
+  Future<int> insertMissing(
+    http.Client client,
+    List<Shift> shifts,
+    Set<String> existingKeys,
+  );
+  Future<void> deleteEvent(http.Client client, {required String eventId});
+}
+
+class CalendarService implements LegacyCalendarGateway {
   const CalendarService();
 
   static const sourceApp = 'phakphum_shift_calendar';
   static const timeZone = 'Asia/Bangkok';
 
   Future<Set<String>> existingSourceKeys(
-    GoogleApiClient client, {
+    http.Client client, {
     required int year,
     required int month,
   }) async {
     return (await readCalendar(client, year: year, month: month)).sourceKeys;
   }
 
+  @override
   Future<CalendarReadResult> readCalendar(
-    GoogleApiClient client, {
+    http.Client client, {
     required int year,
     required int month,
   }) async {
@@ -88,8 +105,9 @@ class CalendarService {
     return CalendarReadResult(sourceKeys: sourceKeys, busyPeriods: busyPeriods);
   }
 
+  @override
   Future<int> insertMissing(
-    GoogleApiClient client,
+    http.Client client,
     List<Shift> shifts,
     Set<String> existingKeys,
   ) async {
@@ -100,13 +118,7 @@ class CalendarService {
       if (shift.excluded || matchesExisting(shift, existingKeys)) continue;
       final event = calendar.Event(
         summary: summaryFor(shift),
-        description:
-            '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
-            'ชื่อเวรจากชีต: ${shift.rowLabel}\n'
-            'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}\n'
-            '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
-            'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
-            'ประเภท: ${shift.category.label}',
+        description: descriptionFor(shift),
         colorId: shift.effectiveCalendarColorId,
         start: calendar.EventDateTime(
           dateTime: _bangkokInstant(shift.start),
@@ -130,8 +142,9 @@ class CalendarService {
     return inserted;
   }
 
+  @override
   Future<void> deleteEvent(
-    GoogleApiClient client, {
+    http.Client client, {
     required String eventId,
   }) async {
     await calendar.CalendarApi(
@@ -147,6 +160,14 @@ class CalendarService {
 
   static String summaryFor(Shift shift) => shift.displayName;
 
+  static String descriptionFor(Shift shift) =>
+      '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
+      'ชื่อเวรจากชีต: ${shift.rowLabel}\n'
+      'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}\n'
+      '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
+      'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
+      'ประเภท: ${shift.category.label}';
+
   static String displayLegacyKeyFor(Shift shift) =>
       _legacyKey(summaryFor(shift), shift.start);
 
@@ -158,6 +179,10 @@ class CalendarService {
       keys.contains(keyFor(shift)) ||
       keys.contains(legacyKeyFor(shift)) ||
       keys.contains(displayLegacyKeyFor(shift));
+
+  @override
+  bool matchesExistingShift(Shift shift, Set<String> keys) =>
+      matchesExisting(shift, keys);
 
   static String _legacyKey(String summary, DateTime wallTime) =>
       'legacy|$summary|${wallTime.year.toString().padLeft(4, '0')}-'
