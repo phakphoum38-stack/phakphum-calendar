@@ -23,7 +23,7 @@ class ExcelReaderService {
   Future<ImportFile?> pickFile() async {
     if (filePicker != null) return filePicker!();
 
-    final selection = await FilePicker.pickFiles(
+    final selection = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const [supportedExtension],
       allowMultiple: false,

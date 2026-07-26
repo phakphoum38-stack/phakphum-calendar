@@ -33,7 +33,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   excel: ^4.0.6
-  file_picker: ^11.0.2
+  # 11.0.2 does not compile its Kotlin Android implementation under AGP 9.
+  # Keep this on the latest known-good release until the upstream fix lands.
+  file_picker: 10.3.10
   file_selector: ^1.1.0
 
   # The following adds the Cupertino Icons font to your application.
