@@ -120,5 +120,51 @@
   "googleSyncConfirmTitle": "Confirm calendar changes",
   "googleSyncConfirm": "Confirm and continue",
   "googleSyncNoWriteBeforeConfirm": "Nothing is written to Google Calendar before confirmation.",
-  "unexpectedError": "Something went wrong. Please try again."
+  "unexpectedError": "Something went wrong. Please try again.",
+  "edit": "Edit",
+  "deactivate": "Deactivate",
+  "requiredField": "This field is required.",
+  "invalidNumber": "Enter a valid non-negative number.",
+  "addEmployee": "Add employee",
+  "editEmployee": "Edit employee",
+  "deactivateEmployee": "Deactivate employee",
+  "deactivateEmployeeConfirmation": "Deactivate {name}? Existing schedule assignments will be retained.",
+  "@deactivateEmployeeConfirmation": {
+    "placeholders": {"name": {"type": "String"}}
+  },
+  "employeeCode": "Employee code",
+  "firstName": "First name",
+  "lastName": "Last name",
+  "nickname": "Nickname",
+  "position": "Position",
+  "departmentCode": "Department code",
+  "departmentName": "Department name",
+  "shiftTemplates": "Shift templates",
+  "shiftTemplatesDescription": "Configure reusable shift codes, times, colors, and rates.",
+  "addShiftTemplate": "Add shift template",
+  "editShiftTemplate": "Edit shift template",
+  "shiftCode": "Shift code",
+  "shiftName": "Shift name",
+  "shortName": "Short name",
+  "startTime": "Start time",
+  "endTime": "End time",
+  "workingHours": "Working hours",
+  "shiftRate": "Shift rate",
+  "overnight": "Overnight",
+  "manualRosterEditor": "Manual roster editor",
+  "addAssignment": "Add assignment",
+  "selectDayToEdit": "Select a day to edit its assignments.",
+  "rosterCatalogRequired": "Add employees and shift templates before creating assignments.",
+  "previewChanges": "Preview changes",
+  "deleteAssignment": "Delete assignment",
+  "deleteAssignmentConfirmation": "Delete {employee} from shift {shift}?",
+  "@deleteAssignmentConfirmation": {
+    "placeholders": {
+      "employee": {"type": "String"},
+      "shift": {"type": "String"}
+    }
+  },
+  "scheduleSaved": "Schedule saved.",
+  "location": "Location",
+  "notes": "Notes"
 }

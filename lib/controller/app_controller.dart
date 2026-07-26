@@ -1280,6 +1280,22 @@ class AppController extends ChangeNotifier implements ControllerState {
   /// compatibility APIs have reached the repository.
   Future<void> flushSchedulePersistence() => _pendingScheduleWrite;
 
+  /// Adopts a manually edited canonical schedule at the legacy UI boundary.
+  ///
+  /// The canonical aggregate remains authoritative; legacy shifts are generated
+  /// only when compatibility widgets read [shifts].
+  Future<void> adoptCanonicalSchedule(
+    Schedule schedule, {
+    bool persist = true,
+  }) async {
+    _legacySchedule = _legacyScheduleAdapter.wrapCanonical(schedule);
+    _rebuildAlerts();
+    if (persist) {
+      await _scheduleRepository.save(schedule);
+    }
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _autoRefreshTimer?.cancel();

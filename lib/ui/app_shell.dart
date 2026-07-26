@@ -12,6 +12,10 @@ import '../features/dashboard/application/dashboard_summary_service.dart';
 import '../features/dashboard/presentation/widgets/dashboard_summary_grid.dart';
 import '../features/shift_exchange/presentation/pages/shift_exchange_page.dart';
 import '../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
+import '../features/shift_templates/application/shift_template_controller.dart';
+import '../features/shift_templates/presentation/shift_templates_page.dart';
+import '../features/schedule/presentation/controllers/schedule_controller.dart';
+import '../features/schedule/presentation/pages/schedule_workspace_page.dart';
 import '../l10n/l10n.dart';
 import '../models/saved_sheet.dart';
 import '../models/roster_period.dart';
@@ -47,6 +51,8 @@ class AppShell extends StatefulWidget {
     required this.employeeDirectoryControllerFactory,
     required this.shiftExchangeControllerFactory,
     required this.dashboardSummaryService,
+    required this.shiftTemplateControllerFactory,
+    required this.scheduleControllerFactory,
   });
 
   final AppController controller;
@@ -58,6 +64,8 @@ class AppShell extends StatefulWidget {
   employeeDirectoryControllerFactory;
   final ShiftExchangeController Function() shiftExchangeControllerFactory;
   final DashboardSummaryService dashboardSummaryService;
+  final ShiftTemplateController Function() shiftTemplateControllerFactory;
+  final Future<ScheduleController> Function(Schedule) scheduleControllerFactory;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -152,7 +160,11 @@ class _AppShellState extends State<AppShell> {
               configureGoogleOAuth: _configureGoogleOAuth,
               dashboardSummaryService: widget.dashboardSummaryService,
             ),
-            _PreviewPage(controller: controller, perform: _perform),
+            _PreviewPage(
+              controller: controller,
+              perform: _perform,
+              openRosterEditor: _openRosterEditor,
+            ),
             EmployeeDirectoryPage(
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.employeeDirectoryControllerFactory,
@@ -168,6 +180,7 @@ class _AppShellState extends State<AppShell> {
             _SettingsPage(
               controller: controller,
               createFutureSheet: _createFutureSheet,
+              openShiftTemplates: _openShiftTemplates,
             ),
           ];
           final content = IndexedStack(index: selectedIndex, children: pages);
@@ -338,6 +351,31 @@ class _AppShellState extends State<AppShell> {
         builder: (context) => Scaffold(
           appBar: AppBar(title: Text(page.label(context))),
           body: child,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openShiftTemplates() {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => ShiftTemplatesPage(
+          controllerFactory: widget.shiftTemplateControllerFactory,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRosterEditor() {
+    return Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => _OwnedScheduleEditorRoute(
+          schedule: widget.controller.canonicalSchedule,
+          controllerFactory: widget.scheduleControllerFactory,
+          onCommitted: (schedule) => widget.controller.adoptCanonicalSchedule(
+            schedule,
+            persist: false,
+          ),
         ),
       ),
     );
@@ -2335,9 +2373,14 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
 }
 
 class _PreviewPage extends StatelessWidget {
-  const _PreviewPage({required this.controller, required this.perform});
+  const _PreviewPage({
+    required this.controller,
+    required this.perform,
+    required this.openRosterEditor,
+  });
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
+  final VoidCallback openRosterEditor;
 
   Future<void> _editShift(BuildContext context, int index, Shift shift) async {
     final result = await showDialog<_ShiftSettingsResult>(
@@ -2360,161 +2403,264 @@ class _PreviewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller.shifts.isEmpty) {
-      return const _EmptyState(
-        icon: Icons.event_note_outlined,
-        title: 'ยังไม่มีรายการตัวอย่าง',
-        message: 'ไปหน้าแรกแล้วกด “รีเฟรช/อ่านใหม่ตอนนี้”',
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const _EmptyState(
+            icon: Icons.event_note_outlined,
+            title: 'ยังไม่มีรายการตัวอย่าง',
+            message: 'ไปหน้าแรกแล้วกด “รีเฟรช/อ่านใหม่ตอนนี้”',
+          ),
+          FilledButton.icon(
+            onPressed: openRosterEditor,
+            icon: const Icon(Icons.edit_calendar_outlined),
+            label: Text(context.l10n.manualRosterEditor),
+          ),
+        ],
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(20),
-      itemCount: controller.shifts.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final shift = controller.shifts[index];
-        final exists = CalendarService.matchesExisting(
-          shift,
-          controller.existingKeys,
-        );
-        final color = Color(
-          CalendarColorService.byId(
-                shift.effectiveCalendarColorId,
-              )?.colorValue ??
-              shift.category.colorValue,
-        );
-        final sourceColor = ShiftColorService.classify(shift.sourceColorValue);
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final narrow = constraints.maxWidth < 620;
-                final selector = OutlinedButton.icon(
-                  onPressed: shift.generated
-                      ? null
-                      : () => _editShift(context, index, shift),
-                  icon: const Icon(Icons.palette_outlined),
-                  label: const Text('ตั้งชื่อ เวลา ประเภท และสี'),
-                );
-                final details = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          shift.displayName,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Chip(
-                          visualDensity: VisualDensity.compact,
-                          avatar: Icon(
-                            exists ? Icons.check : Icons.add,
-                            size: 16,
-                          ),
-                          label: Text(exists ? 'มีแล้ว' : 'รายการใหม่'),
-                        ),
-                        if (shift.generated)
-                          const Chip(
-                            visualDensity: VisualDensity.compact,
-                            avatar: Icon(Icons.bedtime_outlined, size: 16),
-                            label: Text('OFF อัตโนมัติ'),
-                          ),
-                        if (shift.sourceColorValue != null)
-                          Chip(
-                            visualDensity: VisualDensity.compact,
-                            avatar: CircleAvatar(
-                              backgroundColor: Color(shift.sourceColorValue!),
-                              radius: 8,
-                            ),
-                            label: Text(
-                              'สีไฟล์หลัก: '
-                              '${sourceColor?.sourceName ?? shift.sourceColorHex}',
-                            ),
-                          ),
-                        Chip(
-                          visualDensity: VisualDensity.compact,
-                          avatar: CircleAvatar(
-                            backgroundColor: color,
-                            radius: 8,
-                          ),
-                          label: Text(
-                            'สี Calendar: '
-                            '${CalendarColorService.byId(shift.effectiveCalendarColorId)?.name ?? shift.category.colorName}',
-                          ),
-                        ),
-                        if (sourceColor?.requiresReview == true)
-                          const Chip(
-                            visualDensity: VisualDensity.compact,
-                            avatar: Icon(Icons.info_outline, size: 16),
-                            label: Text(
-                              'ลาเวนเดอร์: ตรวจว่าแลกเวรใหญ่หรือยกเวร',
-                            ),
-                          ),
-                      ],
-                    ),
-                    Text(
-                      '${_thaiDate(shift.start)} • ${_time(shift.start)}–${_time(shift.end)}',
-                    ),
-                    Text(
-                      '${shift.sheetTitle} • ${shift.cell} • ${shift.assignedName}',
-                    ),
-                    if (shift.generated)
-                      const Text('ช่วงพัก 08:00–16:00 หลังเวรดึก'),
-                  ],
-                );
-                final check = Checkbox(
-                  value: !shift.excluded,
-                  onChanged: shift.generated
-                      ? null
-                      : (value) => controller.updateShift(
-                          index,
-                          excluded: value != true,
-                        ),
-                );
-                final bar = Container(
-                  width: 5,
-                  height: 74,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(8),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: openRosterEditor,
+              icon: const Icon(Icons.edit_calendar_outlined),
+              label: Text(context.l10n.manualRosterEditor),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(20),
+            itemCount: controller.shifts.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final shift = controller.shifts[index];
+              final exists = CalendarService.matchesExisting(
+                shift,
+                controller.existingKeys,
+              );
+              final color = Color(
+                CalendarColorService.byId(
+                      shift.effectiveCalendarColorId,
+                    )?.colorValue ??
+                    shift.category.colorValue,
+              );
+              final sourceColor = ShiftColorService.classify(
+                shift.sourceColorValue,
+              );
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
                   ),
-                );
-                if (narrow) {
-                  return Column(
-                    children: [
-                      Row(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final narrow = constraints.maxWidth < 620;
+                      final selector = OutlinedButton.icon(
+                        onPressed: shift.generated
+                            ? null
+                            : () => _editShift(context, index, shift),
+                        icon: const Icon(Icons.palette_outlined),
+                        label: const Text('ตั้งชื่อ เวลา ประเภท และสี'),
+                      );
+                      final details = Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                shift.displayName,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Chip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: Icon(
+                                  exists ? Icons.check : Icons.add,
+                                  size: 16,
+                                ),
+                                label: Text(exists ? 'มีแล้ว' : 'รายการใหม่'),
+                              ),
+                              if (shift.generated)
+                                const Chip(
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: Icon(
+                                    Icons.bedtime_outlined,
+                                    size: 16,
+                                  ),
+                                  label: Text('OFF อัตโนมัติ'),
+                                ),
+                              if (shift.sourceColorValue != null)
+                                Chip(
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: CircleAvatar(
+                                    backgroundColor: Color(
+                                      shift.sourceColorValue!,
+                                    ),
+                                    radius: 8,
+                                  ),
+                                  label: Text(
+                                    'สีไฟล์หลัก: '
+                                    '${sourceColor?.sourceName ?? shift.sourceColorHex}',
+                                  ),
+                                ),
+                              Chip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: CircleAvatar(
+                                  backgroundColor: color,
+                                  radius: 8,
+                                ),
+                                label: Text(
+                                  'สี Calendar: '
+                                  '${CalendarColorService.byId(shift.effectiveCalendarColorId)?.name ?? shift.category.colorName}',
+                                ),
+                              ),
+                              if (sourceColor?.requiresReview == true)
+                                const Chip(
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: Icon(Icons.info_outline, size: 16),
+                                  label: Text(
+                                    'ลาเวนเดอร์: ตรวจว่าแลกเวรใหญ่หรือยกเวร',
+                                  ),
+                                ),
+                            ],
+                          ),
+                          Text(
+                            '${_thaiDate(shift.start)} • ${_time(shift.start)}–${_time(shift.end)}',
+                          ),
+                          Text(
+                            '${shift.sheetTitle} • ${shift.cell} • ${shift.assignedName}',
+                          ),
+                          if (shift.generated)
+                            const Text('ช่วงพัก 08:00–16:00 หลังเวรดึก'),
+                        ],
+                      );
+                      final check = Checkbox(
+                        value: !shift.excluded,
+                        onChanged: shift.generated
+                            ? null
+                            : (value) => controller.updateShift(
+                                index,
+                                excluded: value != true,
+                              ),
+                      );
+                      final bar = Container(
+                        width: 5,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      );
+                      if (narrow) {
+                        return Column(
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                check,
+                                bar,
+                                const SizedBox(width: 12),
+                                Expanded(child: details),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            selector,
+                          ],
+                        );
+                      }
+                      return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           check,
                           bar,
                           const SizedBox(width: 12),
                           Expanded(child: details),
+                          const SizedBox(width: 10),
+                          SizedBox(width: 190, child: selector),
                         ],
-                      ),
-                      const SizedBox(height: 10),
-                      selector,
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    check,
-                    bar,
-                    const SizedBox(width: 12),
-                    Expanded(child: details),
-                    const SizedBox(width: 10),
-                    SizedBox(width: 190, child: selector),
-                  ],
-                );
-              },
-            ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+}
+
+class _OwnedScheduleEditorRoute extends StatefulWidget {
+  const _OwnedScheduleEditorRoute({
+    required this.schedule,
+    required this.controllerFactory,
+    required this.onCommitted,
+  });
+
+  final Schedule schedule;
+  final Future<ScheduleController> Function(Schedule) controllerFactory;
+  final Future<void> Function(Schedule) onCommitted;
+
+  @override
+  State<_OwnedScheduleEditorRoute> createState() =>
+      _OwnedScheduleEditorRouteState();
+}
+
+class _OwnedScheduleEditorRouteState extends State<_OwnedScheduleEditorRoute> {
+  ScheduleController? controller;
+  Object? error;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final value = await widget.controllerFactory(widget.schedule);
+      if (!mounted) {
+        value.dispose();
+        return;
+      }
+      setState(() => controller = value);
+    } on Object catch (caught) {
+      if (mounted) setState(() => error = caught);
+    }
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loaded = controller;
+    if (error case final caught?) {
+      return Scaffold(
+        appBar: AppBar(title: Text(context.l10n.manualRosterEditor)),
+        body: Center(child: Text(caught.toString())),
+      );
+    }
+    if (loaded == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return ScheduleWorkspacePage(
+      controller: loaded,
+      editable: true,
+      onCommitted: widget.onCommitted,
     );
   }
 }
@@ -3163,15 +3309,29 @@ class _SettingsPage extends StatelessWidget {
   const _SettingsPage({
     required this.controller,
     required this.createFutureSheet,
+    required this.openShiftTemplates,
   });
   final AppController controller;
   final Future<void> Function(String template, String newTitle)
   createFutureSheet;
+  final VoidCallback openShiftTemplates;
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
+      Card(
+        child: ListTile(
+          leading: const CircleAvatar(
+            child: Icon(Icons.view_timeline_outlined),
+          ),
+          title: Text(context.l10n.shiftTemplates),
+          subtitle: Text(context.l10n.shiftTemplatesDescription),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: openShiftTemplates,
+        ),
+      ),
+      const SizedBox(height: 16),
       _FutureSheetCard(controller: controller, onCreate: createFutureSheet),
       const SizedBox(height: 16),
       Card(

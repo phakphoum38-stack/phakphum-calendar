@@ -80,6 +80,37 @@ class LegacyScheduleAdapter {
     );
   }
 
+  /// Wraps a canonical schedule for legacy UI compatibility.
+  ///
+  /// Existing canonical values remain authoritative. Provider-only legacy
+  /// metadata receives neutral defaults because manual assignments have no
+  /// source Sheet cell or provider color override.
+  LegacyScheduleConversion wrapCanonical(Schedule schedule) {
+    final metadata = <_LegacyAssignmentMetadata>[];
+    for (final month in schedule.months) {
+      for (final day in month.days) {
+        for (var index = 0; index < day.assignments.length; index++) {
+          metadata.add(
+            _LegacyAssignmentMetadata(
+              date: day.date,
+              assignmentIndex: index,
+              sheetTitle: 'Manual',
+              cell: '',
+              category: legacy.ShiftCategory.own,
+              excluded: false,
+              generated: false,
+              linkedShiftKey: null,
+              sourceColorValue: day.assignments[index].shift.color,
+              customTitle: null,
+              calendarColorId: null,
+            ),
+          );
+        }
+      }
+    }
+    return LegacyScheduleConversion._(schedule: schedule, metadata: metadata);
+  }
+
   Employee _employee(String assignedName) {
     final name = assignedName.trim();
     return Employee(

@@ -6,6 +6,7 @@ import '../../domain/repositories/employee_repository.dart';
 import '../../domain/repositories/import_repository.dart';
 import '../../domain/repositories/schedule_repository.dart';
 import '../../domain/repositories/settings_repository.dart';
+import '../../domain/repositories/shift_template_repository.dart';
 import '../../domain/entities/schedule.dart';
 import '../../domain/services/calendar_sync_service.dart';
 import '../../domain/services/export_service.dart';
@@ -21,6 +22,7 @@ import '../../features/excel_import/presentation/controllers/excel_import_contro
 import '../../features/excel_import/domain/shift_record.dart';
 import '../../features/google_sheets/infrastructure/google_sheets_gateway.dart';
 import '../../features/employees/presentation/controllers/employee_directory_controller.dart';
+import '../../features/employees/infrastructure/shared_preferences_employee_repository.dart';
 import '../../features/calendar_engine/application/calendar_sync_plan_builder.dart';
 import '../../features/calendar_engine/application/resilient_calendar_sync_executor.dart';
 import '../../features/calendar_engine/application/resume_sync_service.dart';
@@ -50,6 +52,8 @@ import '../../features/schedule/data/schedule_service.dart';
 import '../../features/schedule/data/shared_preferences_schedule_repository.dart';
 import '../../features/schedule/presentation/controllers/schedule_controller.dart';
 import '../../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
+import '../../features/shift_templates/application/shift_template_controller.dart';
+import '../../features/shift_templates/infrastructure/shared_preferences_shift_template_repository.dart';
 import '../../features/workflow/application/calendar_sync_coordinator.dart';
 import '../../features/workflow/application/shift_calendar_workflow_controller.dart';
 import '../../features/workflow/application/workflow_preview_builder.dart';
@@ -98,7 +102,8 @@ class AppDependencies {
     MonthlyScheduleReportService? monthlyScheduleReportService,
     ReportOutputGateway? reportOutputGateway,
     DateTime Function()? reportClock,
-    this.employeeRepository,
+    EmployeeRepository? employeeRepository,
+    ShiftTemplateRepository? shiftTemplateRepository,
     ScheduleRepository? scheduleRepository,
     this.importRepository,
     this.settingsRepository,
@@ -155,6 +160,11 @@ class AppDependencies {
        reportOutputGateway =
            reportOutputGateway ?? const PrintingReportOutputGateway(),
        reportClock = reportClock ?? DateTime.now,
+       employeeRepository =
+           employeeRepository ?? SharedPreferencesEmployeeRepository(),
+       shiftTemplateRepository =
+           shiftTemplateRepository ??
+           SharedPreferencesShiftTemplateRepository(),
        scheduleRepository =
            scheduleRepository ?? SharedPreferencesScheduleRepository();
 
@@ -192,7 +202,8 @@ class AppDependencies {
   final ReportOutputGateway reportOutputGateway;
   final DateTime Function() reportClock;
 
-  final EmployeeRepository? employeeRepository;
+  final EmployeeRepository employeeRepository;
+  final ShiftTemplateRepository shiftTemplateRepository;
   final ScheduleRepository scheduleRepository;
   final ImportRepository? importRepository;
   final SettingsRepository? settingsRepository;
@@ -240,6 +251,40 @@ class AppDependencies {
     );
   }
 
+  /// Creates an independently owned controller for a canonical schedule route.
+  ScheduleController createScheduleController(Schedule schedule) {
+    return ScheduleController(
+      service: ScheduleService(schedule: schedule),
+      repository: scheduleRepository,
+      validationService: createScheduleValidationService(),
+    );
+  }
+
+  /// Loads roster catalogs before creating the independently owned editor.
+  Future<ScheduleController> createRosterEditorController(
+    Schedule schedule,
+  ) async {
+    final employeeResult = await employeeRepository.findAll();
+    final templateResult = await shiftTemplateRepository.findAll();
+    return ScheduleController(
+      service: ScheduleService(
+        schedule: schedule,
+        employees: switch (employeeResult) {
+          Success(value: final employees) => employees,
+          Failure() => const [],
+        },
+        shifts: switch (templateResult) {
+          Success(value: final templates) => [
+            for (final template in templates) template.toShiftType(),
+          ],
+          Failure() => const [],
+        },
+      ),
+      repository: scheduleRepository,
+      validationService: createScheduleValidationService(),
+    );
+  }
+
   /// Creates the controller used by the Excel import route.
   ExcelImportController createExcelImportController() {
     return ExcelImportController(
@@ -257,12 +302,20 @@ class AppDependencies {
   EmployeeDirectoryController createEmployeeDirectoryController(
     Schedule schedule,
   ) {
-    return EmployeeDirectoryController(schedule: schedule);
+    return EmployeeDirectoryController(
+      schedule: schedule,
+      repository: employeeRepository,
+    );
   }
 
   /// Creates one independently owned exchange workspace controller.
   ShiftExchangeController createShiftExchangeController() {
     return ShiftExchangeController();
+  }
+
+  /// Creates one independently owned shift-template controller.
+  ShiftTemplateController createShiftTemplateController() {
+    return ShiftTemplateController(repository: shiftTemplateRepository);
   }
 
   /// Converts imported rows into the canonical in-memory schedule aggregate.
