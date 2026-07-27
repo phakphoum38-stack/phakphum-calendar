@@ -1303,8 +1303,8 @@ class _DashboardPageState extends State<_DashboardPage> {
                                       controller.localSourceLabel != null
                                           ? 'อ่านในหน่วยความจำ • ไม่อัปโหลดไฟล์หรือชื่อไฟล์'
                                           : controller.hasRosterSource
-                                          ? 'ไฟล์หลักสำหรับอ่านตารางเวร • บันทึกไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
-                                          : 'ค้นหาจาก Drive หรือวาง URL ที่คัดลอกจากเบราว์เซอร์',
+                                          ? 'ใช้ไฟล์ปัจจุบันเป็นค่าเริ่มต้น • บันทึกประวัติไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
+                                          : 'ยังไม่ได้เลือกไฟล์หลักของบัญชีนี้',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -1333,7 +1333,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                   )
                                 : null,
                             icon: const Icon(Icons.history_outlined),
-                            label: const Text('ค้นหาไฟล์แรก'),
+                            label: const Text('ค้นหาจาก Timeline'),
                           ),
                           OutlinedButton.icon(
                             onPressed:
@@ -1341,7 +1341,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                 ? () => widget.perform(_pickGoogleSheet)
                                 : null,
                             icon: const Icon(Icons.update_outlined),
-                            label: const Text('แก้ไขล่าสุด'),
+                            label: const Text('Timeline: แก้ไขล่าสุด'),
                           ),
                           OutlinedButton.icon(
                             onPressed:
@@ -1513,7 +1513,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                     await _saveSettings();
                                     if (!controller.hasSelectedSourceSheet) {
                                       throw StateError(
-                                        'กรุณาเลือก Google Sheets ก่อนอ่านตารางเวร',
+                                        'ยังไม่ได้เลือกไฟล์หลักของบัญชีนี้',
                                       );
                                     }
                                     await controller.loadRoster();
@@ -3082,7 +3082,7 @@ class _AuditPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'เปิดดูชีตที่สร้างหรือบันทึกไว้ แยกตามบัญชี Google ที่ล็อกอิน',
+                          'SavedSheets เป็นประวัติไฟล์ทั้งหมด แยกตามบัญชี Google; เอาติ๊กออกจะไม่ลบประวัติ',
                         ),
                       ],
                     );
@@ -3278,8 +3278,8 @@ class _SavedSheetCard extends StatelessWidget {
                   ),
                   TextButton.icon(
                     onPressed: disabled ? null : () => unawaited(delete(sheet)),
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('ลบ'),
+                    icon: const Icon(Icons.check_box_outline_blank),
+                    label: const Text('เอาติ๊กออก'),
                     style: TextButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.error,
                     ),
