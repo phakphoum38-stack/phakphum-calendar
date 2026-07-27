@@ -61,4 +61,29 @@ void main() {
       isFalse,
     );
   });
+
+  test('strict duplicate matching requires the same normalized title', () {
+    expect(
+      CalendarEventMatcher.isExactEquivalent(
+        rosterTitle: 'ER บ่าย',
+        rosterStart: DateTime(2026, 9, 1, 16),
+        rosterEnd: DateTime(2026, 9, 1, 20),
+        calendarTitle: 'ER บ่าย (AER)',
+        calendarStart: DateTime(2026, 9, 1, 16),
+        calendarEnd: DateTime(2026, 9, 1, 20),
+      ),
+      isTrue,
+    );
+    expect(
+      CalendarEventMatcher.isExactEquivalent(
+        rosterTitle: 'ER บ่าย',
+        rosterStart: DateTime(2026, 9, 1, 16),
+        rosterEnd: DateTime(2026, 9, 1, 20),
+        calendarTitle: 'ER บ่าย นัดส่วนตัว',
+        calendarStart: DateTime(2026, 9, 1, 16),
+        calendarEnd: DateTime(2026, 9, 1, 20),
+      ),
+      isFalse,
+    );
+  });
 }

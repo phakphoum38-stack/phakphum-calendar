@@ -156,7 +156,25 @@ class CalendarSyncCoordinator {
     final managedIds = managed.map((event) => event.syncId).toSet();
     final adoptedProviderIds = <String>{};
     for (final candidate in desired) {
-      if (managedIds.contains(candidate.syncId)) continue;
+      if (managedIds.contains(candidate.syncId)) {
+        final obsoleteDuplicates = legacy.where(
+          (event) =>
+              !adoptedProviderIds.contains(event.eventId) &&
+              CalendarEventMatcher.isExactEquivalent(
+                rosterTitle: candidate.title,
+                rosterStart: candidate.start,
+                rosterEnd: candidate.end,
+                calendarTitle: event.title,
+                calendarStart: event.start,
+                calendarEnd: event.end,
+              ),
+        );
+        for (final duplicate in obsoleteDuplicates) {
+          adoptedProviderIds.add(duplicate.eventId);
+          result.add(duplicate);
+        }
+        continue;
+      }
       final matches = legacy
           .where(
             (event) =>
