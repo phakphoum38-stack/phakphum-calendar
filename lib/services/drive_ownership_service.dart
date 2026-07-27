@@ -1,6 +1,5 @@
 import 'package:googleapis/drive/v3.dart' as drive;
-
-import 'google_api_client.dart';
+import 'package:http/http.dart' as http;
 
 enum OwnedSheetOrder { firstCreated, recentlyModified }
 
@@ -23,14 +22,11 @@ class RecentOwnedSheet {
 /// Validates ownership and lists Google Sheets files in Drive.
 abstract interface class DriveOwnershipGateway {
   Future<List<RecentOwnedSheet>> listOwnedSpreadsheets(
-    GoogleApiClient client, {
+    http.Client client, {
     int limit = 20,
     OwnedSheetOrder order = OwnedSheetOrder.recentlyModified,
   });
-  Future<drive.File> requireOwnedSpreadsheet(
-    GoogleApiClient client,
-    String fileId,
-  );
+  Future<drive.File> requireOwnedSpreadsheet(http.Client client, String fileId);
 }
 
 class DriveOwnershipService implements DriveOwnershipGateway {
@@ -43,7 +39,7 @@ class DriveOwnershipService implements DriveOwnershipGateway {
 
   @override
   Future<List<RecentOwnedSheet>> listOwnedSpreadsheets(
-    GoogleApiClient client, {
+    http.Client client, {
     int limit = 20,
     OwnedSheetOrder order = OwnedSheetOrder.recentlyModified,
   }) async {
@@ -64,7 +60,7 @@ class DriveOwnershipService implements DriveOwnershipGateway {
   }
 
   Future<List<RecentOwnedSheet>> listRecentlyModifiedOwnedSpreadsheets(
-    GoogleApiClient client, {
+    http.Client client, {
     int limit = 20,
   }) => listOwnedSpreadsheets(client, limit: limit);
 
@@ -92,7 +88,7 @@ class DriveOwnershipService implements DriveOwnershipGateway {
 
   @override
   Future<drive.File> requireOwnedSpreadsheet(
-    GoogleApiClient client,
+    http.Client client,
     String fileId,
   ) async {
     final file =

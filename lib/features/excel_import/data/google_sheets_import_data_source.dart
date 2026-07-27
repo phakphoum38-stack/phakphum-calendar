@@ -5,14 +5,16 @@ import '../domain/excel_cell.dart';
 import '../domain/excel_row.dart';
 import '../domain/google_sheets_import_info.dart';
 import '../domain/worksheet_info.dart';
+import 'spreadsheet_ownership_verifier.dart';
 
 /// Adapts Google Sheets data to the existing tabular import models.
 class GoogleSheetsImportDataSource {
   /// Creates an import data source backed by [gateway].
-  GoogleSheetsImportDataSource(this.gateway);
+  GoogleSheetsImportDataSource(this.gateway, {required this.ownershipVerifier});
 
   /// Provider gateway used to read spreadsheet snapshots.
   final SheetsGateway gateway;
+  final SpreadsheetOwnershipVerifier ownershipVerifier;
 
   SpreadsheetSnapshot? _spreadsheet;
   WorksheetInfo? _selectedWorksheet;
@@ -22,6 +24,7 @@ class GoogleSheetsImportDataSource {
 
   /// Reads spreadsheet metadata and makes its worksheets available.
   Future<GoogleSheetsImportInfo> readMetadata(String spreadsheetId) async {
+    await ownershipVerifier.requireCurrentAccountOwnership(spreadsheetId);
     final spreadsheet = await gateway.readSpreadsheet(
       spreadsheetId: spreadsheetId,
     );

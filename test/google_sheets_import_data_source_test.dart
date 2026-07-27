@@ -3,6 +3,7 @@ import 'package:phakphum_calendar/core/di/app_dependencies.dart';
 import 'package:phakphum_calendar/domain/entities/schedule.dart';
 import 'package:phakphum_calendar/features/excel_import/application/import_engine.dart';
 import 'package:phakphum_calendar/features/excel_import/data/google_sheets_import_data_source.dart';
+import 'package:phakphum_calendar/features/excel_import/data/spreadsheet_ownership_verifier.dart';
 import 'package:phakphum_calendar/features/excel_import/domain/column_mapping.dart';
 import 'package:phakphum_calendar/features/excel_import/domain/excel_cell.dart';
 import 'package:phakphum_calendar/features/excel_import/domain/excel_row.dart';
@@ -17,6 +18,7 @@ void main() {
   test('parses spreadsheet metadata for the import boundary', () async {
     final source = GoogleSheetsImportDataSource(
       _FakeSheetsGateway(_spreadsheet()),
+      ownershipVerifier: _FakeOwnershipVerifier(),
     );
 
     final metadata = await source.readMetadata('requested-id');
@@ -31,6 +33,7 @@ void main() {
   test('lists available worksheets from spreadsheet metadata', () async {
     final source = GoogleSheetsImportDataSource(
       _FakeSheetsGateway(_spreadsheet()),
+      ownershipVerifier: _FakeOwnershipVerifier(),
     );
     await source.readMetadata('spreadsheet-123');
 
@@ -46,6 +49,7 @@ void main() {
     () async {
       final source = GoogleSheetsImportDataSource(
         _FakeSheetsGateway(_spreadsheet()),
+        ownershipVerifier: _FakeOwnershipVerifier(),
       );
       final metadata = await source.readMetadata('spreadsheet-123');
       final worksheet = metadata.worksheets.first;
@@ -132,6 +136,26 @@ void main() {
       expect(_scheduleValues(schedule), _scheduleValues(excelSchedule));
     },
   );
+
+  test('rejects another account file before reading Sheets data', () async {
+    final gateway = _FakeSheetsGateway(_spreadsheet());
+    final source = GoogleSheetsImportDataSource(
+      gateway,
+      ownershipVerifier: _FakeOwnershipVerifier(owned: false),
+    );
+
+    await expectLater(
+      source.readMetadata('shared-sheet-id'),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('บัญชีอื่น'),
+        ),
+      ),
+    );
+    expect(gateway.readCount, 0);
+  });
 }
 
 List<String> _scheduleValues(Schedule schedule) {
@@ -145,16 +169,34 @@ List<String> _scheduleValues(Schedule schedule) {
 }
 
 class _FakeSheetsGateway implements SheetsGateway {
-  const _FakeSheetsGateway(this.snapshot);
+  _FakeSheetsGateway(this.snapshot);
 
   final SpreadsheetSnapshot snapshot;
+  int readCount = 0;
 
   @override
   Future<SpreadsheetSnapshot> readSpreadsheet({
     required String spreadsheetId,
     bool includeGridData = true,
   }) async {
+    readCount++;
     return snapshot;
+  }
+}
+
+class _FakeOwnershipVerifier implements SpreadsheetOwnershipVerifier {
+  const _FakeOwnershipVerifier({this.owned = true});
+
+  final bool owned;
+
+  @override
+  Future<void> requireCurrentAccountOwnership(String spreadsheetId) async {
+    if (!owned) {
+      throw StateError(
+        'ไฟล์ต้นฉบับต้องเป็นของบัญชี Google ที่ล็อกอินอยู่ '
+        'ไม่สามารถใช้ไฟล์ที่เป็นของบัญชีอื่นได้',
+      );
+    }
   }
 }
 
