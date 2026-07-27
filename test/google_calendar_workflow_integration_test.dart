@@ -241,6 +241,7 @@ void main() {
     expect(plan.updates, isEmpty);
     expect(plan.deletes, hasLength(1));
     expect(plan.deletes.single.eventId, 'obsolete-legacy-event');
+    expect(plan.deletes.single.beforeWrites, isTrue);
 
     await controller.synchronize();
 

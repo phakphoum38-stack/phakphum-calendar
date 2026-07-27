@@ -11,10 +11,12 @@ class CalendarDeleteOperation {
   const CalendarDeleteOperation({
     required this.eventId,
     required this.calendarId,
+    this.beforeWrites = false,
   });
 
   final String eventId;
   final String calendarId;
+  final bool beforeWrites;
 }
 
 class CalendarSyncPlan {

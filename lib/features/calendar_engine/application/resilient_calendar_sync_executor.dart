@@ -54,6 +54,38 @@ class ResilientCalendarSyncExecutor {
     var deleted = 0;
     var failed = 0;
 
+    Future<void> executeDelete(CalendarDeleteOperation operation) async {
+      final result = await _retry(
+        type: CalendarSyncOperationType.delete,
+        referenceId: operation.eventId,
+        operation: () => _gateway.delete(
+          eventId: operation.eventId,
+          calendarId: operation.calendarId,
+        ),
+      );
+      operations.add(result);
+      if (!result.success) {
+        failedOperations.add(
+          FailedSyncOperation(
+            historyId: historyId,
+            type: CalendarSyncOperationType.delete,
+            referenceId: operation.eventId,
+            attempts: maxAttempts,
+            eventId: operation.eventId,
+            calendarId: operation.calendarId,
+            message: result.message,
+          ),
+        );
+      }
+      result.success ? deleted++ : failed++;
+    }
+
+    for (final operation in plan.deletes.where(
+      (operation) => operation.beforeWrites,
+    )) {
+      await executeDelete(operation);
+    }
+
     for (final command in plan.inserts) {
       final result = await _retry(
         type: CalendarSyncOperationType.insert,
@@ -102,30 +134,10 @@ class ResilientCalendarSyncExecutor {
       result.success ? updated++ : failed++;
     }
 
-    for (final operation in plan.deletes) {
-      final result = await _retry(
-        type: CalendarSyncOperationType.delete,
-        referenceId: operation.eventId,
-        operation: () => _gateway.delete(
-          eventId: operation.eventId,
-          calendarId: operation.calendarId,
-        ),
-      );
-      operations.add(result);
-      if (!result.success) {
-        failedOperations.add(
-          FailedSyncOperation(
-            historyId: historyId,
-            type: CalendarSyncOperationType.delete,
-            referenceId: operation.eventId,
-            attempts: maxAttempts,
-            eventId: operation.eventId,
-            calendarId: operation.calendarId,
-            message: result.message,
-          ),
-        );
-      }
-      result.success ? deleted++ : failed++;
+    for (final operation in plan.deletes.where(
+      (operation) => !operation.beforeWrites,
+    )) {
+      await executeDelete(operation);
     }
 
     final status = failed == 0

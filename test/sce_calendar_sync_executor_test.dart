@@ -9,6 +9,7 @@ class FakeCalendarSyncGateway implements CalendarSyncGateway {
   int inserted = 0;
   int updated = 0;
   int deleted = 0;
+  final List<String> calls = [];
 
   @override
   Future<void> delete({
@@ -16,11 +17,13 @@ class FakeCalendarSyncGateway implements CalendarSyncGateway {
     String calendarId = 'primary',
   }) async {
     deleted++;
+    calls.add('delete:$eventId');
   }
 
   @override
   Future<ManagedCalendarEvent> insert(CalendarSyncCommand command) async {
     inserted++;
+    calls.add('insert:${command.syncId}');
     return ManagedCalendarEvent(
       eventId: 'new',
       syncId: command.syncId,
@@ -45,6 +48,7 @@ class FakeCalendarSyncGateway implements CalendarSyncGateway {
     required CalendarSyncCommand command,
   }) async {
     updated++;
+    calls.add('update:${command.syncId}');
     return ManagedCalendarEvent(
       eventId: eventId,
       syncId: command.syncId,
@@ -87,5 +91,32 @@ void main() {
     expect(gateway.inserted, 1);
     expect(gateway.updated, 1);
     expect(gateway.deleted, 1);
+  });
+
+  test('executes duplicate cleanup before inserts', () async {
+    final gateway = FakeCalendarSyncGateway();
+    final executor = CalendarSyncExecutor(gateway);
+    final command = CalendarSyncCommand(
+      syncId: 'sync-new',
+      title: 'ER บ่าย',
+      start: DateTime(2026, 9, 1, 16),
+      end: DateTime(2026, 9, 1, 20),
+    );
+
+    await executor.execute(
+      CalendarSyncPlan(
+        inserts: [command],
+        updates: const [],
+        deletes: const [
+          CalendarDeleteOperation(
+            eventId: 'legacy-event',
+            calendarId: 'primary',
+            beforeWrites: true,
+          ),
+        ],
+      ),
+    );
+
+    expect(gateway.calls, ['delete:legacy-event', 'insert:sync-new']);
   });
 }
