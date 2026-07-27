@@ -419,14 +419,11 @@ class AppController extends ChangeNotifier implements ControllerState {
         drive.DriveApi.driveMetadataReadonlyScope,
       ]);
       try {
-        recentOwnedSheets = await _ownershipService.listOwnedSpreadsheets(
-          client,
-          limit: 20,
-          order: order,
-        );
+        recentOwnedSheets = await _ownershipService
+            .listFirstSpreadsheetOfEachMonth(client, limit: 1000);
         recentSheetHistoryLoaded = true;
         status = recentOwnedSheets.isEmpty
-            ? 'ไม่พบ Google Sheets ที่บัญชีนี้เป็นเจ้าของ'
+            ? 'ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้'
             : 'พบ Google Sheets ${recentOwnedSheets.length} ไฟล์';
         await _addAudit(
           'drive.sheet_picker.read',
@@ -514,7 +511,7 @@ class AppController extends ChangeNotifier implements ControllerState {
         status = 'เลือก “${saved.displayTitle}” เป็นไฟล์หลักของบัญชีนี้แล้ว';
         await _addAudit(
           'sheet.source.select',
-          'ตรวจว่าเป็นไฟล์ของบัญชีปัจจุบันและบันทึก “${saved.displayTitle}” '
+          'ตรวจสิทธิ์เข้าถึงและบันทึก “${saved.displayTitle}” '
               'ไว้เฉพาะในเครื่อง',
           true,
         );
