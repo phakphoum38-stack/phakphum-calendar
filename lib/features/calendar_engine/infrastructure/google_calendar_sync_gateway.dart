@@ -19,16 +19,23 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
     String calendarId = 'primary',
   }) async {
     final api = calendar.CalendarApi(_client);
+    final items = <calendar.Event>[];
+    String? pageToken;
+    do {
+      final events = await api.events.list(
+        calendarId,
+        timeMin: timeMin.toUtc(),
+        timeMax: timeMax.toUtc(),
+        singleEvents: true,
+        maxResults: 2500,
+        pageToken: pageToken,
+        privateExtendedProperty: <String>[syncIdKey],
+      );
+      items.addAll(events.items ?? const <calendar.Event>[]);
+      pageToken = events.nextPageToken;
+    } while (pageToken != null && pageToken.isNotEmpty);
 
-    final events = await api.events.list(
-      calendarId,
-      timeMin: timeMin.toUtc(),
-      timeMax: timeMax.toUtc(),
-      singleEvents: true,
-      privateExtendedProperty: <String>[syncIdKey],
-    );
-
-    return (events.items ?? const <calendar.Event>[])
+    return items
         .where(
           (event) =>
               event.id != null &&

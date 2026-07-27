@@ -195,6 +195,41 @@ void main() {
     expect(shifts.single.category, ShiftCategory.other);
     expect(shifts.single.sourceColorHex, '#D50000');
   });
+
+  test('reads every dated worksheet without a manually selected month', () {
+    final july = _row('P1 เช้า')..[1] = 'ผู้ใช้งานทดสอบ';
+    final august = _row('ER ดึก')..[2] = 'ผู้ใช้งานทดสอบ';
+
+    final shifts = parser.parseAllPeriods(
+      snapshots: [
+        SheetSnapshot(
+          title: 'กรกฎาคม 2569',
+          rows: [
+            ['วันที่', ...List.generate(31, (index) => index + 1)],
+            july,
+          ],
+        ),
+        SheetSnapshot(
+          title: 'ส.ค. 69',
+          rows: [
+            ['วันที่', ...List.generate(31, (index) => index + 1)],
+            august,
+          ],
+        ),
+        const SheetSnapshot(
+          title: 'สรุป',
+          rows: [
+            ['ไม่มีตารางเวร'],
+          ],
+        ),
+      ],
+      targetName: 'ผู้ใช้งานทดสอบ',
+    );
+
+    expect(shifts, hasLength(2));
+    expect(shifts[0].start, DateTime(2026, 7, 1, 8));
+    expect(shifts[1].start, DateTime(2026, 8, 2));
+  });
 }
 
 List<Object?> _row(String label) => <Object?>[label, ...List.filled(31, '')];
