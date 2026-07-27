@@ -56,4 +56,34 @@ void main() {
       expect(CalendarService.matchesExisting(shift, result.sourceKeys), isTrue);
     },
   );
+
+  test('calendar instants become Bangkok wall-clock values', () async {
+    final client = MockClient(
+      (_) async => http.Response(
+        jsonEncode({
+          'items': [
+            {
+              'id': 'personal-event',
+              'summary': 'กิจกรรมส่วนตัว',
+              'start': {'dateTime': '2026-08-16T01:00:00Z'},
+              'end': {'dateTime': '2026-08-16T02:00:00Z'},
+            },
+          ],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+    addTearDown(client.close);
+
+    final result = await const CalendarService().readCalendar(
+      client,
+      year: 2026,
+      month: 8,
+    );
+
+    expect(result.busyPeriods.single.start, DateTime(2026, 8, 16, 8));
+    expect(result.busyPeriods.single.end, DateTime(2026, 8, 16, 9));
+    expect(result.busyPeriods.single.start.isUtc, isFalse);
+  });
 }

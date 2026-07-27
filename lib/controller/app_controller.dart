@@ -1045,6 +1045,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       shifts: shifts,
       calendarPeriods: calendarPeriods,
       decisions: alertDecisions,
+      existingKeys: existingKeys,
     );
     if (!applyDecisions) return;
     for (final alert in alerts) {
@@ -1054,6 +1055,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       shifts: shifts,
       calendarPeriods: calendarPeriods,
       decisions: alertDecisions,
+      existingKeys: existingKeys,
     );
   }
 
