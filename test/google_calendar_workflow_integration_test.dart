@@ -196,6 +196,57 @@ void main() {
       desired.syncId,
     );
   });
+
+  test('obsolete exact legacy duplicate is planned for deletion', () async {
+    final schedule = canonicalScheduleFixture();
+    final desired = const CanonicalScheduleEventMapper().map(schedule);
+    final gateway = _CalendarGateway(
+      legacyEvents: [
+        ManagedCalendarEvent(
+          eventId: 'obsolete-legacy-event',
+          syncId: 'legacy:obsolete-legacy-event',
+          title: '${desired.first.title} (OLD)',
+          start: desired.first.start,
+          end: desired.first.end,
+        ),
+      ],
+    );
+    gateway.events.addAll(
+      desired.map(
+        (candidate) => ManagedCalendarEvent(
+          eventId: 'managed-${candidate.syncId}',
+          syncId: candidate.syncId,
+          title: candidate.title,
+          start: candidate.start,
+          end: candidate.end,
+          description: candidate.description,
+          colorId: candidate.colorId,
+        ),
+      ),
+    );
+    final dependencies = AppDependencies(
+      scheduleRules: const [],
+      syncHistoryRepository: _RecordingHistoryRepository(),
+      failedSyncRepository: _InMemoryFailedSyncRepository(),
+    );
+    final controller = dependencies.createShiftCalendarWorkflowController(
+      gateway,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.prepareSchedule(schedule);
+
+    final plan = controller.schedulePreparation!.plan;
+    expect(plan.inserts, isEmpty);
+    expect(plan.updates, isEmpty);
+    expect(plan.deletes, hasLength(1));
+    expect(plan.deletes.single.eventId, 'obsolete-legacy-event');
+
+    await controller.synchronize();
+
+    expect(gateway.legacyEvents, isEmpty);
+    expect(gateway.events, hasLength(desired.length));
+  });
 }
 
 class _CalendarGateway
@@ -279,6 +330,7 @@ class _CalendarGateway
   }) async {
     executionCount++;
     events.removeWhere((event) => event.eventId == eventId);
+    legacyEvents.removeWhere((event) => event.eventId == eventId);
   }
 }
 

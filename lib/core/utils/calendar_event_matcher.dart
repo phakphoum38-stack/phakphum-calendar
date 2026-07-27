@@ -42,6 +42,21 @@ class CalendarEventMatcher {
     );
   }
 
+  /// Returns true when the exact time range and title are equal after removing
+  /// trailing source-code annotations. This stricter match is safe for
+  /// identifying an obsolete duplicate after a managed event already exists.
+  static bool isExactEquivalent({
+    required String rosterTitle,
+    required DateTime rosterStart,
+    required DateTime rosterEnd,
+    required String calendarTitle,
+    required DateTime calendarStart,
+    required DateTime calendarEnd,
+  }) =>
+      _sameWallTime(rosterStart, calendarStart) &&
+      _sameWallTime(rosterEnd, calendarEnd) &&
+      _normalizeTitle(rosterTitle) == _normalizeTitle(calendarTitle);
+
   static bool _sameWallTime(DateTime left, DateTime right) =>
       left.year == right.year &&
       left.month == right.month &&
