@@ -314,7 +314,7 @@ cd bundle
 4. สร้าง OAuth Client ตามระบบ:
    - Web: เพิ่ม Authorized JavaScript origins เช่น `http://localhost:8080` และ `https://phakphoum38-stack.github.io`
    - Android: package `com.phakphoum.phakphum_calendar` พร้อม SHA-1/SHA-256 ของ signing key
-   - iOS: bundle ID `com.phakphoum.phakphumCalendar`
+   - iOS: สร้าง Client ชนิด **iOS** ด้วย bundle ID `com.phakphoum.phakphumCalendar`; ห้ามใช้ Web Client ID แทน `GIDClientID`
    - macOS: bundle ID `com.phakphoum.phakphumCalendar` และ URL scheme จาก Reversed Client ID
 5. ห้าม commit Client Secret, access token, refresh token, service-account key หรือไฟล์ข้อมูลบัญชีลง repository
 
@@ -328,18 +328,28 @@ Scopes ที่แอปขอ:
 
 สิทธิ์ `drive` และ `spreadsheets` มีขอบเขตกว้างและอาจทำให้แอป production ต้องผ่าน OAuth verification ของ Google
 
-## GitHub Secrets
+## GitHub Secrets สำหรับ OAuth
 
 ตั้งค่าที่ **Repository → Settings → Secrets and variables → Actions**:
 
 - `GOOGLE_WEB_CLIENT_ID`
-- `GOOGLE_SERVER_CLIENT_ID`
-- `GOOGLE_IOS_CLIENT_ID`
-- `GOOGLE_REVERSED_CLIENT_ID`
+- `GOOGLE_SERVER_CLIENT_ID` — ไม่บังคับ หากไม่ตั้ง iOS workflow จะใช้ `GOOGLE_WEB_CLIENT_ID`
+- `GOOGLE_IOS_CLIENT_ID` — บังคับสำหรับ iOS และต้องสร้างเป็นชนิด **iOS**
+- `GOOGLE_REVERSED_CLIENT_ID` — ไม่บังคับ เพราะ workflow คำนวณจาก iOS Client ID ได้
 - `GOOGLE_MACOS_CLIENT_ID`
 - `GOOGLE_MACOS_REVERSED_CLIENT_ID`
 
 workflow จะนำค่าไปใส่เฉพาะตอน build ไม่มีไฟล์บัญชี ลิงก์ชีต หรือผลลัพธ์เวรถูกอัปโหลดเป็น artifact
+
+สำหรับ iOS ค่าใน IPA ที่ build แล้วต้องเป็นดังนี้:
+
+- `GIDClientID` = iOS OAuth Client ID
+- `GIDServerClientID` = Web OAuth Client ID
+- `CFBundleURLSchemes` = `REVERSED_CLIENT_ID` ของ iOS Client
+
+ไฟล์ `ios/Runner/Info.plist` ใน repository ใช้ placeholder เพื่อไม่ฝังค่า OAuth
+ของบัญชีลง source ส่วน GitHub Actions จะแทนค่าเหล่านี้จาก Secrets ก่อน build
+และตรวจซ้ำใน `Runner.app/Info.plist` ก่อนสร้าง IPA
 
 ## Build จากซอร์ส
 
@@ -390,6 +400,12 @@ cd android
 ต้องใช้ macOS, Xcode และ Apple toolchain:
 
 ```bash
+flutter clean
+flutter pub get
+cd ios
+pod install
+cd ..
+
 flutter run -d DEVICE_ID \
   --dart-define=GOOGLE_IOS_CLIENT_ID="YOUR_IOS_CLIENT_ID" \
   --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"

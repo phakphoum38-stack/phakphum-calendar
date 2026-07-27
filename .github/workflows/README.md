@@ -7,16 +7,18 @@
 - `web.yml` — Flutter Web artifact and GitHub Pages deployment.
 - `desktop.yml` — Windows x64, Linux x64, and macOS application artifacts.
 
-## Optional repository secrets
+## Repository secrets
 
 - `GOOGLE_WEB_CLIENT_ID`
-- `GOOGLE_SERVER_CLIENT_ID`
-- `GOOGLE_IOS_CLIENT_ID`
-- `GOOGLE_REVERSED_CLIENT_ID`
+- `GOOGLE_SERVER_CLIENT_ID` (optional; iOS falls back to `GOOGLE_WEB_CLIENT_ID`)
+- `GOOGLE_IOS_CLIENT_ID` (required for the iOS workflow)
+- `GOOGLE_REVERSED_CLIENT_ID` (optional; derived from `GOOGLE_IOS_CLIENT_ID`)
 - `GOOGLE_MACOS_CLIENT_ID`
 - `GOOGLE_MACOS_REVERSED_CLIENT_ID`
 
-Builds still run when these secrets are empty, but Google sign-in will need valid OAuth values at runtime.
+The iOS workflow fails early when the iOS or Web/server OAuth client ID is
+missing or malformed. This prevents publishing an IPA that builds successfully
+but crashes at Google Sign-In because `GIDClientID` is absent.
 
 The iOS workflow creates an **unsigned** IPA. Installation on a physical iPhone still requires valid Apple signing/provisioning outside this workflow.
 
