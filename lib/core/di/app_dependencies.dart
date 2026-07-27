@@ -17,6 +17,7 @@ import '../../features/excel_import/application/import_engine.dart';
 import '../../features/dashboard/application/dashboard_summary_service.dart';
 import '../../features/excel_import/data/excel_reader_service.dart';
 import '../../features/excel_import/data/google_sheets_import_data_source.dart';
+import '../../features/excel_import/data/spreadsheet_ownership_verifier.dart';
 import '../../features/excel_import/presentation/controllers/column_mapping_controller.dart';
 import '../../features/excel_import/presentation/controllers/excel_import_controller.dart';
 import '../../features/excel_import/domain/shift_record.dart';
@@ -136,8 +137,13 @@ class AppDependencies {
            const AuthorizedGoogleClientFactory(),
        googleSheetsImportDataSourceFactory =
            googleSheetsImportDataSourceFactory ??
-           ((client) =>
-               GoogleSheetsImportDataSource(GoogleSheetsGateway(client))),
+           ((client) => GoogleSheetsImportDataSource(
+             GoogleSheetsGateway(client),
+             ownershipVerifier: GoogleDriveSpreadsheetOwnershipVerifier(
+               client: client,
+               gateway: driveOwnershipService ?? const DriveOwnershipService(),
+             ),
+           )),
        scheduleRules = List.unmodifiable(
          scheduleRules ?? _productionScheduleRules,
        ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
 
 import '../../../../core/google/authorized_google_client_factory.dart';
@@ -7,12 +8,14 @@ import '../../../../core/utils/excel_column_name.dart';
 import '../../../../domain/entities/schedule.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../services/google_auth_service.dart';
+import '../../../../services/drive_ownership_service.dart';
 import '../../../../services/sheets_service.dart';
 import '../../../google_sheets/infrastructure/google_sheets_gateway.dart';
 import '../../../schedule/data/imported_schedule_adapter.dart';
 import '../../../schedule/presentation/controllers/schedule_controller.dart';
 import '../../data/excel_reader_service.dart';
 import '../../data/google_sheets_import_data_source.dart';
+import '../../data/spreadsheet_ownership_verifier.dart';
 import '../../domain/column_mapping.dart';
 import '../../domain/google_sheets_import_info.dart';
 import '../../domain/shift_record.dart';
@@ -344,11 +347,20 @@ class _ImportExcelPageState extends State<ImportExcelPage> {
       final spreadsheetId = SheetsService.spreadsheetIdFromUrl(input);
       pendingClient = await widget.authorizedGoogleClientFactory.create(
         account: account,
-        scopes: const [GoogleAuthService.spreadsheetsReadOnlyScope],
+        scopes: const [
+          GoogleAuthService.spreadsheetsReadOnlyScope,
+          drive.DriveApi.driveMetadataReadonlyScope,
+        ],
       );
       final source =
           widget.googleSheetsImportDataSourceFactory?.call(pendingClient) ??
-          GoogleSheetsImportDataSource(GoogleSheetsGateway(pendingClient));
+          GoogleSheetsImportDataSource(
+            GoogleSheetsGateway(pendingClient),
+            ownershipVerifier: GoogleDriveSpreadsheetOwnershipVerifier(
+              client: pendingClient,
+              gateway: const DriveOwnershipService(),
+            ),
+          );
       final info = await source.readMetadata(spreadsheetId);
       if (!mounted) {
         pendingClient.close();
