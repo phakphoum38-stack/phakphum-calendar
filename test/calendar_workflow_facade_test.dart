@@ -38,7 +38,7 @@ void main() {
     );
 
     expect(CalendarService.keyFor(shift), hasLength(32));
-    expect(CalendarService.summaryFor(shift), 'P1 เช้า (UP1)');
+    expect(CalendarService.summaryFor(shift), 'P1 เช้า');
     expect(
       CalendarService.descriptionFor(shift),
       contains('ชีต: ส.ค. 69 เซลล์ D5'),

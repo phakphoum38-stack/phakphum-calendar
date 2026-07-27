@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import '../../../core/utils/calendar_event_matcher.dart';
 import '../../../domain/entities/schedule.dart';
 import '../../../domain/entities/shift_assignment.dart';
 import '../../diff_engine/domain/calendar_event_candidate.dart';
@@ -44,7 +45,7 @@ class CanonicalScheduleEventMapper {
           candidates.add(
             CalendarEventCandidate(
               syncId: _syncId('$identity|$occurrence'),
-              title: assignment.shift.name,
+              title: CalendarEventMatcher.calendarTitle(assignment.shift.name),
               start: start,
               end: end,
               shouldExist: true,

@@ -5,7 +5,8 @@ import '../domain/calendar_sync_command.dart';
 import '../domain/calendar_sync_gateway.dart';
 import '../domain/managed_calendar_event.dart';
 
-class GoogleCalendarSyncGateway implements CalendarSyncGateway {
+class GoogleCalendarSyncGateway
+    implements CalendarSyncGateway, ComparableCalendarEventGateway {
   GoogleCalendarSyncGateway(this._client);
 
   static const String syncIdKey = 'sceSyncId';
@@ -18,6 +19,34 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
     required DateTime timeMax,
     String calendarId = 'primary',
   }) async {
+    return _listEvents(
+      timeMin: timeMin,
+      timeMax: timeMax,
+      calendarId: calendarId,
+      managedOnly: true,
+    );
+  }
+
+  @override
+  Future<List<ManagedCalendarEvent>> listComparableLegacyEvents({
+    required DateTime timeMin,
+    required DateTime timeMax,
+    String calendarId = 'primary',
+  }) {
+    return _listEvents(
+      timeMin: timeMin,
+      timeMax: timeMax,
+      calendarId: calendarId,
+      managedOnly: false,
+    );
+  }
+
+  Future<List<ManagedCalendarEvent>> _listEvents({
+    required DateTime timeMin,
+    required DateTime timeMax,
+    required String calendarId,
+    required bool managedOnly,
+  }) async {
     final api = calendar.CalendarApi(_client);
     final items = <calendar.Event>[];
     String? pageToken;
@@ -29,7 +58,7 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
         singleEvents: true,
         maxResults: 2500,
         pageToken: pageToken,
-        privateExtendedProperty: <String>[syncIdKey],
+        privateExtendedProperty: managedOnly ? <String>[syncIdKey] : null,
       );
       items.addAll(events.items ?? const <calendar.Event>[]);
       pageToken = events.nextPageToken;
@@ -39,14 +68,19 @@ class GoogleCalendarSyncGateway implements CalendarSyncGateway {
         .where(
           (event) =>
               event.id != null &&
-              event.extendedProperties?.private?[syncIdKey] != null &&
+              (!managedOnly ||
+                  event.extendedProperties?.private?[syncIdKey] != null) &&
               event.start?.dateTime != null &&
-              event.end?.dateTime != null,
+              event.end?.dateTime != null &&
+              (managedOnly ||
+                  event.extendedProperties?.private?[syncIdKey] == null),
         )
         .map(
           (event) => ManagedCalendarEvent(
             eventId: event.id!,
-            syncId: event.extendedProperties!.private![syncIdKey]!,
+            syncId:
+                event.extendedProperties?.private?[syncIdKey] ??
+                'legacy:${event.id!}',
             title: event.summary ?? '',
             start: event.start!.dateTime!,
             end: event.end!.dateTime!,

@@ -173,6 +173,35 @@ void main() {
 
     expect(alerts, isEmpty);
   });
+
+  test('does not warn for an equivalent pre-metadata Calendar event', () {
+    final shift = Shift(
+      code: 'NER',
+      rowLabel: 'ER ดึก',
+      assignedName: 'ผู้ใช้งานทดสอบ',
+      start: DateTime(2026, 8, 16),
+      end: DateTime(2026, 8, 16, 8),
+      sheetTitle: 'ชีตทดสอบ',
+      cell: 'A1',
+      category: ShiftCategory.own,
+    );
+
+    final alerts = service.build(
+      shifts: [shift],
+      calendarPeriods: [
+        CalendarBusyPeriod(
+          id: 'legacy-er-night',
+          title: 'ER ดึก',
+          start: shift.start,
+          end: shift.end,
+          legacyKey: 'legacy|ER ดึก|2026-08-16T00:00',
+        ),
+      ],
+      decisions: const {},
+    );
+
+    expect(alerts, isEmpty);
+  });
 }
 
 Shift _shift(String code, DateTime start, DateTime end) => Shift(

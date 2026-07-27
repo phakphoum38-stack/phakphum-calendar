@@ -3,6 +3,7 @@ import '../../calendar_engine/application/calendar_sync_plan.dart';
 import '../../calendar_engine/application/resilient_calendar_sync_executor.dart';
 import '../../calendar_engine/domain/calendar_sync_gateway.dart';
 import '../../calendar_engine/domain/managed_calendar_event.dart';
+import '../../../core/utils/calendar_event_matcher.dart';
 import '../../../domain/entities/schedule.dart';
 import '../../diff_engine/application/calendar_diff_engine.dart';
 import '../../diff_engine/domain/calendar_diff.dart';
@@ -51,11 +52,22 @@ class CalendarSyncCoordinator {
       timeMax: range.$2,
       calendarId: calendarId,
     );
-    final existing = managed.map(_candidateFromManaged).toList(growable: false);
+    final comparableGateway = _gateway is ComparableCalendarEventGateway
+        ? _gateway as ComparableCalendarEventGateway
+        : null;
+    final legacy = comparableGateway == null
+        ? const <ManagedCalendarEvent>[]
+        : await comparableGateway.listComparableLegacyEvents(
+            timeMin: range.$1,
+            timeMax: range.$2,
+            calendarId: calendarId,
+          );
+    final adopted = _adoptEquivalentLegacy(desired, managed, legacy);
+    final existing = adopted.map(_candidateFromManaged).toList(growable: false);
     final diff = diffEngine.compare(desired: desired, existing: existing);
     final plan = _planBuilder.build(
       diff: diff,
-      existingEvents: managed,
+      existingEvents: adopted,
       calendarId: calendarId,
     );
     return CalendarSyncPreparation(
@@ -133,5 +145,47 @@ class CalendarSyncCoordinator {
       description: event.description,
       colorId: event.colorId,
     );
+  }
+
+  List<ManagedCalendarEvent> _adoptEquivalentLegacy(
+    List<CalendarEventCandidate> desired,
+    List<ManagedCalendarEvent> managed,
+    List<ManagedCalendarEvent> legacy,
+  ) {
+    final result = <ManagedCalendarEvent>[...managed];
+    final managedIds = managed.map((event) => event.syncId).toSet();
+    final adoptedProviderIds = <String>{};
+    for (final candidate in desired) {
+      if (managedIds.contains(candidate.syncId)) continue;
+      final matches = legacy
+          .where(
+            (event) =>
+                !adoptedProviderIds.contains(event.eventId) &&
+                CalendarEventMatcher.isEquivalent(
+                  rosterTitle: candidate.title,
+                  rosterStart: candidate.start,
+                  rosterEnd: candidate.end,
+                  calendarTitle: event.title,
+                  calendarStart: event.start,
+                  calendarEnd: event.end,
+                ),
+          )
+          .toList(growable: false);
+      if (matches.length != 1) continue;
+      final event = matches.single;
+      adoptedProviderIds.add(event.eventId);
+      result.add(
+        ManagedCalendarEvent(
+          eventId: event.eventId,
+          syncId: candidate.syncId,
+          title: event.title,
+          start: event.start,
+          end: event.end,
+          description: event.description,
+          colorId: event.colorId,
+        ),
+      );
+    }
+    return List.unmodifiable(result);
   }
 }

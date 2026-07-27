@@ -311,7 +311,7 @@ void main() {
       isTrue,
     );
     expect(shift.displayName, 'P1 เช้า (UP1)');
-    expect(CalendarService.summaryFor(shift), 'P1 เช้า (UP1)');
+    expect(CalendarService.summaryFor(shift), 'P1 เช้า');
     expect(
       CalendarService.matchesExisting(shift, {
         CalendarService.displayLegacyKeyFor(shift),
