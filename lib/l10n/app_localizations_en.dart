@@ -197,6 +197,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get googleSheetsInputLabel => 'Google Sheets URL or spreadsheet ID';
 
   @override
+  String get chooseFromGoogleDrive => 'Choose from Google Drive';
+
+  @override
+  String get chooseGoogleSheet => 'Choose a Google Sheet';
+
+  @override
+  String get ownedGoogleSheetsOnly =>
+      'Only spreadsheets owned by the signed-in Google account are shown.';
+
+  @override
+  String get noOwnedGoogleSheets =>
+      'No Google Sheets owned by this account were found.';
+
+  @override
   String get columnMapping => 'Column Mapping';
 
   @override

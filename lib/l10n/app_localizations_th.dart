@@ -195,6 +195,20 @@ class AppLocalizationsTh extends AppLocalizations {
   String get googleSheetsInputLabel => 'URL หรือรหัสสเปรดชีต Google Sheets';
 
   @override
+  String get chooseFromGoogleDrive => 'เลือกจาก Google Drive';
+
+  @override
+  String get chooseGoogleSheet => 'เลือก Google Sheet';
+
+  @override
+  String get ownedGoogleSheetsOnly =>
+      'แสดงเฉพาะสเปรดชีตที่บัญชี Google ซึ่งล็อกอินอยู่เป็นเจ้าของ';
+
+  @override
+  String get noOwnedGoogleSheets =>
+      'ไม่พบ Google Sheets ที่บัญชีนี้เป็นเจ้าของ';
+
+  @override
   String get columnMapping => 'จับคู่คอลัมน์';
 
   @override

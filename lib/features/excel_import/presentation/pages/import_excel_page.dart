@@ -29,6 +29,7 @@ import '../widgets/excel_import_button.dart';
 import '../widgets/excel_preview_table.dart';
 import '../widgets/import_error_card.dart';
 import '../widgets/import_status_card.dart';
+import '../widgets/google_sheets_import_widgets.dart';
 import '../widgets/worksheet_list.dart';
 
 class ImportExcelPage extends StatefulWidget {
@@ -39,6 +40,7 @@ class ImportExcelPage extends StatefulWidget {
     this.mappingControllerFactory,
     this.googleAuthService,
     this.authorizedGoogleClientFactory = const AuthorizedGoogleClientFactory(),
+    this.driveOwnershipGateway = const DriveOwnershipService(),
     this.googleSheetsImportDataSourceFactory,
     this.importedScheduleFactory,
     this.scheduleControllerFactory,
@@ -54,6 +56,7 @@ class ImportExcelPage extends StatefulWidget {
   final ColumnMappingController Function()? mappingControllerFactory;
   final GoogleAuthGateway? googleAuthService;
   final AuthorizedGoogleClientFactory authorizedGoogleClientFactory;
+  final DriveOwnershipGateway driveOwnershipGateway;
   final GoogleSheetsImportDataSource Function(auth.AuthClient)?
   googleSheetsImportDataSourceFactory;
   final Schedule Function(Iterable<ShiftRecord>)? importedScheduleFactory;
@@ -130,7 +133,7 @@ class _ImportExcelPageState extends State<ImportExcelPage> {
                           loadedRowCount: controller.rows.length,
                         ),
                       if (googleSheetsInfo != null)
-                        _GoogleSheetsStatusCard(
+                        GoogleSheetsStatusCard(
                           info: googleSheetsInfo!,
                           selectedWorksheet: controller.selectedWorksheet,
                           loadedRowCount: controller.rows.length,
@@ -171,7 +174,7 @@ class _ImportExcelPageState extends State<ImportExcelPage> {
                       ],
                       if (googleSheetsError != null) ...[
                         const SizedBox(height: 16),
-                        _GoogleSheetsErrorCard(message: googleSheetsError!),
+                        GoogleSheetsErrorCard(message: googleSheetsError!),
                       ],
                       const SizedBox(height: 24),
                       Wrap(
@@ -218,19 +221,32 @@ class _ImportExcelPageState extends State<ImportExcelPage> {
                       const SizedBox(height: 12),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: FilledButton.icon(
-                          onPressed: loadingGoogleSheets
-                              ? null
-                              : _loadGoogleSheets,
-                          icon: loadingGoogleSheets
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.cloud_download),
-                          label: Text(context.l10n.loadGoogleSheets),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: loadingGoogleSheets
+                                  ? null
+                                  : _pickGoogleSheetFromDrive,
+                              icon: const Icon(Icons.add_to_drive),
+                              label: Text(context.l10n.chooseFromGoogleDrive),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: loadingGoogleSheets
+                                  ? null
+                                  : _loadGoogleSheets,
+                              icon: loadingGoogleSheets
+                                  ? const SizedBox.square(
+                                      dimension: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.cloud_download),
+                              label: Text(context.l10n.loadGoogleSheets),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -392,61 +408,58 @@ class _ImportExcelPageState extends State<ImportExcelPage> {
       }
     }
   }
-}
 
-class _GoogleSheetsStatusCard extends StatelessWidget {
-  const _GoogleSheetsStatusCard({
-    required this.info,
-    required this.selectedWorksheet,
-    required this.loadedRowCount,
-  });
-
-  final GoogleSheetsImportInfo info;
-  final WorksheetInfo? selectedWorksheet;
-  final int loadedRowCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              info.title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text('${info.worksheetCount} worksheets'),
-            if (selectedWorksheet != null)
-              Text(
-                '${selectedWorksheet!.name} • '
-                '$loadedRowCount preview rows',
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GoogleSheetsErrorCard extends StatelessWidget {
-  const _GoogleSheetsErrorCard({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      color: colors.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(message, style: TextStyle(color: colors.onErrorContainer)),
-      ),
-    );
+  Future<void> _pickGoogleSheetFromDrive() async {
+    if (loadingGoogleSheets) return;
+    auth.AuthClient? client;
+    setState(() {
+      loadingGoogleSheets = true;
+      googleSheetsError = null;
+    });
+    try {
+      final authService = widget.googleAuthService;
+      if (authService == null) {
+        throw StateError('Google authentication is unavailable.');
+      }
+      if (authService.account == null) {
+        await authService.signIn();
+      }
+      final account = authService.account;
+      if (account == null) {
+        throw StateError('Sign in to Google before choosing a spreadsheet.');
+      }
+      client = await widget.authorizedGoogleClientFactory.create(
+        account: account,
+        scopes: const [drive.DriveApi.driveMetadataReadonlyScope],
+      );
+      final sheets = await widget.driveOwnershipGateway.listOwnedSpreadsheets(
+        client,
+        limit: 50,
+      );
+      if (!mounted) return;
+      final selected = await showDialog<RecentOwnedSheet>(
+        context: context,
+        builder: (context) => OwnedGoogleSheetPickerDialog(sheets: sheets),
+      );
+      if (selected == null || !mounted) return;
+      googleSheetsInputController.text = selected.url;
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        googleSheetsError = error
+            .toString()
+            .replaceFirst('Bad state: ', '')
+            .replaceFirst('FormatException: ', '');
+      });
+      return;
+    } finally {
+      client?.close();
+      if (mounted) {
+        setState(() {
+          loadingGoogleSheets = false;
+        });
+      }
+    }
+    await _loadGoogleSheets();
   }
 }

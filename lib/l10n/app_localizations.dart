@@ -464,6 +464,30 @@ abstract class AppLocalizations {
   /// **'Google Sheets URL or spreadsheet ID'**
   String get googleSheetsInputLabel;
 
+  /// No description provided for @chooseFromGoogleDrive.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from Google Drive'**
+  String get chooseFromGoogleDrive;
+
+  /// No description provided for @chooseGoogleSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a Google Sheet'**
+  String get chooseGoogleSheet;
+
+  /// No description provided for @ownedGoogleSheetsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only spreadsheets owned by the signed-in Google account are shown.'**
+  String get ownedGoogleSheetsOnly;
+
+  /// No description provided for @noOwnedGoogleSheets.
+  ///
+  /// In en, this message translates to:
+  /// **'No Google Sheets owned by this account were found.'**
+  String get noOwnedGoogleSheets;
+
   /// No description provided for @columnMapping.
   ///
   /// In en, this message translates to:

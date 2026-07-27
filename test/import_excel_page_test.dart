@@ -53,6 +53,7 @@ void main() {
     expect(find.text('ยังไม่ได้เลือกไฟล์ Excel'), findsOneWidget);
     expect(find.text('Select Excel File'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Choose from Google Drive'), findsOneWidget);
 
     await tester.tap(find.text('Select Excel File'));
     await tester.pumpAndSettle();
