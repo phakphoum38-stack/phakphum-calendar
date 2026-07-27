@@ -23,6 +23,16 @@ class CalendarSyncExecutor {
     var updated = 0;
     var deleted = 0;
 
+    for (final operation in plan.deletes.where(
+      (operation) => operation.beforeWrites,
+    )) {
+      await _gateway.delete(
+        eventId: operation.eventId,
+        calendarId: operation.calendarId,
+      );
+      deleted++;
+    }
+
     for (final command in plan.inserts) {
       await _gateway.insert(command);
       inserted++;
@@ -36,7 +46,9 @@ class CalendarSyncExecutor {
       updated++;
     }
 
-    for (final operation in plan.deletes) {
+    for (final operation in plan.deletes.where(
+      (operation) => !operation.beforeWrites,
+    )) {
       await _gateway.delete(
         eventId: operation.eventId,
         calendarId: operation.calendarId,

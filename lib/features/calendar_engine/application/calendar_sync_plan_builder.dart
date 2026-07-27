@@ -49,6 +49,7 @@ class CalendarSyncPlanBuilder {
         CalendarDeleteOperation(
           eventId: existing.eventId,
           calendarId: calendarId,
+          beforeWrites: candidate.syncId.startsWith('legacy:'),
         ),
       );
     }
