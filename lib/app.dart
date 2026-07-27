@@ -163,6 +163,7 @@ class _ShiftToolsAppState extends State<ShiftToolsApp> {
           googleAuthService: controller.auth,
           authorizedGoogleClientFactory:
               dependencies.authorizedGoogleClientFactory,
+          driveOwnershipGateway: dependencies.driveOwnershipService,
           googleSheetsImportDataSourceFactory:
               dependencies.googleSheetsImportDataSourceFactory,
           importedScheduleFactory: dependencies.createImportedSchedule,
