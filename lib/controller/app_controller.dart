@@ -226,21 +226,19 @@ class AppController extends ChangeNotifier implements ControllerState {
   String? get message => error ?? status;
 
   int get includedCount => shifts.where((shift) => !shift.excluded).length;
-  int get existingCount => shifts
-      .where(
-        (shift) => _calendarService.matchesExistingShift(shift, existingKeys),
-      )
-      .length;
+  int get existingCount => shifts.where(_matchesCurrentCalendar).length;
   int get newCount => shifts
-      .where(
-        (shift) =>
-            !shift.excluded &&
-            !_calendarService.matchesExistingShift(shift, existingKeys),
-      )
+      .where((shift) => !shift.excluded && !_matchesCurrentCalendar(shift))
       .length;
   int get pendingAlertCount => alerts.where((alert) => alert.isPending).length;
   int get conflictAlertCount =>
       alerts.where((alert) => alert.isConflict).length;
+
+  bool _matchesCurrentCalendar(Shift shift) =>
+      _calendarService.matchesExistingShift(shift, existingKeys) ||
+      calendarPeriods.any(
+        (period) => CalendarService.matchesEquivalentPeriod(shift, period),
+      );
 
   List<String> get rosterSearchNames {
     final names = <String>{};

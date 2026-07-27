@@ -150,15 +150,66 @@ void main() {
     );
     expect(first.map((candidate) => candidate.syncId).toSet(), hasLength(2));
   });
+
+  test('equivalent legacy event is updated instead of inserted', () async {
+    final schedule = canonicalScheduleFixture();
+    final desired = const CanonicalScheduleEventMapper().map(schedule).first;
+    final gateway = _CalendarGateway(
+      legacyEvents: [
+        ManagedCalendarEvent(
+          eventId: 'legacy-existing-event',
+          syncId: 'legacy:legacy-existing-event',
+          title: '${desired.title} (OLD)',
+          start: desired.start,
+          end: desired.end,
+          description: desired.description,
+          colorId: desired.colorId,
+        ),
+      ],
+    );
+    final dependencies = AppDependencies(
+      scheduleRules: const [],
+      syncHistoryRepository: _RecordingHistoryRepository(),
+      failedSyncRepository: _InMemoryFailedSyncRepository(),
+    );
+    final controller = dependencies.createShiftCalendarWorkflowController(
+      gateway,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.prepareSchedule(schedule);
+
+    final plan = controller.schedulePreparation!.plan;
+    expect(plan.inserts, hasLength(1));
+    expect(plan.updates, hasLength(1));
+    expect(plan.updates.single.eventId, 'legacy-existing-event');
+    expect(plan.updates.single.command.syncId, desired.syncId);
+
+    await controller.synchronize();
+
+    expect(gateway.insertCount, 1);
+    expect(gateway.updateCount, 1);
+    expect(
+      gateway.events
+          .singleWhere((event) => event.eventId == 'legacy-existing-event')
+          .syncId,
+      desired.syncId,
+    );
+  });
 }
 
-class _CalendarGateway implements CalendarSyncGateway {
-  _CalendarGateway({this.calls});
+class _CalendarGateway
+    implements CalendarSyncGateway, ComparableCalendarEventGateway {
+  _CalendarGateway({this.calls, List<ManagedCalendarEvent>? legacyEvents})
+    : legacyEvents = legacyEvents ?? [];
 
   final List<String>? calls;
   final List<ManagedCalendarEvent> events = [];
+  final List<ManagedCalendarEvent> legacyEvents;
   final Set<String> failingSyncIds = {};
   int executionCount = 0;
+  int insertCount = 0;
+  int updateCount = 0;
 
   @override
   Future<List<ManagedCalendarEvent>> listManagedEvents({
@@ -171,8 +222,16 @@ class _CalendarGateway implements CalendarSyncGateway {
   }
 
   @override
+  Future<List<ManagedCalendarEvent>> listComparableLegacyEvents({
+    required DateTime timeMin,
+    required DateTime timeMax,
+    String calendarId = 'primary',
+  }) async => List.unmodifiable(legacyEvents);
+
+  @override
   Future<ManagedCalendarEvent> insert(CalendarSyncCommand command) async {
     executionCount++;
+    insertCount++;
     if (failingSyncIds.contains(command.syncId)) {
       throw StateError('simulated insert failure');
     }
@@ -194,6 +253,7 @@ class _CalendarGateway implements CalendarSyncGateway {
     required CalendarSyncCommand command,
   }) async {
     executionCount++;
+    updateCount++;
     final event = ManagedCalendarEvent(
       eventId: eventId,
       syncId: command.syncId,
@@ -203,7 +263,12 @@ class _CalendarGateway implements CalendarSyncGateway {
       description: command.description,
     );
     final index = events.indexWhere((item) => item.eventId == eventId);
-    if (index >= 0) events[index] = event;
+    if (index >= 0) {
+      events[index] = event;
+    } else {
+      legacyEvents.removeWhere((item) => item.eventId == eventId);
+      events.add(event);
+    }
     return event;
   }
 

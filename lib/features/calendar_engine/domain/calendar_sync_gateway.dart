@@ -17,3 +17,12 @@ abstract interface class CalendarSyncGateway {
 
   Future<void> delete({required String eventId, String calendarId = 'primary'});
 }
+
+/// Optional provider capability used to adopt equivalent pre-metadata events.
+abstract interface class ComparableCalendarEventGateway {
+  Future<List<ManagedCalendarEvent>> listComparableLegacyEvents({
+    required DateTime timeMin,
+    required DateTime timeMax,
+    String calendarId = 'primary',
+  });
+}

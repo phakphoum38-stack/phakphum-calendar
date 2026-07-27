@@ -139,7 +139,8 @@ class ShiftAlertService implements ShiftAlertPolicy {
         continue;
       }
       for (final period in calendarPeriods) {
-        if (CalendarService.matchesLegacyEvent(shift, period.legacyKey) ||
+        if (CalendarService.matchesEquivalentPeriod(shift, period) ||
+            CalendarService.matchesLegacyEvent(shift, period.legacyKey) ||
             !_overlaps(shift.start, shift.end, period.start, period.end)) {
           continue;
         }

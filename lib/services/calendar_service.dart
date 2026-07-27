@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar;
 import 'package:http/http.dart' as http;
 
+import '../core/utils/calendar_event_matcher.dart';
 import '../models/calendar_busy_period.dart';
 import '../models/shift.dart';
 
@@ -166,7 +167,8 @@ class CalendarService implements LegacyCalendarGateway {
   static String legacyKeyFor(Shift shift) =>
       _legacyKey(shift.code, shift.start);
 
-  static String summaryFor(Shift shift) => shift.displayName;
+  static String summaryFor(Shift shift) =>
+      CalendarEventMatcher.calendarTitle(shift.displayName);
 
   static String descriptionFor(Shift shift) =>
       '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
@@ -182,6 +184,17 @@ class CalendarService implements LegacyCalendarGateway {
   static bool matchesLegacyEvent(Shift shift, String legacyKey) =>
       legacyKey == legacyKeyFor(shift) ||
       legacyKey == displayLegacyKeyFor(shift);
+
+  static bool matchesEquivalentPeriod(Shift shift, CalendarBusyPeriod period) =>
+      CalendarEventMatcher.isEquivalent(
+        rosterTitle: shift.displayName,
+        sourceLabel: shift.rowLabel,
+        rosterStart: shift.start,
+        rosterEnd: shift.end,
+        calendarTitle: period.title,
+        calendarStart: period.start,
+        calendarEnd: period.end,
+      );
 
   static bool matchesExisting(Shift shift, Set<String> keys) =>
       keys.contains(keyFor(shift)) ||
