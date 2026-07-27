@@ -217,7 +217,17 @@ class CalendarService implements LegacyCalendarGateway {
   DateTime? _wallTime(calendar.EventDateTime? value) {
     final instant = value?.dateTime;
     if (instant != null) {
-      return instant.toUtc().add(const Duration(hours: 7));
+      final bangkok = instant.toUtc().add(const Duration(hours: 7));
+      return DateTime(
+        bangkok.year,
+        bangkok.month,
+        bangkok.day,
+        bangkok.hour,
+        bangkok.minute,
+        bangkok.second,
+        bangkok.millisecond,
+        bangkok.microsecond,
+      );
     }
     final date = value?.date;
     return date == null ? null : DateTime(date.year, date.month, date.day);

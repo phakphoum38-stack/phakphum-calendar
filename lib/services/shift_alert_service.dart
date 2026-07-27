@@ -10,6 +10,7 @@ abstract interface class ShiftAlertPolicy {
     required List<Shift> shifts,
     required List<CalendarBusyPeriod> calendarPeriods,
     required Map<String, ShiftAlertDecision> decisions,
+    Set<String> existingKeys = const {},
   });
 }
 
@@ -55,6 +56,7 @@ class ShiftAlertService implements ShiftAlertPolicy {
     required List<Shift> shifts,
     required List<CalendarBusyPeriod> calendarPeriods,
     required Map<String, ShiftAlertDecision> decisions,
+    Set<String> existingKeys = const {},
   }) {
     final activeShifts = shifts.where((shift) => !shift.excluded).toList();
     final alerts = <ShiftAlert>[];
@@ -133,6 +135,9 @@ class ShiftAlertService implements ShiftAlertPolicy {
     }
 
     for (final shift in activeShifts) {
+      if (CalendarService.matchesExisting(shift, existingKeys)) {
+        continue;
+      }
       for (final period in calendarPeriods) {
         if (CalendarService.matchesLegacyEvent(shift, period.legacyKey) ||
             !_overlaps(shift.start, shift.end, period.start, period.end)) {

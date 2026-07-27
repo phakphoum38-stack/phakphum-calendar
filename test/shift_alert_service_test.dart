@@ -148,6 +148,31 @@ void main() {
 
     expect(alerts, isEmpty);
   });
+
+  test('does not evaluate an existing shift as a calendar conflict twice', () {
+    final shift = _shift(
+      'NER',
+      DateTime(2026, 8, 16),
+      DateTime(2026, 8, 16, 8),
+    );
+
+    final alerts = service.build(
+      shifts: [shift],
+      calendarPeriods: [
+        CalendarBusyPeriod(
+          id: 'same-time-different-title',
+          title: 'ER ดึก',
+          start: shift.start,
+          end: shift.end,
+          legacyKey: 'legacy|ER ดึก|2026-08-16T00:00',
+        ),
+      ],
+      existingKeys: {CalendarService.managedTimeKeyFor(shift)},
+      decisions: const {},
+    );
+
+    expect(alerts, isEmpty);
+  });
 }
 
 Shift _shift(String code, DateTime start, DateTime end) => Shift(
