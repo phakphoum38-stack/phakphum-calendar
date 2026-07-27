@@ -12,8 +12,69 @@ abstract interface class RosterShiftParser {
   });
 }
 
-class ShiftParser implements RosterShiftParser {
+/// Optional parser capability that discovers and reads every dated roster tab.
+abstract interface class AllPeriodRosterShiftParser {
+  List<Shift> parseAllPeriods({
+    required List<SheetSnapshot> snapshots,
+    required String targetName,
+    Iterable<String> targetAliases = const [],
+  });
+}
+
+class ShiftParser implements RosterShiftParser, AllPeriodRosterShiftParser {
   const ShiftParser();
+
+  static const _thaiMonths = <String, int>{
+    'มกราคม': 1,
+    'มค': 1,
+    'กุมภาพันธ์': 2,
+    'กพ': 2,
+    'มีนาคม': 3,
+    'มีค': 3,
+    'เมษายน': 4,
+    'เมย': 4,
+    'พฤษภาคม': 5,
+    'พค': 5,
+    'มิถุนายน': 6,
+    'มิย': 6,
+    'กรกฎาคม': 7,
+    'กค': 7,
+    'สิงหาคม': 8,
+    'สค': 8,
+    'กันยายน': 9,
+    'กย': 9,
+    'ตุลาคม': 10,
+    'ตค': 10,
+    'พฤศจิกายน': 11,
+    'พย': 11,
+    'ธันวาคม': 12,
+    'ธค': 12,
+  };
+
+  @override
+  List<Shift> parseAllPeriods({
+    required List<SheetSnapshot> snapshots,
+    required String targetName,
+    Iterable<String> targetAliases = const [],
+  }) {
+    final found = <String, Shift>{};
+    for (final snapshot in snapshots) {
+      for (final period in _periodsForSnapshot(snapshot)) {
+        final shifts = parse(
+          snapshots: [snapshot],
+          targetName: targetName,
+          targetAliases: targetAliases,
+          year: period.year,
+          month: period.month,
+        );
+        for (final shift in shifts) {
+          found[shift.sourceKey] = shift;
+        }
+      }
+    }
+    return found.values.toList()
+      ..sort((left, right) => left.start.compareTo(right.start));
+  }
 
   @override
   List<Shift> parse({
@@ -171,33 +232,47 @@ class ShiftParser implements RosterShiftParser {
   }
 
   DateTime? _firstThaiDate(String text) {
-    const months = <String, int>{
-      'มกราคม': 1,
-      'กุมภาพันธ์': 2,
-      'มีนาคม': 3,
-      'เมษายน': 4,
-      'พฤษภาคม': 5,
-      'มิถุนายน': 6,
-      'กรกฎาคม': 7,
-      'สิงหาคม': 8,
-      'กันยายน': 9,
-      'ตุลาคม': 10,
-      'พฤศจิกายน': 11,
-      'ธันวาคม': 12,
-    };
-    final monthPattern = months.keys.join('|');
-    final match = RegExp(
-      '(\\d{1,2})\\s*($monthPattern)\\s*'
-      '(?:พ\\s*\\.?\\s*ศ\\s*\\.?\\s*)?(\\d{4})',
-    ).firstMatch(text);
-    if (match == null) return null;
-    var parsedYear = int.parse(match.group(3)!);
-    if (parsedYear > 2400) parsedYear -= 543;
-    return DateTime(
-      parsedYear,
-      months[match.group(2)!]!,
-      int.parse(match.group(1)!),
-    );
+    return _thaiDates(text).firstOrNull;
+  }
+
+  List<DateTime> _periodsForSnapshot(SheetSnapshot snapshot) {
+    final text = <String>[
+      snapshot.title,
+      for (final row in snapshot.rows.take(12))
+        row.map((cell) => '$cell').join(' '),
+    ].join(' ');
+    final unique = <String, DateTime>{};
+    for (final date in _thaiDates(text)) {
+      unique['${date.year}-${date.month}'] = DateTime(date.year, date.month);
+    }
+    return unique.values.toList()..sort((left, right) => left.compareTo(right));
+  }
+
+  List<DateTime> _thaiDates(String text) {
+    const monthPattern =
+        'มกราคม|ม\\.?ค\\.?|กุมภาพันธ์|ก\\.?พ\\.?|มีนาคม|มี\\.?ค\\.?|'
+        'เมษายน|เม\\.?ย\\.?|พฤษภาคม|พ\\.?ค\\.?|มิถุนายน|มิ\\.?ย\\.?|'
+        'กรกฎาคม|ก\\.?ค\\.?|สิงหาคม|ส\\.?ค\\.?|กันยายน|ก\\.?ย\\.?|'
+        'ตุลาคม|ต\\.?ค\\.?|พฤศจิกายน|พ\\.?ย\\.?|ธันวาคม|ธ\\.?ค\\.?';
+    final matches = RegExp(
+      '(?:(\\d{1,2})\\s*)?($monthPattern)\\s*'
+      '(?:พ\\s*\\.?\\s*ศ\\s*\\.?\\s*)?(\\d{2,4})',
+    ).allMatches(text);
+    return [
+      for (final match in matches)
+        DateTime(
+          _gregorianYear(int.parse(match.group(3)!)),
+          _thaiMonths[match.group(2)!.replaceAll('.', '')]!,
+          int.tryParse(match.group(1) ?? '') ?? 1,
+        ),
+    ];
+  }
+
+  int _gregorianYear(int year) {
+    var result = year;
+    if (result < 100) result += 2500;
+    if (result > 2400) result -= 543;
+    return result;
   }
 
   _ShiftRule? _ruleForLabel(String label) {

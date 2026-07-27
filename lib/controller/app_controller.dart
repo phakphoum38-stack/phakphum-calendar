@@ -580,7 +580,6 @@ class AppController extends ChangeNotifier implements ControllerState {
           'กรุณาวางลิงก์และเลือกไฟล์ Google Sheets หลักของบัญชีนี้ก่อน',
         );
       }
-      final periods = _requirePeriods();
       final searchNames = rosterSearchNames;
       if (searchNames.isEmpty) {
         throw const FormatException(
@@ -595,21 +594,11 @@ class AppController extends ChangeNotifier implements ControllerState {
         final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
         await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final snapshots = await _sheetsService.readAll(client, sourceUrl);
-        final parsedByKey = <String, Shift>{};
-        for (final period in periods) {
-          final periodShifts = _parser.parse(
-            snapshots: snapshots,
-            targetName: searchNames.first,
-            targetAliases: searchNames.skip(1),
-            year: period.year,
-            month: period.month,
-          );
-          for (final shift in periodShifts) {
-            parsedByKey[shift.sourceKey] = _applyShiftOverride(shift);
-          }
-        }
-        final parsed = parsedByKey.values.toList()
-          ..sort((left, right) => left.start.compareTo(right.start));
+        final parsed = _parseRosterSnapshots(
+          snapshots,
+          searchNames: searchNames,
+        );
+        final periods = _periodsForShifts(parsed);
         _replaceLegacyShifts(_alertService.addOffDutyPeriods(parsed));
         localSourceLabel = null;
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
@@ -642,7 +631,6 @@ class AppController extends ChangeNotifier implements ControllerState {
   }
 
   Future<void> importLocalRosterFile() async {
-    final periods = _requirePeriods();
     final searchNames = rosterSearchNames;
     if (searchNames.isEmpty) {
       throw const FormatException(
@@ -655,21 +643,10 @@ class AppController extends ChangeNotifier implements ControllerState {
         status = 'ยกเลิกการเลือกไฟล์';
         return;
       }
-      final parsedByKey = <String, Shift>{};
-      for (final period in periods) {
-        final periodShifts = _parser.parse(
-          snapshots: document.snapshots,
-          targetName: searchNames.first,
-          targetAliases: searchNames.skip(1),
-          year: period.year,
-          month: period.month,
-        );
-        for (final shift in periodShifts) {
-          parsedByKey[shift.sourceKey] = _applyShiftOverride(shift);
-        }
-      }
-      final parsed = parsedByKey.values.toList()
-        ..sort((left, right) => left.start.compareTo(right.start));
+      final parsed = _parseRosterSnapshots(
+        document.snapshots,
+        searchNames: searchNames,
+      );
       _replaceLegacyShifts(_alertService.addOffDutyPeriods(parsed));
       sheetTitles = document.snapshots.map((sheet) => sheet.title).toList();
       localSourceLabel = 'ไฟล์ .${document.extension} ในเครื่อง';
@@ -700,7 +677,7 @@ class AppController extends ChangeNotifier implements ControllerState {
   Future<void> compareCalendar() async {
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
     await _run('เปรียบเทียบ Google Calendar', () async {
-      final periods = _requirePeriods();
+      final periods = _activeRosterPeriods();
       final client = await auth.clientFor([
         calendar.CalendarApi.calendarEventsReadonlyScope,
       ]);
@@ -737,7 +714,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       if (sourceUrl.isEmpty && localSourceLabel == null) {
         throw StateError('ไม่พบแหล่งข้อมูลเวรของรอบนี้');
       }
-      final periods = _requirePeriods();
+      final periods = _activeRosterPeriods();
       final workflow =
           _pendingCalendarWorkflow ?? await _createPreparedCalendarWorkflow();
       _pendingCalendarWorkflow = null;
@@ -1192,6 +1169,55 @@ class AppController extends ChangeNotifier implements ControllerState {
       throw StateError('กรุณาเลือกและเพิ่มเดือน/ปี ค.ศ. ก่อนอ่านตารางเวร');
     }
     return periods;
+  }
+
+  List<Shift> _parseRosterSnapshots(
+    List<SheetSnapshot> snapshots, {
+    required List<String> searchNames,
+  }) {
+    final parser = _parser;
+    if (parser is AllPeriodRosterShiftParser) {
+      final allPeriodParser = parser as AllPeriodRosterShiftParser;
+      final allPeriods = allPeriodParser.parseAllPeriods(
+        snapshots: snapshots,
+        targetName: searchNames.first,
+        targetAliases: searchNames.skip(1),
+      );
+      if (allPeriods.isNotEmpty || settings.effectivePeriods.isEmpty) {
+        return allPeriods.map(_applyShiftOverride).toList(growable: false)
+          ..sort((left, right) => left.start.compareTo(right.start));
+      }
+    }
+
+    final parsedByKey = <String, Shift>{};
+    for (final period in _requirePeriods()) {
+      final periodShifts = parser.parse(
+        snapshots: snapshots,
+        targetName: searchNames.first,
+        targetAliases: searchNames.skip(1),
+        year: period.year,
+        month: period.month,
+      );
+      for (final shift in periodShifts) {
+        parsedByKey[shift.sourceKey] = _applyShiftOverride(shift);
+      }
+    }
+    return parsedByKey.values.toList()
+      ..sort((left, right) => left.start.compareTo(right.start));
+  }
+
+  List<RosterPeriod> _periodsForShifts(Iterable<Shift> source) {
+    final periods = <RosterPeriod>{
+      for (final shift in source)
+        if (!shift.generated)
+          RosterPeriod(year: shift.start.year, month: shift.start.month),
+    }.toList()..sort((left, right) => left.key.compareTo(right.key));
+    return List.unmodifiable(periods);
+  }
+
+  List<RosterPeriod> _activeRosterPeriods() {
+    final periods = _periodsForShifts(shifts);
+    return periods.isEmpty ? _requirePeriods() : periods;
   }
 
   void _rememberShiftOverride(Shift shift) {

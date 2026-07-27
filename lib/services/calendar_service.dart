@@ -69,9 +69,19 @@ class CalendarService implements LegacyCalendarGateway {
       );
       for (final event in page.items ?? const <calendar.Event>[]) {
         final privateProperties = event.extendedProperties?.private;
-        final isManaged = privateProperties?['sourceApp'] == sourceApp;
+        final isManaged =
+            privateProperties?['sourceApp'] == sourceApp ||
+            (privateProperties?['sceSyncId'] ?? '').isNotEmpty;
         if (isManaged && (privateProperties?['sourceKey'] ?? '').isNotEmpty) {
           sourceKeys.add(privateProperties!['sourceKey']!);
+        }
+        final wallStart = _wallTime(event.start);
+        final wallEnd = _wallTime(event.end);
+        if (isManaged &&
+            wallStart != null &&
+            wallEnd != null &&
+            wallEnd.isAfter(wallStart)) {
+          sourceKeys.add(_managedTimeKey(wallStart, wallEnd));
         }
         final startTime = event.start?.dateTime;
         final summary = event.summary;
@@ -80,8 +90,6 @@ class CalendarService implements LegacyCalendarGateway {
           sourceKeys.add(_legacyKey(summary, bangkokWall));
         }
         if (isManaged || event.transparency == 'transparent') continue;
-        final wallStart = _wallTime(event.start);
-        final wallEnd = _wallTime(event.end);
         if (wallStart == null ||
             wallEnd == null ||
             !wallEnd.isAfter(wallStart)) {
@@ -178,7 +186,11 @@ class CalendarService implements LegacyCalendarGateway {
   static bool matchesExisting(Shift shift, Set<String> keys) =>
       keys.contains(keyFor(shift)) ||
       keys.contains(legacyKeyFor(shift)) ||
-      keys.contains(displayLegacyKeyFor(shift));
+      keys.contains(displayLegacyKeyFor(shift)) ||
+      keys.contains(managedTimeKeyFor(shift));
+
+  static String managedTimeKeyFor(Shift shift) =>
+      _managedTimeKey(shift.start, shift.end);
 
   @override
   bool matchesExistingShift(Shift shift, Set<String> keys) =>
@@ -190,6 +202,17 @@ class CalendarService implements LegacyCalendarGateway {
       '${wallTime.day.toString().padLeft(2, '0')}T'
       '${wallTime.hour.toString().padLeft(2, '0')}:'
       '${wallTime.minute.toString().padLeft(2, '0')}';
+
+  static String _managedTimeKey(DateTime start, DateTime end) =>
+      'managed-time|${_wallIdentity(start)}|${_wallIdentity(end)}';
+
+  static String _wallIdentity(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}T'
+      '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}:'
+      '${value.second.toString().padLeft(2, '0')}';
 
   DateTime? _wallTime(calendar.EventDateTime? value) {
     final instant = value?.dateTime;
