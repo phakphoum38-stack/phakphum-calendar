@@ -58,7 +58,6 @@ class GoogleCalendarSyncGateway
         singleEvents: true,
         maxResults: 2500,
         pageToken: pageToken,
-        privateExtendedProperty: managedOnly ? <String>[syncIdKey] : null,
       );
       items.addAll(events.items ?? const <calendar.Event>[]);
       pageToken = events.nextPageToken;
