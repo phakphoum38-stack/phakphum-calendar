@@ -76,6 +76,7 @@ class Shift {
     this.sourceColorValue,
     this.customTitle,
     this.calendarColorId,
+    this.relationshipComment,
   });
 
   final String code;
@@ -92,6 +93,7 @@ class Shift {
   final int? sourceColorValue;
   final String? customTitle;
   final String? calendarColorId;
+  final String? relationshipComment;
 
   bool get isNightShift =>
       !isOffDuty &&
@@ -128,6 +130,8 @@ class Shift {
     String? customTitle,
     String? calendarColorId,
     bool clearCalendarColor = false,
+    String? relationshipComment,
+    bool clearRelationshipComment = false,
   }) => Shift(
     code: code,
     rowLabel: rowLabel,
@@ -145,6 +149,9 @@ class Shift {
     calendarColorId: clearCalendarColor
         ? null
         : calendarColorId ?? this.calendarColorId,
+    relationshipComment: clearRelationshipComment
+        ? null
+        : relationshipComment ?? this.relationshipComment,
   );
 }
 

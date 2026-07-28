@@ -5,6 +5,28 @@ import 'package:phakphum_calendar/services/shift_parser.dart';
 void main() {
   const parser = ShiftParser();
 
+  test('reads every worker when comparing an attached original roster', () {
+    final days = <Object?>['วันที่', ...List.generate(31, (i) => i + 1)];
+    final row = _row('P1 เช้า');
+    row[1] = 'สมชาย';
+    row[2] = 'ภาคภูมิ';
+
+    final shifts = parser.parseAllWorkersAllPeriods(
+      snapshots: [
+        SheetSnapshot(
+          title: 'สิงหาคม 2569',
+          rows: [
+            ['ประจำเดือน สิงหาคม 2569'],
+            days,
+            row,
+          ],
+        ),
+      ],
+    );
+
+    expect(shifts.map((shift) => shift.assignedName), ['สมชาย', 'ภาคภูมิ']);
+  });
+
   test('maps rollover dates and overnight shift times', () {
     final days = <Object?>[
       'เวร',

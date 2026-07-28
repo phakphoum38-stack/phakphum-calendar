@@ -36,6 +36,7 @@ class LegacyScheduleAdapter {
       final assignment = ShiftAssignment(
         employee: _employee(source.assignedName),
         shift: _shiftType(source),
+        remark: source.relationshipComment,
       );
       metadata.add(
         _LegacyAssignmentMetadata(
@@ -230,6 +231,7 @@ class _LegacyAssignmentMetadata {
       sourceColorValue: sourceColorValue,
       customTitle: customTitle,
       calendarColorId: calendarColorId,
+      relationshipComment: assignment.remark,
     );
   }
 

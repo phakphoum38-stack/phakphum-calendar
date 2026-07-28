@@ -4,6 +4,7 @@ import 'package:phakphum_calendar/features/excel_import/domain/shift_record.dart
     as imported;
 import 'package:phakphum_calendar/features/schedule/data/imported_schedule_adapter.dart';
 import 'package:phakphum_calendar/features/schedule/data/legacy_schedule_adapter.dart';
+import 'package:phakphum_calendar/features/workflow/application/canonical_schedule_event_mapper.dart';
 import 'package:phakphum_calendar/models/shift.dart' as legacy;
 
 void main() {
@@ -60,6 +61,7 @@ void main() {
       sourceColorValue: 0xFF00FF00,
       customTitle: 'Custom night',
       calendarColorId: '10',
+      relationshipComment: 'สถานะ: รับเวร/คนแทนเวร\nเจ้าของเวรเดิม: Somchai',
     );
 
     final conversion = adapter.toCanonical([source]);
@@ -80,5 +82,20 @@ void main() {
     expect(restored.sourceColorValue, source.sourceColorValue);
     expect(restored.customTitle, source.customTitle);
     expect(restored.calendarColorId, source.calendarColorId);
+    expect(restored.relationshipComment, source.relationshipComment);
+    expect(
+      conversion.schedule.months.single.days
+          .expand((day) => day.assignments)
+          .single
+          .remark,
+      contains('เจ้าของเวรเดิม'),
+    );
+    expect(
+      const CanonicalScheduleEventMapper()
+          .map(conversion.schedule)
+          .single
+          .description,
+      contains('เจ้าของเวรเดิม'),
+    );
   });
 }

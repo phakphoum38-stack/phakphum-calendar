@@ -1375,6 +1375,16 @@ class _DashboardPageState extends State<_DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      _LocalReferenceFileCard(
+                        controller: controller,
+                        attach: () => widget.perform(() async {
+                          await _saveSettings();
+                          await controller.attachLocalReferenceFile();
+                        }),
+                        clear: () =>
+                            widget.perform(controller.clearLocalReferenceFile),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: searchName,
                         enabled: controller.auth.isSignedIn && !controller.busy,
@@ -1596,6 +1606,104 @@ class _DashboardPageState extends State<_DashboardPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LocalReferenceFileCard extends StatelessWidget {
+  const _LocalReferenceFileCard({
+    required this.controller,
+    required this.attach,
+    required this.clear,
+  });
+
+  final AppController controller;
+  final VoidCallback attach;
+  final VoidCallback clear;
+
+  @override
+  Widget build(BuildContext context) {
+    final comparison = controller.localReferenceComparison;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: comparison != null && !comparison.isExactMatch
+              ? Theme.of(context).colorScheme.tertiary
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.attach_file),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    controller.localReferenceLabel ??
+                        'ไฟล์ต้นฉบับจากเครื่อง (ไม่บังคับ)',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                if (controller.localReferenceLabel != null)
+                  IconButton(
+                    tooltip: 'ถอดไฟล์ต้นฉบับ',
+                    onPressed: controller.busy ? null : clear,
+                    icon: const Icon(Icons.close),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'ใช้เทียบกับไฟล์ล่าสุดเพื่อสร้างคอมเมนต์คนแทนเวรและยกเวร '
+              'ข้อมูลความสัมพันธ์จะรวมในคำอธิบาย Calendar '
+              'โดยไม่สร้างรายการซ้ำจากไฟล์แนบ',
+            ),
+            if (comparison != null) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Chip(label: Text('ตรงกัน ${comparison.matched}')),
+                  Chip(label: Text('เปลี่ยน ${comparison.changed}')),
+                  Chip(
+                    label: Text(
+                      'ขาดจากไฟล์ซิงก์ ${comparison.missingFromSync}',
+                    ),
+                  ),
+                  Chip(
+                    label: Text('มีเฉพาะไฟล์ซิงก์ ${comparison.onlyInSync}'),
+                  ),
+                  Chip(
+                    label: Text(
+                      'รับ/แทนเวร ${controller.localReceivedShiftCount}',
+                    ),
+                  ),
+                  Chip(label: Text('ยกเวร ${controller.localGivenShiftCount}')),
+                ],
+              ),
+            ],
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: controller.busy || controller.shifts.isEmpty
+                  ? null
+                  : attach,
+              icon: const Icon(Icons.attach_file),
+              label: Text(
+                controller.localReferenceLabel == null
+                    ? 'แนบไฟล์ต้นฉบับเพื่อเปรียบเทียบ'
+                    : 'เปลี่ยนไฟล์ต้นฉบับ',
+              ),
+            ),
+          ],
         ),
       ),
     );
