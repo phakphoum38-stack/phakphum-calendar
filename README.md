@@ -25,6 +25,77 @@ status are maintained in:
 - Employee Directory และ Shift Templates ใช้ storage key แยกจากข้อมูล legacy
   และ dependencies ทั้งหมดถูกสร้างจาก `AppDependencies`
 
+## โครงสร้างสร้างตารางเวรฝ่ายรังสีวิทยา
+
+โมดูล `lib/features/schedule_generation/` มีโครงสร้างกลางสำหรับนำรายชื่อ
+เจ้าหน้าที่มาสร้างตารางเวรรายเดือน โดยไม่ผูกตัวสร้างตารางเข้ากับ Google Sheets
+หรือไฟล์รายชื่อรายเดือนโดยตรง
+
+### ชุดเจ้าหน้าที่
+
+`RadiologyStaffDirectoryParser` อ่าน `SheetSnapshot` จากแท็บรายชื่อหลักและ
+แปลงเป็น `StaffDirectory` ซึ่งแบ่งเจ้าหน้าที่เป็น 4 ชุด:
+
+| ชุดเจ้าหน้าที่ | ชื่อแท็บต้นทาง |
+|---|---|
+| นักรังสีการแพทย์ | `นักรังสีการแพทย์` |
+| เจ้าหน้าที่ห้องปฏิบัติการ | `จนท.ห้องปฏิบัติการ` |
+| พยาบาล | `พยาบาล` |
+| ธุรการ | `ธุระการ` |
+
+แท็บ `อินชาร์จ` ใช้กำหนดนักรังสีการแพทย์ที่สามารถลงช่อง `INCHARGE` ได้
+ตัวอ่านจะเก็บเฉพาะรายชื่อ ตัดช่องว่างซ้ำ ป้องกันชื่อซ้ำ และไม่เก็บหมายเลขโทรศัพท์
+ไว้ใน `Employee` หรือข้อมูลที่จะนำไปสร้างตารางเวร
+
+หากยังไม่มีไฟล์รายชื่อของเดือนที่ต้องการ สามารถใช้รายชื่อจากไฟล์หลักเป็น
+`StaffDirectory` ได้ก่อน เมื่อมีไฟล์รายเดือนภายหลัง ให้เพิ่มตัวอ่านที่คืนค่า
+`StaffDirectory` แบบเดียวกัน โดยไม่ต้องแก้ `ScheduleGenerator`
+
+### แม่แบบช่องเวร
+
+`RadiologyRosterBlueprint` สร้างแม่แบบ 22 ช่อง:
+
+- `INCHARGE` เวรเช้า 1 ช่อง สำหรับนักรังสีการแพทย์
+- `CT IPD`, `IPD`, `PORT 1`, `PORT 2`, `PORT 3`, `PORT 4` และ `CT ER`
+  แห่งละ 3 ช่วงเวลา: เช้า 08:00–16:00, บ่าย 16:00–24:00 และดึก 00:00–08:00
+
+แม่แบบระบุเพียงช่อง เวลา สถานที่ และชุดเจ้าหน้าที่ที่อนุญาต
+จำนวนคนที่ต้องใช้จริงต้องส่งผ่าน `RosterStaffingRule` เพื่อไม่ให้แอปเดา
+อัตรากำลังจากรูปแบบตารางต้นฉบับ
+
+ตัวอย่างการสร้างคำขอจัดเวรรายเดือน:
+
+```dart
+final directory = const RadiologyStaffDirectoryParser().parse(snapshots);
+final blueprint = const RadiologyRosterBlueprint().build();
+
+final request = const MonthlyRosterRequestBuilder().build(
+  month: DateTime(2026, 8),
+  directory: directory,
+  blueprint: blueprint,
+  staffingRules: const [
+    RosterStaffingRule(
+      slotId: 'ct-ipd-morning',
+      staffGroup: StaffGroup.laboratoryOfficer,
+      requiredEmployees: 1,
+      weekdays: {
+        DateTime.monday,
+        DateTime.tuesday,
+        DateTime.wednesday,
+        DateTime.thursday,
+        DateTime.friday,
+      },
+    ),
+  ],
+);
+
+final result = const ScheduleGenerator().autoAssign(request);
+```
+
+ผลลัพธ์จะเป็น canonical `Schedule` และ assignments ภายในแอปเท่านั้น
+ยังไม่มีการเขียน Google Calendar จนกว่าจะผ่านขั้น Preview ตรวจรายการซ้ำ
+และผู้ใช้กดยืนยันตาม workflow เดิม
+
 ## Version 4.1
 
 - ค้นหา Google Sheets ได้ทั้งเรียงจากเวลาสร้างครั้งแรกและ
