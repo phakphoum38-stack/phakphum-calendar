@@ -10,6 +10,7 @@ import '../models/app_settings.dart';
 import '../models/audit_entry.dart';
 import '../models/calendar_busy_period.dart';
 import '../models/roster_period.dart';
+import '../models/roster_reference_comparison.dart';
 import '../models/saved_sheet.dart';
 import '../models/shift.dart';
 import '../models/shift_alert.dart';
@@ -210,6 +211,10 @@ class AppController extends ChangeNotifier implements ControllerState {
   Timer? _autoRefreshTimer;
   String? _observedAccountId;
   String? localSourceLabel;
+  String? localReferenceLabel;
+  List<Shift> localReferenceShifts = [];
+  List<Shift> _currentAllRosterShifts = [];
+  List<Shift> _referenceAllRosterShifts = [];
   final Map<String, _ShiftOverride> _shiftOverrides = {};
   ShiftCalendarWorkflowController? _pendingCalendarWorkflow;
 
@@ -233,6 +238,15 @@ class AppController extends ChangeNotifier implements ControllerState {
   int get pendingAlertCount => alerts.where((alert) => alert.isPending).length;
   int get conflictAlertCount =>
       alerts.where((alert) => alert.isConflict).length;
+  RosterReferenceComparison? get localReferenceComparison =>
+      localReferenceLabel == null
+      ? null
+      : RosterReferenceComparison.compare(
+          syncShifts: shifts,
+          referenceShifts: localReferenceShifts,
+        );
+  int get localReceivedShiftCount => _relationshipCount(received: true);
+  int get localGivenShiftCount => _relationshipCount(received: false);
 
   bool _matchesCurrentCalendar(Shift shift) =>
       _calendarService.matchesExistingShift(shift, existingKeys) ||
@@ -593,8 +607,14 @@ class AppController extends ChangeNotifier implements ControllerState {
           snapshots,
           searchNames: searchNames,
         );
+        _currentAllRosterShifts = _parseAllRosterSnapshots(
+          snapshots,
+          fallback: parsed,
+        );
         final periods = _periodsForShifts(parsed);
-        _replaceLegacyShifts(_alertService.addOffDutyPeriods(parsed));
+        _replaceLegacyShifts(
+          _alertService.addOffDutyPeriods(_applyReferenceRelationships(parsed)),
+        );
         localSourceLabel = null;
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
         existingKeys = {};
@@ -642,7 +662,13 @@ class AppController extends ChangeNotifier implements ControllerState {
         document.snapshots,
         searchNames: searchNames,
       );
-      _replaceLegacyShifts(_alertService.addOffDutyPeriods(parsed));
+      _currentAllRosterShifts = _parseAllRosterSnapshots(
+        document.snapshots,
+        fallback: parsed,
+      );
+      _replaceLegacyShifts(
+        _alertService.addOffDutyPeriods(_applyReferenceRelationships(parsed)),
+      );
       sheetTitles = document.snapshots.map((sheet) => sheet.title).toList();
       localSourceLabel = 'ไฟล์ .${document.extension} ในเครื่อง';
       existingKeys = {};
@@ -663,6 +689,77 @@ class AppController extends ChangeNotifier implements ControllerState {
     });
   }
 
+  Future<void> attachLocalReferenceFile() async {
+    final searchNames = rosterSearchNames;
+    if (searchNames.isEmpty) {
+      throw const FormatException(
+        'กรุณากรอกชื่อที่ต้องค้นหา หรือล็อกอินเพื่อใช้ชื่อโปรไฟล์ Google',
+      );
+    }
+    if (shifts.isEmpty) {
+      throw StateError('กรุณาอ่านไฟล์หลักที่จะซิงก์ก่อนแนบไฟล์ต้นฉบับ');
+    }
+    await _run('แนบไฟล์ต้นฉบับเพื่อเปรียบเทียบ', () async {
+      final document = await _localFileService.pickAndRead();
+      if (document == null) {
+        status = 'ยกเลิกการแนบไฟล์ต้นฉบับ';
+        return;
+      }
+      localReferenceShifts = _parseRosterSnapshots(
+        document.snapshots,
+        searchNames: searchNames,
+      );
+      _referenceAllRosterShifts = _parseAllRosterSnapshots(
+        document.snapshots,
+        fallback: localReferenceShifts,
+      );
+      localReferenceLabel =
+          'ไฟล์ต้นฉบับ .${document.extension} • '
+          '${document.snapshots.length} แท็บ';
+      final primary = shifts
+          .where((shift) => !shift.generated)
+          .map((shift) => shift.copyWith(clearRelationshipComment: true))
+          .toList(growable: false);
+      _replaceLegacyShifts(
+        _alertService.addOffDutyPeriods(_applyReferenceRelationships(primary)),
+      );
+      final comparison = localReferenceComparison!;
+      status =
+          'แนบไฟล์ต้นฉบับแล้ว • ตรงกัน ${comparison.matched} • '
+          'เปลี่ยน ${comparison.changed} • '
+          'ขาดจากไฟล์ซิงก์ ${comparison.missingFromSync} • '
+          'มีเฉพาะไฟล์ซิงก์ ${comparison.onlyInSync} • '
+          'รับ/แทนเวร $localReceivedShiftCount • '
+          'ยกเวร $localGivenShiftCount';
+      await _addAudit(
+        'local_reference.read',
+        'อ่านไฟล์ต้นฉบับในหน่วยความจำ '
+            '${document.snapshots.length} แท็บ '
+            'พบ ${localReferenceShifts.length} เวร; '
+            'ไม่อัปโหลดและไม่บันทึกชื่อไฟล์',
+        true,
+      );
+    });
+  }
+
+  Future<void> clearLocalReferenceFile() async {
+    localReferenceLabel = null;
+    localReferenceShifts = [];
+    _referenceAllRosterShifts = [];
+    final primary = shifts
+        .where((shift) => !shift.generated)
+        .map((shift) => shift.copyWith(clearRelationshipComment: true))
+        .toList(growable: false);
+    _replaceLegacyShifts(_alertService.addOffDutyPeriods(primary));
+    status = 'ถอดไฟล์ต้นฉบับที่ใช้เปรียบเทียบแล้ว';
+    notifyListeners();
+    await _addAudit(
+      'local_reference.clear',
+      'ถอดไฟล์ต้นฉบับออกจากหน่วยความจำ',
+      true,
+    );
+  }
+
   void refreshNow() {
     if (!busy && auth.isSignedIn) {
       unawaited(loadRoster());
@@ -681,9 +778,11 @@ class AppController extends ChangeNotifier implements ControllerState {
         existingKeys = snapshot.sourceKeys;
         calendarPeriods = snapshot.busyPeriods;
         _rebuildAlerts();
+        final reference = localReferenceComparison;
         status =
             'มีแล้ว $existingCount รายการ • เตรียมเพิ่ม $newCount รายการ • '
-            'แจ้งเตือนรอตัดสินใจ $pendingAlertCount รายการ';
+            'แจ้งเตือนรอตัดสินใจ $pendingAlertCount รายการ'
+            '${reference == null ? '' : ' • ไฟล์ต้นฉบับต่าง ${reference.issueCount} รายการ'}';
         await _addAudit(
           'calendar.compare',
           'ตรวจแบบอ่านอย่างเดียว: มีแล้ว $existingCount, ใหม่ $newCount, '
@@ -1153,6 +1252,10 @@ class AppController extends ChangeNotifier implements ControllerState {
       sheetTitles = [];
       recentOwnedSheets = [];
       localSourceLabel = null;
+      localReferenceLabel = null;
+      localReferenceShifts = [];
+      _currentAllRosterShifts = [];
+      _referenceAllRosterShifts = [];
       _shiftOverrides.clear();
       recentSheetHistoryLoaded = false;
       lastRefresh = null;
@@ -1202,6 +1305,102 @@ class AppController extends ChangeNotifier implements ControllerState {
     return parsedByKey.values.toList()
       ..sort((left, right) => left.start.compareTo(right.start));
   }
+
+  List<Shift> _parseAllRosterSnapshots(
+    List<SheetSnapshot> snapshots, {
+    required List<Shift> fallback,
+  }) {
+    final parser = _parser;
+    return parser is FullRosterShiftParser
+        ? (parser as FullRosterShiftParser).parseAllWorkersAllPeriods(
+            snapshots: snapshots,
+          )
+        : fallback;
+  }
+
+  List<Shift> _applyReferenceRelationships(List<Shift> primary) {
+    if (localReferenceLabel == null ||
+        _referenceAllRosterShifts.isEmpty ||
+        _currentAllRosterShifts.isEmpty) {
+      return primary;
+    }
+    final originalByPosition = {
+      for (final shift in _referenceAllRosterShifts)
+        _rosterPositionKey(shift): shift,
+    };
+    final currentByPosition = {
+      for (final shift in _currentAllRosterShifts)
+        _rosterPositionKey(shift): shift,
+    };
+    return [
+      for (final shift in primary)
+        _annotateRelationship(
+          shift,
+          originalByPosition[_rosterPositionKey(shift)],
+          currentByPosition[_rosterPositionKey(shift)] ?? shift,
+        ),
+    ];
+  }
+
+  Shift _annotateRelationship(Shift shift, Shift? original, Shift current) {
+    if (shift.category == ShiftCategory.given) {
+      return shift.copyWith(
+        relationshipComment: <String>[
+          'สถานะ: ยกเวร',
+          if (original != null) 'เจ้าของเวรเดิม: ${original.assignedName}',
+          'ผู้ปฏิบัติงานตามไฟล์ล่าสุด: ${current.assignedName}',
+        ].join('\n'),
+      );
+    }
+    if (original == null ||
+        _normalizeWorker(original.assignedName) ==
+            _normalizeWorker(current.assignedName)) {
+      return shift.copyWith(clearRelationshipComment: true);
+    }
+    return shift.copyWith(
+      relationshipComment: <String>[
+        'สถานะ: รับเวร/คนแทนเวร',
+        'เจ้าของเวรเดิม: ${original.assignedName}',
+        'ผู้ปฏิบัติงานปัจจุบัน: ${current.assignedName}',
+      ].join('\n'),
+    );
+  }
+
+  int _relationshipCount({required bool received}) {
+    if (localReferenceLabel == null) return 0;
+    final originalByPosition = {
+      for (final shift in _referenceAllRosterShifts)
+        _rosterPositionKey(shift): shift,
+    };
+    final currentByPosition = {
+      for (final shift in _currentAllRosterShifts)
+        _rosterPositionKey(shift): shift,
+    };
+    final positions = <String>{
+      ...originalByPosition.keys,
+      ...currentByPosition.keys,
+    };
+    return positions.where((position) {
+      final before = originalByPosition[position]?.assignedName ?? '';
+      final after = currentByPosition[position]?.assignedName ?? '';
+      final wasUser = _matchesRosterUser(before);
+      final isUser = _matchesRosterUser(after);
+      return received ? !wasUser && isUser : wasUser && !isUser;
+    }).length;
+  }
+
+  bool _matchesRosterUser(String value) {
+    final normalized = _normalizeWorker(value);
+    return normalized.isNotEmpty &&
+        rosterSearchNames.map(_normalizeWorker).any(normalized.contains);
+  }
+
+  String _rosterPositionKey(Shift shift) =>
+      '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
+      '${shift.code.trim().toLowerCase()}';
+
+  String _normalizeWorker(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
   List<RosterPeriod> _periodsForShifts(Iterable<Shift> source) {
     final periods = <RosterPeriod>{

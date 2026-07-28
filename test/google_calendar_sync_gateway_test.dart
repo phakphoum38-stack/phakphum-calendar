@@ -49,6 +49,10 @@ void main() {
 
       expect(managed.map((event) => event.eventId), ['managed-event']);
       expect(legacy.map((event) => event.eventId), ['legacy-event']);
+      expect(managed.single.start, DateTime(2026, 8, 1, 7, 30));
+      expect(managed.single.end, DateTime(2026, 8, 1, 12));
+      expect(legacy.single.start, DateTime(2026, 8, 16));
+      expect(legacy.single.end, DateTime(2026, 8, 16, 8));
       expect(
         requests.every(
           (request) => !request.url.queryParameters.containsKey(
@@ -59,4 +63,32 @@ void main() {
       );
     },
   );
+
+  test('normalizes UTC Calendar instants to Bangkok wall-clock time', () async {
+    final client = MockClient(
+      (_) async => http.Response(
+        jsonEncode({
+          'items': [
+            {
+              'id': 'existing-event',
+              'summary': 'ER เช้า',
+              'start': {'dateTime': '2026-08-20T01:00:00Z'},
+              'end': {'dateTime': '2026-08-20T09:00:00Z'},
+            },
+          ],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+    final gateway = GoogleCalendarSyncGateway(client);
+
+    final events = await gateway.listComparableLegacyEvents(
+      timeMin: DateTime(2026, 8),
+      timeMax: DateTime(2026, 9),
+    );
+
+    expect(events.single.start, DateTime(2026, 8, 20, 8));
+    expect(events.single.end, DateTime(2026, 8, 20, 16));
+  });
 }

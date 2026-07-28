@@ -21,9 +21,20 @@ abstract interface class AllPeriodRosterShiftParser {
   });
 }
 
-class ShiftParser implements RosterShiftParser, AllPeriodRosterShiftParser {
+abstract interface class FullRosterShiftParser {
+  List<Shift> parseAllWorkersAllPeriods({
+    required List<SheetSnapshot> snapshots,
+  });
+}
+
+class ShiftParser
+    implements
+        RosterShiftParser,
+        AllPeriodRosterShiftParser,
+        FullRosterShiftParser {
   const ShiftParser();
 
+  static const _allWorkersSentinel = '__all_roster_workers__';
   static const _thaiMonths = <String, int>{
     'มกราคม': 1,
     'มค': 1,
@@ -77,6 +88,11 @@ class ShiftParser implements RosterShiftParser, AllPeriodRosterShiftParser {
   }
 
   @override
+  List<Shift> parseAllWorkersAllPeriods({
+    required List<SheetSnapshot> snapshots,
+  }) => parseAllPeriods(snapshots: snapshots, targetName: _allWorkersSentinel);
+
+  @override
   List<Shift> parse({
     required List<SheetSnapshot> snapshots,
     required String targetName,
@@ -84,11 +100,14 @@ class ShiftParser implements RosterShiftParser, AllPeriodRosterShiftParser {
     required int year,
     required int month,
   }) {
-    final targets = <String>{
-      targetName,
-      ...targetAliases,
-    }.map(_compact).where((value) => value.length >= 2).toSet();
-    if (targets.isEmpty) {
+    final includeAllWorkers = targetName == _allWorkersSentinel;
+    final targets =
+        <String>{
+            targetName,
+            ...targetAliases,
+          }.map(_compact).where((value) => value.length >= 2).toSet()
+          ..remove(_compact(_allWorkersSentinel));
+    if (targets.isEmpty && !includeAllWorkers) {
       throw const FormatException('กรุณาระบุชื่อผู้ปฏิบัติงาน');
     }
     final found = <String, Shift>{};
@@ -132,7 +151,8 @@ class ShiftParser implements RosterShiftParser, AllPeriodRosterShiftParser {
           if (date.year != year || date.month != month) continue;
           final assigned = _textAt(row, entry.key).trim();
           final compactAssigned = _compact(assigned);
-          if (assigned.isEmpty || !targets.any(compactAssigned.contains)) {
+          if (assigned.isEmpty ||
+              (!includeAllWorkers && !targets.any(compactAssigned.contains))) {
             continue;
           }
           final start = DateTime(

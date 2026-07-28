@@ -56,6 +56,8 @@ void main() {
     expect(find.text('ค้นหาไฟล์แรก'), findsOneWidget);
     expect(find.text('แก้ไขล่าสุด'), findsOneWidget);
     expect(find.text('วาง URL จากเบราว์เซอร์'), findsOneWidget);
+    expect(find.text('แนบไฟล์ต้นฉบับเพื่อเปรียบเทียบ'), findsOneWidget);
+    expect(find.textContaining('คอมเมนต์คนแทนเวรและยกเวร'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('${DateTime.now().year}'), findsNothing);
 

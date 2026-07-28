@@ -62,7 +62,12 @@ class CalendarSyncCoordinator {
             timeMax: range.$2,
             calendarId: calendarId,
           );
-    final adopted = _adoptEquivalentLegacy(desired, managed, legacy);
+    final deduplicatedManaged = _deduplicateManaged(desired, managed);
+    final adopted = _adoptEquivalentLegacy(
+      desired,
+      deduplicatedManaged,
+      legacy,
+    );
     final existing = adopted.map(_candidateFromManaged).toList(growable: false);
     final diff = diffEngine.compare(desired: desired, existing: existing);
     final plan = _planBuilder.build(
@@ -145,6 +150,54 @@ class CalendarSyncCoordinator {
       description: event.description,
       colorId: event.colorId,
     );
+  }
+
+  /// Retains one provider event per sync ID and marks older accidental copies
+  /// as legacy cleanup operations. This lets the normal diff delete duplicates
+  /// before any update or insert is executed.
+  List<ManagedCalendarEvent> _deduplicateManaged(
+    List<CalendarEventCandidate> desired,
+    List<ManagedCalendarEvent> managed,
+  ) {
+    final desiredById = {
+      for (final candidate in desired) candidate.syncId: candidate,
+    };
+    final grouped = <String, List<ManagedCalendarEvent>>{};
+    for (final event in managed) {
+      grouped.putIfAbsent(event.syncId, () => []).add(event);
+    }
+
+    final result = <ManagedCalendarEvent>[];
+    for (final entry in grouped.entries) {
+      final events = [...entry.value]
+        ..sort((left, right) => left.eventId.compareTo(right.eventId));
+      final desiredEvent = desiredById[entry.key];
+      final exactIndex = desiredEvent == null
+          ? -1
+          : events.indexWhere(
+              (event) =>
+                  desiredEvent.contentEquals(_candidateFromManaged(event)),
+            );
+      final retainedIndex = exactIndex < 0 ? 0 : exactIndex;
+      result.add(events[retainedIndex]);
+
+      for (var index = 0; index < events.length; index++) {
+        if (index == retainedIndex) continue;
+        final duplicate = events[index];
+        result.add(
+          ManagedCalendarEvent(
+            eventId: duplicate.eventId,
+            syncId: 'legacy:duplicate-managed:${duplicate.eventId}',
+            title: duplicate.title,
+            start: duplicate.start,
+            end: duplicate.end,
+            description: duplicate.description,
+            colorId: duplicate.colorId,
+          ),
+        );
+      }
+    }
+    return List.unmodifiable(result);
   }
 
   List<ManagedCalendarEvent> _adoptEquivalentLegacy(
