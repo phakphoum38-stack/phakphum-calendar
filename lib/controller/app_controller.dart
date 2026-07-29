@@ -778,6 +778,78 @@ class AppController extends ChangeNotifier implements ControllerState {
     });
   }
 
+  Future<void> loadMonthlyRoster() async {
+    final sourceUrl = currentSourceUrl;
+    if (sourceUrl.isEmpty) {
+      throw StateError('กรุณาเลือก Google Sheets ก่อนอ่านตารางรายเดือน');
+    }
+    await _run('อ่านตารางเวรรายเดือน', () async {
+      final client = await auth.clientFor([
+        sheets.SheetsApi.spreadsheetsReadonlyScope,
+        drive.DriveApi.driveMetadataReadonlyScope,
+      ]);
+      try {
+        final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
+        await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
+        final snapshots = await _sheetsService.readAll(client, sourceUrl);
+        final parsedMonthly = _parseMonthlyRosterSnapshots(
+          snapshots,
+          spreadsheetId: spreadsheetId,
+        );
+        monthlyRoster = parsedMonthly.sections.isEmpty
+            ? MonthlyRosterParseReport.fromShifts(
+                _parseAllRosterSnapshots(snapshots, fallback: const []),
+              )
+            : parsedMonthly;
+        sheetTitles = snapshots.map((sheet) => sheet.title).toList();
+        localSourceLabel = null;
+        lastRefresh = DateTime.now();
+        status =
+            'อ่านตารางรายเดือน ${monthlyRoster.sections.length} บล็อก '
+            '${monthlyRoster.assignments.length} ช่อง';
+        await _addAudit(
+          'monthly_roster.sheet.read',
+          'อ่านตารางรายเดือนจาก Google Sheets แบบ read-only '
+              '${monthlyRoster.sections.length} บล็อก',
+          true,
+        );
+      } finally {
+        client.close();
+      }
+    });
+  }
+
+  Future<void> importLocalMonthlyRosterFile() async {
+    await _run('นำเข้าไฟล์ตารางเวรรายเดือน', () async {
+      final document = await _localFileService.pickAndRead();
+      if (document == null) {
+        status = 'ยกเลิกการเลือกไฟล์';
+        return;
+      }
+      final parsedMonthly = _parseMonthlyRosterSnapshots(
+        document.snapshots,
+        spreadsheetId: 'local-monthly-${document.extension}',
+      );
+      monthlyRoster = parsedMonthly.sections.isEmpty
+          ? MonthlyRosterParseReport.fromShifts(
+              _parseAllRosterSnapshots(document.snapshots, fallback: const []),
+            )
+          : parsedMonthly;
+      sheetTitles = document.snapshots.map((sheet) => sheet.title).toList();
+      localSourceLabel = 'ไฟล์ .${document.extension} ในเครื่อง';
+      lastRefresh = DateTime.now();
+      status =
+          'นำเข้าตารางรายเดือน ${monthlyRoster.sections.length} บล็อก '
+          '${monthlyRoster.assignments.length} ช่อง; ไฟล์ไม่ถูกอัปโหลด';
+      await _addAudit(
+        'monthly_roster.local.read',
+        'อ่านไฟล์ตารางรายเดือนในหน่วยความจำ; '
+            'ไม่บันทึกชื่อไฟล์หรือเนื้อหาใน Audit log',
+        true,
+      );
+    });
+  }
+
   MonthlyRosterParseReport _parseMonthlyRosterSnapshots(
     List<SheetSnapshot> snapshots, {
     required String spreadsheetId,
@@ -1265,11 +1337,6 @@ class AppController extends ChangeNotifier implements ControllerState {
       throw const FormatException('เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม');
     }
     final searchNames = rosterSearchNames;
-    if (searchNames.isEmpty) {
-      throw const FormatException(
-        'กรุณากรอกชื่อที่ต้องค้นหา หรือล็อกอินเพื่อใช้ชื่อโปรไฟล์ Google',
-      );
-    }
     final color = CalendarColorService.parseCommand(colorCommand);
     final code =
         'MANUAL-${start.year}${start.month.toString().padLeft(2, '0')}'
@@ -1279,7 +1346,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     final shift = Shift(
       code: code,
       rowLabel: normalizedTitle,
-      assignedName: searchNames.first,
+      assignedName: searchNames.firstOrNull ?? '',
       start: start,
       end: end,
       sheetTitle: 'ต้นฉบับ: $sourceKind',

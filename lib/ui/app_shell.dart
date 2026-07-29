@@ -16,6 +16,7 @@ import '../features/dashboard/presentation/widgets/dashboard_summary_grid.dart';
 import '../features/shift_exchange/presentation/pages/shift_exchange_page.dart';
 import '../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
 import '../features/shift_parser/domain/monthly_roster_section.dart';
+import '../features/shift_parser/domain/monthly_roster_template.dart';
 import '../features/shift_templates/application/shift_template_controller.dart';
 import '../features/shift_templates/presentation/shift_templates_page.dart';
 import '../features/schedule/presentation/controllers/schedule_controller.dart';
@@ -2686,7 +2687,17 @@ class _MonthlyRosterPage extends StatefulWidget {
 
 class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
   final search = TextEditingController();
+  final templateRepository = MonthlyRosterTemplateRepository();
+  List<MonthlyRosterTemplate> templates = const [];
   String? selectedSection;
+  DateTime? filterStart;
+  DateTime? filterEnd;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadTemplates());
+  }
 
   @override
   void dispose() {
@@ -2694,14 +2705,207 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
     super.dispose();
   }
 
+  Future<void> _loadTemplates() async {
+    final loaded = await templateRepository.load();
+    if (mounted) setState(() => templates = loaded);
+  }
+
+  Future<void> _importGoogleSheet() async {
+    final controller = widget.controller;
+    if (!controller.auth.isSignedIn) {
+      throw StateError('กรุณาเข้าสู่ระบบ Google ก่อนเลือกไฟล์');
+    }
+    await controller.findAvailableSourceSheets();
+    if (!mounted || controller.recentOwnedSheets.isEmpty) {
+      if (controller.recentOwnedSheets.isEmpty) {
+        throw StateError('ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้');
+      }
+      return;
+    }
+    final selected = await showDialog<List<RecentOwnedSheet>>(
+      context: context,
+      builder: (context) => _GoogleSheetPickerDialog(
+        files: controller.recentOwnedSheets,
+        order: OwnedSheetOrder.recentlyModified,
+        alreadyAddedSpreadsheetIds: controller.savedSheetsForCurrentAccount
+            .map((sheet) => sheet.spreadsheetId)
+            .toSet(),
+      ),
+    );
+    if (selected == null || selected.isEmpty) return;
+    await controller.selectRecentSourceSheets(selected);
+    await controller.loadMonthlyRoster();
+  }
+
+  Future<void> _importPhoto(ImageSource source) async {
+    final photo = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 90,
+      maxWidth: 2400,
+      requestFullMetadata: false,
+    );
+    if (photo == null || !mounted) return;
+    final bytes = await photo.readAsBytes();
+    if (!mounted) return;
+    if (bytes.length > 15 * 1024 * 1024) {
+      throw const FormatException('รูปมีขนาดเกิน 15 MB');
+    }
+    final action = await showDialog<_CapturedPhotoAction>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _CapturedPhotoPreview(bytes: bytes),
+    );
+    if (action != _CapturedPhotoAction.saveAndImport || !mounted) return;
+    if (source == ImageSource.camera) {
+      final now = DateTime.now();
+      await FileSaver.instance.saveFile(
+        name: 'monthly-roster-${now.millisecondsSinceEpoch}',
+        bytes: bytes,
+        fileExtension: 'jpg',
+        mimeType: MimeType.jpeg,
+      );
+    }
+    if (!mounted) return;
+    final result = await showDialog<_ManualSourceResult>(
+      context: context,
+      builder: (context) => _ManualSourceDialog(
+        capturedImageBytes: bytes,
+        initialSourceKind: source == ImageSource.camera
+            ? 'กล้อง'
+            : 'รูป/ภาพถ่าย',
+      ),
+    );
+    if (result == null) return;
+    await widget.controller.addManualShift(
+      sourceKind: result.sourceKind,
+      title: result.title,
+      start: result.start,
+      end: result.end,
+      category: result.category,
+      colorCommand: result.colorCommand,
+    );
+  }
+
+  Future<void> _editTemplate([MonthlyRosterTemplate? current]) async {
+    final value = await showDialog<MonthlyRosterTemplate>(
+      context: context,
+      builder: (context) => _MonthlyRosterTemplateDialog(template: current),
+    );
+    if (value == null) return;
+    final updated = [...templates];
+    final index = updated.indexWhere((item) => item.id == value.id);
+    if (index < 0) {
+      updated.add(value);
+    } else {
+      updated[index] = value;
+    }
+    await templateRepository.saveAll(updated);
+    if (mounted) setState(() => templates = List.unmodifiable(updated));
+  }
+
+  Future<void> _deleteTemplate(MonthlyRosterTemplate template) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ลบเทมเพลตรายเดือน?'),
+        content: Text('ลบ “${template.title}” จากเครื่องนี้'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ลบ'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final updated = templates
+        .where((item) => item.id != template.id)
+        .toList(growable: false);
+    await templateRepository.saveAll(updated);
+    if (mounted) setState(() => templates = updated);
+  }
+
+  MonthlyRosterSection _templateSection(MonthlyRosterTemplate template) =>
+      MonthlyRosterSection(
+        title: template.title,
+        headerRowIndex: 0,
+        assignments: const [],
+        rowLabels: template.rowLabels,
+        startDate:
+            filterStart != null && template.startDate.isBefore(filterStart!)
+            ? filterStart
+            : template.startDate,
+        endDate: filterEnd != null && template.endDate.isAfter(filterEnd!)
+            ? filterEnd
+            : template.endDate,
+      );
+
+  Future<void> _pickFilterDate({required bool startDate}) async {
+    final now = DateTime.now();
+    final current = startDate ? filterStart : filterEnd;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: DateTime(now.year - 10),
+      lastDate: DateTime(now.year + 10, 12, 31),
+    );
+    if (selected == null) return;
+    setState(() {
+      if (startDate) {
+        filterStart = selected;
+        if (filterEnd != null && filterEnd!.isBefore(selected)) {
+          filterEnd = selected;
+        }
+      } else {
+        filterEnd = selected;
+        if (filterStart != null && filterStart!.isAfter(selected)) {
+          filterStart = selected;
+        }
+      }
+    });
+  }
+
+  bool _includesFilterDate(DateTime date) =>
+      (filterStart == null || !date.isBefore(filterStart!)) &&
+      (filterEnd == null || !date.isAfter(filterEnd!));
+
   @override
   Widget build(BuildContext context) {
     final report = widget.controller.monthlyRoster;
     final filteredReport = report.filtered(
       query: search.text,
       sectionTitle: selectedSection,
+      includesDate: filterStart == null && filterEnd == null
+          ? null
+          : _includesFilterDate,
     );
-    final sections = filteredReport.sections;
+    final query = search.text.trim().toLowerCase();
+    final visibleTemplates = templates
+        .where((template) {
+          if (selectedSection != null && selectedSection != template.title) {
+            return false;
+          }
+          if (filterStart != null && template.endDate.isBefore(filterStart!)) {
+            return false;
+          }
+          if (filterEnd != null && template.startDate.isAfter(filterEnd!)) {
+            return false;
+          }
+          return query.isEmpty ||
+              template.title.toLowerCase().contains(query) ||
+              template.rowLabels.any(
+                (row) => row.toLowerCase().contains(query),
+              );
+        })
+        .toList(growable: false);
+    final sections = [
+      ...visibleTemplates.map(_templateSection),
+      ...filteredReport.sections,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2724,19 +2928,71 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
                         const SizedBox(height: 4),
                         Text(
                           report.sections.isEmpty
-                              ? 'อ่านบล็อกเวรใหญ่, exten, คลินิก และหมวดอื่นจากโครงสร้างชีต'
+                              ? 'นำเข้าตารางหรือสร้างเทมเพลตรายเดือนแบบว่าง'
                               : '${report.sections.length} บล็อก • '
                                     '${report.assignments.length} ช่องปฏิบัติงาน',
                         ),
                       ],
                     ),
                   ),
+                  IconButton.filled(
+                    onPressed: widget.controller.busy
+                        ? null
+                        : () => _editTemplate(),
+                    icon: const Icon(Icons.add),
+                    tooltip: 'สร้างเทมเพลตรายเดือน',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
                   FilledButton.icon(
+                    onPressed:
+                        widget.controller.auth.isSignedIn &&
+                            !widget.controller.busy
+                        ? () => widget.perform(_importGoogleSheet)
+                        : null,
+                    icon: const Icon(Icons.table_chart_outlined),
+                    label: const Text('Google Sheets'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: widget.controller.busy
+                        ? null
+                        : () => widget.perform(
+                            widget.controller.importLocalMonthlyRosterFile,
+                          ),
+                    icon: const Icon(Icons.upload_file_outlined),
+                    label: const Text('Excel / CSV / ไฟล์'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: widget.controller.busy
+                        ? null
+                        : () => widget.perform(
+                            () => _importPhoto(ImageSource.camera),
+                          ),
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('เปิดกล้อง'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: widget.controller.busy
+                        ? null
+                        : () => widget.perform(
+                            () => _importPhoto(ImageSource.gallery),
+                          ),
+                    icon: const Icon(Icons.image_outlined),
+                    label: const Text('เลือกรูป'),
+                  ),
+                  OutlinedButton.icon(
                     onPressed:
                         widget.controller.busy ||
                             !widget.controller.hasRosterSource
                         ? null
-                        : () => widget.perform(widget.controller.loadRoster),
+                        : () => widget.perform(
+                            widget.controller.loadMonthlyRoster,
+                          ),
                     icon: const Icon(Icons.refresh),
                     label: const Text('อ่านใหม่'),
                   ),
@@ -2751,7 +3007,41 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
                   prefixIcon: Icon(Icons.search),
                 ),
               ),
-              if (report.sections.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _pickFilterDate(startDate: true),
+                    icon: const Icon(Icons.date_range_outlined),
+                    label: Text(
+                      filterStart == null
+                          ? 'วันเริ่ม'
+                          : 'เริ่ม ${_thaiDate(filterStart!)}',
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _pickFilterDate(startDate: false),
+                    icon: const Icon(Icons.event_available_outlined),
+                    label: Text(
+                      filterEnd == null
+                          ? 'วันสิ้นสุด'
+                          : 'สิ้นสุด ${_thaiDate(filterEnd!)}',
+                    ),
+                  ),
+                  if (filterStart != null || filterEnd != null)
+                    IconButton(
+                      onPressed: () => setState(() {
+                        filterStart = null;
+                        filterEnd = null;
+                      }),
+                      icon: const Icon(Icons.filter_alt_off_outlined),
+                      tooltip: 'ล้างช่วงวันที่',
+                    ),
+                ],
+              ),
+              if (report.sections.isNotEmpty || templates.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -2764,10 +3054,10 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
                             setState(() => selectedSection = null),
                       ),
                       const SizedBox(width: 8),
-                      for (final title
-                          in report.sections
-                              .map((section) => section.title)
-                              .toSet()) ...[
+                      for (final title in <String>{
+                        ...templates.map((template) => template.title),
+                        ...report.sections.map((section) => section.title),
+                      }) ...[
                         ChoiceChip(
                           label: Text(_compactSectionTitle(title)),
                           selected: selectedSection == title,
@@ -2785,7 +3075,7 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
         ),
         const Divider(height: 1),
         Expanded(
-          child: report.sections.isEmpty
+          child: report.sections.isEmpty && templates.isEmpty
               ? _MonthlyRosterEmptyState(controller: widget.controller)
               : sections.isEmpty
               ? const _EmptyState(
@@ -2797,13 +3087,160 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
                   padding: const EdgeInsets.all(20),
                   itemCount: sections.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) =>
-                      _MonthlyRosterSectionCard(section: sections[index]),
+                  itemBuilder: (context, index) {
+                    final section = sections[index];
+                    final template = index < visibleTemplates.length
+                        ? visibleTemplates[index]
+                        : null;
+                    return _MonthlyRosterSectionCard(
+                      section: section,
+                      onEdit: template == null
+                          ? null
+                          : () => _editTemplate(template),
+                      onDelete: template == null
+                          ? null
+                          : () => _deleteTemplate(template),
+                    );
+                  },
                 ),
         ),
       ],
     );
   }
+}
+
+class _MonthlyRosterTemplateDialog extends StatefulWidget {
+  const _MonthlyRosterTemplateDialog({this.template});
+
+  final MonthlyRosterTemplate? template;
+
+  @override
+  State<_MonthlyRosterTemplateDialog> createState() =>
+      _MonthlyRosterTemplateDialogState();
+}
+
+class _MonthlyRosterTemplateDialogState
+    extends State<_MonthlyRosterTemplateDialog> {
+  late final title = TextEditingController(text: widget.template?.title ?? '');
+  late final rows = TextEditingController(
+    text: widget.template?.rowLabels.join('\n') ?? '',
+  );
+  late DateTime start =
+      widget.template?.startDate ??
+      DateTime(DateTime.now().year, DateTime.now().month);
+  late DateTime end =
+      widget.template?.endDate ??
+      DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
+
+  @override
+  void dispose() {
+    title.dispose();
+    rows.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate({required bool startDate}) async {
+    final current = startDate ? start : end;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(current.year - 5),
+      lastDate: DateTime(current.year + 10, 12, 31),
+    );
+    if (selected == null) return;
+    setState(() {
+      if (startDate) {
+        start = selected;
+        if (end.isBefore(start)) end = start;
+      } else {
+        end = selected;
+      }
+    });
+  }
+
+  void _submit() {
+    final name = title.text.trim();
+    final rowLabels = rows.text
+        .split(RegExp(r'[\r\n,]+'))
+        .map((row) => row.trim())
+        .where((row) => row.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (name.isEmpty || rowLabels.isEmpty) return;
+    Navigator.pop(
+      context,
+      MonthlyRosterTemplate(
+        id:
+            widget.template?.id ??
+            'monthly-${DateTime.now().microsecondsSinceEpoch}',
+        title: name,
+        startDate: start,
+        endDate: end,
+        rowLabels: rowLabels,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(
+      widget.template == null ? 'สร้างเทมเพลตรายเดือน' : 'แก้ไขเทมเพลตรายเดือน',
+    ),
+    content: SizedBox(
+      width: 560,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: title,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'ชื่อเทมเพลต'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: rows,
+              minLines: 4,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                labelText: 'แถวเวรหรือสถานที่',
+                hintText: 'หนึ่งแถวต่อหนึ่งบรรทัด',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _pickDate(startDate: true),
+                  icon: const Icon(Icons.first_page),
+                  label: Text('เริ่ม ${_thaiDate(start)}'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _pickDate(startDate: false),
+                  icon: const Icon(Icons.last_page),
+                  label: Text('สิ้นสุด ${_thaiDate(end)}'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('ยกเลิก'),
+      ),
+      FilledButton.icon(
+        onPressed: _submit,
+        icon: const Icon(Icons.save_outlined),
+        label: const Text('บันทึก'),
+      ),
+    ],
+  );
 }
 
 class _MonthlyRosterEmptyState extends StatelessWidget {
@@ -2819,27 +3256,45 @@ class _MonthlyRosterEmptyState extends StatelessWidget {
         : 'ยังไม่ได้เลือกแหล่งข้อมูลเวร',
     message: controller.hasRosterSource
         ? 'กด “อ่านใหม่” เพื่อค้นหาบล็อกที่มีแถววันที่ในชีต'
-        : 'นำเข้าจาก Google Sheets, Excel, CSV, รูปภาพ, กล้อง '
-              'หรือแหล่งอื่นในหน้าแรก',
+        : 'นำเข้า Google Sheets, Excel, CSV, รูปภาพ หรือกล้องจากหน้านี้',
   );
 }
 
 class _MonthlyRosterSectionCard extends StatelessWidget {
-  const _MonthlyRosterSectionCard({required this.section});
+  const _MonthlyRosterSectionCard({
+    required this.section,
+    this.onEdit,
+    this.onDelete,
+  });
 
   final MonthlyRosterSection section;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final dates = section.assignments.map((item) => item.date).toSet().toList()
-      ..sort();
+    final dates = section.assignments.map((item) => item.date).toSet().toList();
+    if (dates.isEmpty && section.startDate != null && section.endDate != null) {
+      for (
+        var date = section.startDate!;
+        !date.isAfter(section.endDate!);
+        date = date.add(const Duration(days: 1))
+      ) {
+        dates.add(date);
+      }
+    }
+    dates.sort();
     final rowIndexes =
         section.assignments.map((item) => item.rowIndex).toSet().toList()
           ..sort();
     final rowLabels = <int, String>{
+      for (var index = 0; index < section.rowLabels.length; index++)
+        index: section.rowLabels[index],
       for (final assignment in section.assignments)
         assignment.rowIndex: assignment.rowLabel,
     };
+    rowIndexes.addAll(rowLabels.keys);
+    rowIndexes.sort();
     final byPosition = <(int, DateTime), MonthlyRosterAssignment>{
       for (final assignment in section.assignments)
         (assignment.rowIndex, assignment.date): assignment,
@@ -2873,10 +3328,20 @@ class _MonthlyRosterSectionCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onEdit != null || onDelete != null)
+                  PopupMenuButton<String>(
+                    tooltip: 'จัดการเทมเพลต',
+                    onSelected: (value) =>
+                        value == 'edit' ? onEdit?.call() : onDelete?.call(),
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'edit', child: Text('แก้ไข')),
+                      PopupMenuItem(value: 'delete', child: Text('ลบ')),
+                    ],
+                  ),
               ],
             ),
             const SizedBox(height: 14),
-            if (section.assignments.isEmpty)
+            if (section.assignments.isEmpty && rowLabels.isEmpty)
               const Text('บล็อกนี้ยังไม่มีรายชื่อผู้ปฏิบัติงาน')
             else
               Scrollbar(
