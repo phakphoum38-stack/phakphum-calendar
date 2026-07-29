@@ -39,10 +39,13 @@ class SheetsService implements RosterSheetsGateway {
   final Map<String, List<String>> _titleCache = {};
 
   static String spreadsheetIdFromUrl(String input) {
-    final match = RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)').firstMatch(input);
+    final normalized = input.replaceAll(RegExp(r'\s+'), '');
+    final match = RegExp(
+      r'/spreadsheets/d/([a-zA-Z0-9_-]+)',
+    ).firstMatch(normalized);
     if (match != null) return match.group(1)!;
-    if (RegExp(r'^[a-zA-Z0-9_-]{20,}$').hasMatch(input.trim())) {
-      return input.trim();
+    if (RegExp(r'^[a-zA-Z0-9_-]{20,}$').hasMatch(normalized)) {
+      return normalized;
     }
     throw const FormatException('ลิงก์ Google Sheets ไม่ถูกต้อง');
   }
