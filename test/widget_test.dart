@@ -194,6 +194,10 @@ void main() {
     expect(find.text('สร้างเทมเพลตรายเดือน'), findsOneWidget);
     expect(find.text('ชื่อเทมเพลต'), findsOneWidget);
     expect(find.text('แถวเวรหรือสถานที่'), findsOneWidget);
+    expect(find.byTooltip('เพิ่มกลุ่มเวร'), findsOneWidget);
+    await tester.tap(find.byTooltip('เพิ่มกลุ่มเวร'));
+    await tester.pumpAndSettle();
+    expect(find.text('ชื่อกลุ่มเวร 2'), findsOneWidget);
     await tester.tap(find.text('ยกเลิก'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('แดชบอร์ด'));
