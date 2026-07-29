@@ -44,6 +44,9 @@ class AppSettings {
     return [RosterPeriod(year: year!, month: month!)];
   }
 
+  bool includesPeriod(int year, int month) =>
+      effectivePeriods.contains(RosterPeriod(year: year, month: month));
+
   AppSettings copyWith({
     String? targetName,
     int? year,
