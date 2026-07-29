@@ -540,7 +540,9 @@ dart run flutter_launcher_icons
 - `Build Android APK` — release APK สำหรับทดสอบและ SHA-256
 - `Build iOS IPA (Unsigned)` — unsigned IPA และ SHA-256
 - `Build and Deploy Web` — Web artifact และ GitHub Pages
-- `Build Desktop Apps` — Windows ZIP, macOS ZIP และ Linux TAR.GZ พร้อม SHA-256
+- `Build Windows` — Windows x64 ZIP พร้อม SHA-256
+- `Build macOS` — macOS application ZIP พร้อม SHA-256
+- `Build Linux` — Linux x64 TAR.GZ พร้อม SHA-256
 
 ทุก workflow รองรับ **Run workflow** และจะทำงานอัตโนมัติเมื่อไฟล์ที่เกี่ยวข้องถูก push เข้า `main`
 

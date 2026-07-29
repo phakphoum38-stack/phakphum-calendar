@@ -5,7 +5,13 @@
 - `android.yml` — release APK and AAB.
 - `ios.yml` — unsigned IPA for testing/build verification.
 - `web.yml` — Flutter Web artifact and GitHub Pages deployment.
-- `desktop.yml` — Windows x64, Linux x64, and macOS application artifacts.
+- `windows.yml` — Windows x64 ZIP and SHA-256 checksum.
+- `macos.yml` — macOS application ZIP and SHA-256 checksum.
+- `linux.yml` — Linux x64 TAR.GZ and SHA-256 checksum.
+- `laravel.yml` — Composer validation, formatting, and backend tests.
+
+Every platform workflow supports manual `workflow_dispatch`. Platform builds
+also run automatically when relevant files are pushed to `main`.
 
 ## Optional repository secrets
 
