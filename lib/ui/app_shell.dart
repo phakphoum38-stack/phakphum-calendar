@@ -3197,6 +3197,11 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
     text: widget.shift.calendarColorId ?? '',
   );
   late ShiftCategory category = widget.shift.category;
+  late DateTime date = DateTime(
+    widget.shift.start.year,
+    widget.shift.start.month,
+    widget.shift.start.day,
+  );
   late TimeOfDay start = TimeOfDay.fromDateTime(widget.shift.start);
   late TimeOfDay end = TimeOfDay.fromDateTime(widget.shift.end);
 
@@ -3205,6 +3210,16 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
     title.dispose();
     colorCommand.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      firstDate: DateTime(date.year - 5),
+      lastDate: DateTime(date.year + 10, 12, 31),
+      initialDate: date,
+    );
+    if (selected != null) setState(() => date = selected);
   }
 
   Future<void> _pickTime({required bool isStart}) async {
@@ -3223,15 +3238,14 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
   }
 
   void _submit() {
-    final day = widget.shift.start;
     final startAt = DateTime(
-      day.year,
-      day.month,
-      day.day,
+      date.year,
+      date.month,
+      date.day,
       start.hour,
       start.minute,
     );
-    var endAt = DateTime(day.year, day.month, day.day, end.hour, end.minute);
+    var endAt = DateTime(date.year, date.month, date.day, end.hour, end.minute);
     if (!endAt.isAfter(startAt)) {
       endAt = endAt.add(const Duration(days: 1));
     }
@@ -3281,6 +3295,11 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
               spacing: 10,
               runSpacing: 10,
               children: [
+                OutlinedButton.icon(
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: Text(_thaiDate(date)),
+                ),
                 OutlinedButton.icon(
                   onPressed: () => _pickTime(isStart: true),
                   icon: const Icon(Icons.schedule),

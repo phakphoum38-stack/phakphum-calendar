@@ -37,6 +37,51 @@ void main() {
     },
   );
 
+  test('customizing a shift accepts a new date and an overnight end', () {
+    final controller = demoController();
+    addTearDown(controller.dispose);
+    final index = controller.shifts.indexWhere((shift) => !shift.generated);
+    final original = controller.shifts[index];
+    final newDate = DateTime(
+      original.start.year,
+      original.start.month,
+      original.start.day + 3,
+      20,
+    );
+
+    controller.customizeShift(
+      index,
+      title: original.displayName,
+      start: newDate,
+      end: newDate.add(const Duration(hours: 12)),
+      category: original.category,
+      colorCommand: '',
+    );
+
+    expect(controller.shifts[index].start, newDate);
+    expect(
+      controller.shifts[index].end,
+      DateTime(newDate.year, newDate.month, newDate.day + 1, 8),
+    );
+  });
+
+  testWidgets('shift settings allow selecting a different date', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ตารางเวร'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ตั้งชื่อ เวลา ประเภท และสี').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('ตั้งค่ารายการก่อนใช้'), findsOneWidget);
+    expect(find.byIcon(Icons.calendar_month_outlined), findsOneWidget);
+  });
+
   testWidgets('desktop layout shows the full navigation and dashboard', (
     tester,
   ) async {
