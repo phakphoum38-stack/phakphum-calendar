@@ -1,11 +1,11 @@
 import '../../../domain/entities/schedule.dart';
+import '../../../domain/entities/schedule_month.dart';
 import '../domain/coverage_requirement.dart';
 import '../domain/generation_request.dart';
 import '../domain/monthly_roster_blueprint.dart';
 import '../domain/roster_staffing_rule.dart';
 import '../domain/staff_directory.dart';
 import '../domain/staff_group.dart';
-import 'radiology_roster_blueprint.dart';
 
 class MonthlyRosterRequestBuilder {
   const MonthlyRosterRequestBuilder();
@@ -63,6 +63,9 @@ class MonthlyRosterRequestBuilder {
 class _EmptyScheduleFactory {
   const _EmptyScheduleFactory();
 
-  Schedule create(DateTime month) =>
-      const RadiologyRosterBlueprint().emptySchedule(month);
+  Schedule create(DateTime month) => Schedule(
+    id: 'monthly-roster-${month.year}-${month.month.toString().padLeft(2, '0')}',
+    name: 'ตารางเวรรายเดือน',
+    months: [ScheduleMonth.empty(month)],
+  );
 }

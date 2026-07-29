@@ -3,6 +3,7 @@ import 'package:phakphum_calendar/features/shift_parser/application/monthly_rost
 import 'package:phakphum_calendar/features/shift_parser/domain/monthly_roster_section.dart';
 import 'package:phakphum_calendar/features/shift_parser/domain/normalized_cell.dart';
 import 'package:phakphum_calendar/features/shift_parser/domain/shift_parser_input.dart';
+import 'package:phakphum_calendar/models/shift.dart';
 
 void main() {
   test('discovers monthly blocks and keeps section and row labels dynamic', () {
@@ -53,15 +54,15 @@ void main() {
       cells: [
         ..._row(0, ['Exten ใหม่ ประจำเดือน สิงหาคม พ.ศ. 2569']),
         ..._row(1, ['วันที่', 1, 2, 3, 4, 5, 6, 7]),
-        ..._row(2, ['ห้องทดลองใหม่', 'ภาคภูมิ']),
+        ..._row(2, ['พื้นที่ A', 'บุคลากร A']),
       ],
     );
 
     final report = const MonthlyRosterSectionParser().parse(input);
 
     expect(report.sections.single.title, startsWith('Exten ใหม่'));
-    expect(report.assignments.single.rowLabel, 'ห้องทดลองใหม่');
-    expect(report.assignments.single.workerName, 'ภาคภูมิ');
+    expect(report.assignments.single.rowLabel, 'พื้นที่ A');
+    expect(report.assignments.single.workerName, 'บุคลากร A');
     expect(report.assignments.single.date, DateTime(2026, 8, 1));
   });
 
@@ -75,7 +76,7 @@ void main() {
       cells: [
         ..._row(0, ['เวร 16 สิงหาคม 2569 - 15 กันยายน 2569']),
         ..._row(1, ['วันที่', 16, 17, 18, 19, 20, 21, 22]),
-        ..._row(2, ['ER', 'ภาคภูมิ']),
+        ..._row(2, ['พื้นที่ A', 'บุคลากร A']),
       ],
     );
 
@@ -125,6 +126,47 @@ void main() {
     expect(filtered.assignments, hasLength(1));
     expect(filtered.assignments.single.workerName, 'สมชาย');
     expect(filtered.assignments.single.date.month, 7);
+  });
+
+  test('creates a source-neutral monthly report from imported shifts', () {
+    final report = MonthlyRosterParseReport.fromShifts([
+      Shift(
+        code: 'CUSTOM',
+        rowLabel: 'รายการ A',
+        assignedName: '',
+        start: DateTime(2026, 9, 4, 8),
+        end: DateTime(2026, 9, 4, 16),
+        sheetTitle: 'ไฟล์ที่นำเข้า',
+        cell: 'B2',
+        category: ShiftCategory.own,
+      ),
+    ]);
+
+    expect(report.sections.single.title, 'ไฟล์ที่นำเข้า');
+    expect(report.assignments.single.rowLabel, 'รายการ A');
+    expect(report.assignments.single.workerName, isEmpty);
+    expect(report.assignments.single.date, DateTime(2026, 9, 4));
+    expect(report.dateRanges.single.start, DateTime(2026, 9, 4));
+    expect(report.dateRanges.single.end, DateTime(2026, 9, 4));
+  });
+
+  test('appends a confirmed camera entry to the monthly report', () {
+    const empty = MonthlyRosterParseReport(sections: [], warnings: []);
+    final report = empty.appendShift(
+      Shift(
+        code: 'MANUAL',
+        rowLabel: 'รายการจากกล้อง',
+        assignedName: '',
+        start: DateTime(2026, 9, 5, 9),
+        end: DateTime(2026, 9, 5, 12),
+        sheetTitle: 'ต้นฉบับ: กล้อง',
+        cell: 'ผู้ใช้กำหนด',
+        category: ShiftCategory.own,
+      ),
+    );
+
+    expect(report.sections.single.title, 'ต้นฉบับ: กล้อง');
+    expect(report.assignments.single.rowLabel, 'รายการจากกล้อง');
   });
 }
 
