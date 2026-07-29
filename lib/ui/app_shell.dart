@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../controller/app_controller.dart';
 import '../domain/entities/schedule.dart';
@@ -1171,12 +1174,18 @@ class _DashboardPageState extends State<_DashboardPage> {
         ),
       );
 
-  Future<void> _addManualSourceItem() async {
+  Future<void> _addManualSourceItem({
+    Uint8List? capturedImageBytes,
+    String initialSourceKind = 'รูป/ภาพถ่าย',
+  }) async {
     await _saveSettings();
     if (!mounted) return;
     final result = await showDialog<_ManualSourceResult>(
       context: context,
-      builder: (context) => const _ManualSourceDialog(),
+      builder: (context) => _ManualSourceDialog(
+        capturedImageBytes: capturedImageBytes,
+        initialSourceKind: initialSourceKind,
+      ),
     );
     if (result == null) return;
     await widget.controller.addManualShift(
@@ -1186,6 +1195,76 @@ class _DashboardPageState extends State<_DashboardPage> {
       end: result.end,
       category: result.category,
       colorCommand: result.colorCommand,
+    );
+  }
+
+  Future<void> _captureAndImportPhoto() async {
+    while (mounted) {
+      final photo = await _takePhoto();
+      if (photo == null || !mounted) return;
+      final bytes = await photo.readAsBytes();
+      if (bytes.length > 15 * 1024 * 1024) {
+        throw const FormatException(
+          'รูปมีขนาดเกิน 15 MB กรุณาลดความละเอียดแล้วถ่ายใหม่',
+        );
+      }
+      if (!mounted) return;
+      final action = await showDialog<_CapturedPhotoAction>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _CapturedPhotoPreview(bytes: bytes),
+      );
+      switch (action) {
+        case _CapturedPhotoAction.saveAndImport:
+          await _saveCapturedPhoto(bytes);
+          if (!mounted) return;
+          await _addManualSourceItem(
+            capturedImageBytes: bytes,
+            initialSourceKind: 'กล้อง',
+          );
+          return;
+        case _CapturedPhotoAction.retake:
+          continue;
+        case _CapturedPhotoAction.cancel:
+        case null:
+          return;
+      }
+    }
+  }
+
+  Future<XFile?> _takePhoto() async {
+    try {
+      return await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 90,
+        maxWidth: 2400,
+        requestFullMetadata: false,
+      );
+    } on PlatformException catch (error) {
+      final code = error.code.toLowerCase();
+      final denied = code.contains('denied') || code.contains('restricted');
+      throw StateError(
+        denied
+            ? 'ไม่ได้รับสิทธิ์ใช้กล้อง กรุณาอนุญาตกล้องในการตั้งค่าอุปกรณ์หรือเบราว์เซอร์'
+            : 'ไม่สามารถเปิดกล้องบนอุปกรณ์นี้ได้: ${error.message ?? error.code}',
+      );
+    }
+  }
+
+  Future<void> _saveCapturedPhoto(Uint8List bytes) async {
+    final now = DateTime.now();
+    final name =
+        'shift-roster-${now.year}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}-'
+        '${now.hour.toString().padLeft(2, '0')}'
+        '${now.minute.toString().padLeft(2, '0')}'
+        '${now.second.toString().padLeft(2, '0')}';
+    await FileSaver.instance.saveFile(
+      name: name,
+      bytes: bytes,
+      fileExtension: 'jpg',
+      mimeType: MimeType.jpeg,
     );
   }
 
@@ -1315,11 +1394,16 @@ class _DashboardPageState extends State<_DashboardPage> {
                           OutlinedButton.icon(
                             onPressed: controller.busy
                                 ? null
+                                : () => widget.perform(_captureAndImportPhoto),
+                            icon: const Icon(Icons.camera_alt_outlined),
+                            label: const Text('เปิดกล้อง'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: controller.busy
+                                ? null
                                 : () => widget.perform(_addManualSourceItem),
                             icon: const Icon(Icons.add_a_photo_outlined),
-                            label: const Text(
-                              'รูป / กล้อง / เว็บไซต์ (กรอกเอง)',
-                            ),
+                            label: const Text('รูป / เว็บไซต์ (กรอกเอง)'),
                           ),
                         ],
                       ),
@@ -2254,7 +2338,13 @@ class _ManualSourceResult {
 }
 
 class _ManualSourceDialog extends StatefulWidget {
-  const _ManualSourceDialog();
+  const _ManualSourceDialog({
+    this.capturedImageBytes,
+    required this.initialSourceKind,
+  });
+
+  final Uint8List? capturedImageBytes;
+  final String initialSourceKind;
 
   @override
   State<_ManualSourceDialog> createState() => _ManualSourceDialogState();
@@ -2271,11 +2361,19 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
 
   final title = TextEditingController();
   final colorCommand = TextEditingController();
-  String sourceKind = sourceKinds.first;
+  late String sourceKind;
   DateTime date = DateTime.now();
   TimeOfDay start = const TimeOfDay(hour: 8, minute: 0);
   TimeOfDay end = const TimeOfDay(hour: 16, minute: 0);
   ShiftCategory category = ShiftCategory.own;
+
+  @override
+  void initState() {
+    super.initState();
+    sourceKind = sourceKinds.contains(widget.initialSourceKind)
+        ? widget.initialSourceKind
+        : sourceKinds.first;
+  }
 
   @override
   void dispose() {
@@ -2344,6 +2442,18 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.capturedImageBytes != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  widget.capturedImageBytes!,
+                  height: 220,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'ภาพตารางเวรที่ถ่ายจากกล้อง',
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             const Text(
               'แอปไม่เดาข้อความด้วย OCR กรุณาอ่านต้นฉบับและกรอกข้อมูล '
               'จากนั้นตรวจอีกครั้งในแท็บตัวอย่างก่อนซิงก์',
@@ -2424,6 +2534,48 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
         onPressed: _submit,
         icon: const Icon(Icons.add),
         label: const Text('เพิ่มไปตรวจในตัวอย่าง'),
+      ),
+    ],
+  );
+}
+
+enum _CapturedPhotoAction { saveAndImport, retake, cancel }
+
+class _CapturedPhotoPreview extends StatelessWidget {
+  const _CapturedPhotoPreview({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('ตรวจภาพที่ถ่าย'),
+    content: SizedBox(
+      width: 640,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          bytes,
+          height: 420,
+          fit: BoxFit.contain,
+          semanticLabel: 'ภาพตารางเวรก่อนบันทึกและ Import',
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context, _CapturedPhotoAction.cancel),
+        child: const Text('ยกเลิก'),
+      ),
+      OutlinedButton.icon(
+        onPressed: () => Navigator.pop(context, _CapturedPhotoAction.retake),
+        icon: const Icon(Icons.refresh),
+        label: const Text('ถ่ายใหม่'),
+      ),
+      FilledButton.icon(
+        onPressed: () =>
+            Navigator.pop(context, _CapturedPhotoAction.saveAndImport),
+        icon: const Icon(Icons.save_alt),
+        label: const Text('บันทึกและ Import'),
       ),
     ],
   );

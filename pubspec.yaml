@@ -53,6 +53,8 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.14.2
   url_launcher: 6.3.2
+  image_picker: ^1.2.3
+  file_saver: ^0.4.0
 
 dev_dependencies:
   flutter_test:
