@@ -16,6 +16,7 @@ import '../models/shift.dart';
 import '../models/shift_alert.dart';
 import '../models/tool_definition.dart';
 import '../domain/entities/schedule.dart';
+import '../domain/entities/schedule_month.dart';
 import '../domain/repositories/schedule_repository.dart';
 import '../features/schedule/data/legacy_schedule_adapter.dart';
 import '../features/google_sheets/domain/sheet_color.dart';
@@ -162,6 +163,7 @@ class AppController extends ChangeNotifier implements ControllerState {
         category: ShiftCategory.own,
       ),
     ];
+    _loadedRosterShifts = sourceShifts;
     _replaceLegacyShifts(
       _alertService.addOffDutyPeriods(sourceShifts),
       persist: false,
@@ -220,10 +222,14 @@ class AppController extends ChangeNotifier implements ControllerState {
   List<Shift> localReferenceShifts = [];
   List<Shift> _currentAllRosterShifts = [];
   List<Shift> _referenceAllRosterShifts = [];
+  List<Shift> _loadedRosterShifts = [];
+  bool _syncRangeCustomized = false;
   MonthlyRosterParseReport monthlyRoster = const MonthlyRosterParseReport(
     sections: [],
     warnings: [],
   );
+  DateTime? syncRangeStart;
+  DateTime? syncRangeEnd;
   final Map<String, _ShiftOverride> _shiftOverrides = {};
   final Map<String, String> _shiftOverrideSourceKeys = {};
   ShiftCalendarWorkflowController? _pendingCalendarWorkflow;
@@ -375,6 +381,33 @@ class AppController extends ChangeNotifier implements ControllerState {
     notifyListeners();
   }
 
+  Future<void> updateSyncDateRange(DateTime start, DateTime end) async {
+    final normalizedStart = DateTime(start.year, start.month, start.day);
+    final normalizedEnd = DateTime(end.year, end.month, end.day);
+    if (normalizedEnd.isBefore(normalizedStart)) {
+      throw const FormatException('วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่มต้น');
+    }
+    syncRangeStart = normalizedStart;
+    syncRangeEnd = normalizedEnd;
+    _syncRangeCustomized = true;
+    _pendingCalendarWorkflow?.dispose();
+    _pendingCalendarWorkflow = null;
+    calendarPeriods = [];
+    existingKeys = {};
+    _replaceLegacyShifts(
+      _alertService.addOffDutyPeriods(
+        _applyReferenceRelationships(
+          _filterToSyncDateRange(_loadedRosterShifts),
+        ),
+      ),
+    );
+    _rebuildAlerts();
+    status =
+        'กำหนดช่วงซิงก์ ${_dateLabel(normalizedStart)}–'
+        '${_dateLabel(normalizedEnd)} แล้ว';
+    notifyListeners();
+  }
+
   Iterable<ToolDefinition> get pinnedTools =>
       toolCatalog.where((tool) => pinnedToolIds.contains(tool.id));
 
@@ -505,6 +538,7 @@ class AppController extends ChangeNotifier implements ControllerState {
           await _saveSheetReference(account.id, reference);
           addedCount++;
         }
+        _resetSyncRange();
 
         status = addedCount == 1
             ? 'เพิ่ม Google Sheets 1 ไฟล์แล้ว'
@@ -537,6 +571,7 @@ class AppController extends ChangeNotifier implements ControllerState {
           normalizedUrl,
         );
         final saved = await _saveSheetReference(account.id, reference);
+        _resetSyncRange();
         localSourceLabel = null;
         status = 'เลือก “${saved.displayTitle}” เป็นไฟล์หลักของบัญชีนี้แล้ว';
         await _addAudit(
@@ -590,6 +625,8 @@ class AppController extends ChangeNotifier implements ControllerState {
           sections: [],
           warnings: [],
         );
+        _loadedRosterShifts = [];
+        _resetSyncRange();
         _autoRefreshTimer?.cancel();
       }
       status = 'ลบ “${sheet.displayTitle}” ออกจากรายการแล้ว';
@@ -631,13 +668,21 @@ class AppController extends ChangeNotifier implements ControllerState {
           snapshots,
           searchNames: searchNames,
         );
+        _loadedRosterShifts = parsed;
+        _setDefaultSyncDateRange(parsed);
+        final rangedParsed = _filterToSyncDateRange(parsed);
         _currentAllRosterShifts = _parseAllRosterSnapshots(
           snapshots,
-          fallback: parsed,
+          fallback: rangedParsed,
         );
-        final periods = _periodsForShifts(parsed);
+        _currentAllRosterShifts = _filterToSyncDateRange(
+          _currentAllRosterShifts,
+        );
+        final periods = _periodsForShifts(rangedParsed);
         _replaceLegacyShifts(
-          _alertService.addOffDutyPeriods(_applyReferenceRelationships(parsed)),
+          _alertService.addOffDutyPeriods(
+            _applyReferenceRelationships(rangedParsed),
+          ),
         );
         localSourceLabel = null;
         sheetTitles = snapshots.map((sheet) => sheet.title).toList();
@@ -646,18 +691,19 @@ class AppController extends ChangeNotifier implements ControllerState {
         _rebuildAlerts(applyDecisions: true);
         lastRefresh = DateTime.now();
         final offCount = shifts.where((shift) => shift.isOffDuty).length;
-        final colorCount = parsed
+        final colorCount = rangedParsed
             .where((shift) => shift.sourceColorValue != null)
             .length;
         status =
-            'พบเวรของ ${searchNames.first} ${parsed.length} รายการ '
+            'พบเวรของ ${searchNames.first} ${rangedParsed.length} รายการ '
             'จาก ${periods.length} เดือน • '
+            '${syncRangeStart == null || syncRangeEnd == null ? '' : 'ช่วง ${_dateLabel(syncRangeStart!)}–${_dateLabel(syncRangeEnd!)} • '}'
             'อ่านสีจากไฟล์หลัก $colorCount รายการ • '
             'สร้าง OFF $offCount รายการ • รอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'sheet.read',
           'อ่าน ${snapshots.length} แท็บ ${periods.length} เดือน '
-              'พบ ${parsed.length} เวร '
+              'พบ ${rangedParsed.length} เวรในช่วงที่กำหนด '
               'อ่านสีจากไฟล์หลัก $colorCount รายการ และสร้าง OFF '
               '$offCount รายการ; ไม่มีการแก้ไขชีต',
           true,
@@ -690,12 +736,19 @@ class AppController extends ChangeNotifier implements ControllerState {
         document.snapshots,
         spreadsheetId: 'local-${document.extension}',
       );
+      _loadedRosterShifts = parsed;
+      _syncRangeCustomized = false;
+      _setDefaultSyncDateRange(parsed);
+      final rangedParsed = _filterToSyncDateRange(parsed);
       _currentAllRosterShifts = _parseAllRosterSnapshots(
         document.snapshots,
-        fallback: parsed,
+        fallback: rangedParsed,
       );
+      _currentAllRosterShifts = _filterToSyncDateRange(_currentAllRosterShifts);
       _replaceLegacyShifts(
-        _alertService.addOffDutyPeriods(_applyReferenceRelationships(parsed)),
+        _alertService.addOffDutyPeriods(
+          _applyReferenceRelationships(rangedParsed),
+        ),
       );
       sheetTitles = document.snapshots.map((sheet) => sheet.title).toList();
       localSourceLabel = 'ไฟล์ .${document.extension} ในเครื่อง';
@@ -706,11 +759,11 @@ class AppController extends ChangeNotifier implements ControllerState {
       lastRefresh = DateTime.now();
       status =
           'อ่านไฟล์ .${document.extension} ${document.snapshots.length} แท็บ '
-          'พบ ${parsed.length} เวร; ไฟล์ไม่ถูกอัปโหลด';
+          'พบ ${rangedParsed.length} เวรในช่วงที่กำหนด; ไฟล์ไม่ถูกอัปโหลด';
       await _addAudit(
         'local_file.read',
         'อ่านไฟล์ .${document.extension} ในหน่วยความจำ '
-            '${document.snapshots.length} แท็บ พบ ${parsed.length} เวร; '
+            '${document.snapshots.length} แท็บ พบ ${rangedParsed.length} เวร; '
             'ไม่บันทึกชื่อไฟล์หรือเนื้อหาใน Audit log',
         true,
       );
@@ -1356,6 +1409,10 @@ class AppController extends ChangeNotifier implements ControllerState {
       localReferenceShifts = [];
       _currentAllRosterShifts = [];
       _referenceAllRosterShifts = [];
+      _loadedRosterShifts = [];
+      syncRangeStart = null;
+      syncRangeEnd = null;
+      _syncRangeCustomized = false;
       _shiftOverrides.clear();
       recentSheetHistoryLoaded = false;
       lastRefresh = null;
@@ -1538,9 +1595,65 @@ class AppController extends ChangeNotifier implements ControllerState {
               RosterPeriod(year: month.month.year, month: month.month.month),
             ),
           )
+          .map(
+            (month) => ScheduleMonth(
+              month: month.month,
+              days: month.days
+                  .where((day) => _includesSyncDate(day.date))
+                  .toList(growable: false),
+            ),
+          )
+          .where((month) => month.days.isNotEmpty)
           .toList(growable: false),
     );
   }
+
+  void _setDefaultSyncDateRange(List<Shift> parsed) {
+    if (_syncRangeCustomized &&
+        syncRangeStart != null &&
+        syncRangeEnd != null) {
+      return;
+    }
+    final ranges = monthlyRoster.dateRanges;
+    if (ranges.isEmpty) {
+      if (parsed.isEmpty) return;
+      syncRangeStart = parsed.first.start;
+      syncRangeEnd = parsed.last.start;
+      return;
+    }
+    final anchor = parsed.firstOrNull?.start;
+    final selected = anchor == null
+        ? ranges.first
+        : ranges.firstWhere(
+            (range) =>
+                !anchor.isBefore(range.start) && !anchor.isAfter(range.end),
+            orElse: () => ranges.first,
+          );
+    syncRangeStart = selected.start;
+    syncRangeEnd = selected.end;
+  }
+
+  void _resetSyncRange() {
+    syncRangeStart = null;
+    syncRangeEnd = null;
+    _syncRangeCustomized = false;
+    _loadedRosterShifts = [];
+  }
+
+  List<Shift> _filterToSyncDateRange(Iterable<Shift> source) => source
+      .where((shift) => _includesSyncDate(shift.start))
+      .toList(growable: false);
+
+  bool _includesSyncDate(DateTime date) {
+    final start = syncRangeStart;
+    final end = syncRangeEnd;
+    if (start == null || end == null) return true;
+    final day = DateTime(date.year, date.month, date.day);
+    return !day.isBefore(start) && !day.isAfter(end);
+  }
+
+  String _dateLabel(DateTime date) =>
+      '${date.day}/${date.month}/${date.year + 543}';
 
   void _rememberShiftOverride(Shift shift, {String? sourceKey}) {
     final stableSourceKey =

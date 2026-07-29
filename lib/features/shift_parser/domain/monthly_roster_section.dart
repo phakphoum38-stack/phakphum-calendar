@@ -3,11 +3,15 @@ class MonthlyRosterSection {
     required this.title,
     required this.headerRowIndex,
     required this.assignments,
+    this.startDate,
+    this.endDate,
   });
 
   final String title;
   final int headerRowIndex;
   final List<MonthlyRosterAssignment> assignments;
+  final DateTime? startDate;
+  final DateTime? endDate;
 }
 
 class MonthlyRosterAssignment {
@@ -43,6 +47,21 @@ class MonthlyRosterParseReport {
     for (final section in sections) ...section.assignments,
   ];
 
+  List<({DateTime start, DateTime end})> get dateRanges {
+    final unique = <String, ({DateTime start, DateTime end})>{};
+    for (final section in sections) {
+      final start = section.startDate;
+      final end = section.endDate;
+      if (start == null || end == null) continue;
+      unique['${start.toIso8601String()}|${end.toIso8601String()}'] = (
+        start: start,
+        end: end,
+      );
+    }
+    return unique.values.toList()
+      ..sort((left, right) => left.start.compareTo(right.start));
+  }
+
   MonthlyRosterParseReport filtered({
     String query = '',
     String? sectionTitle,
@@ -73,6 +92,8 @@ class MonthlyRosterParseReport {
           title: section.title,
           headerRowIndex: section.headerRowIndex,
           assignments: List.unmodifiable(filteredAssignments),
+          startDate: section.startDate,
+          endDate: section.endDate,
         ),
       );
     }

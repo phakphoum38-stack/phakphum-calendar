@@ -90,6 +90,38 @@ void main() {
     expect(offShifts.single.generated, isFalse);
   });
 
+  test(
+    'a custom sync range filters shifts and can be expanded again',
+    () async {
+      final controller = demoController();
+      addTearDown(controller.dispose);
+
+      await controller.updateSyncDateRange(
+        DateTime(2026, 8, 3),
+        DateTime(2026, 8, 8),
+      );
+
+      expect(
+        controller.shifts
+            .where((shift) => !shift.generated)
+            .map((shift) => shift.start.day),
+        [3, 8],
+      );
+
+      await controller.updateSyncDateRange(
+        DateTime(2026, 8, 3),
+        DateTime(2026, 8, 10),
+      );
+
+      expect(
+        controller.shifts
+            .where((shift) => !shift.generated)
+            .map((shift) => shift.start.day),
+        [3, 8, 10, 10],
+      );
+    },
+  );
+
   testWidgets('shift settings allow selecting a different date', (
     tester,
   ) async {
