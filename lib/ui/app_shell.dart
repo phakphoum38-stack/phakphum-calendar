@@ -3122,9 +3122,7 @@ class _MonthlyRosterTemplateDialog extends StatefulWidget {
 class _MonthlyRosterTemplateDialogState
     extends State<_MonthlyRosterTemplateDialog> {
   late final title = TextEditingController(text: widget.template?.title ?? '');
-  late final rows = TextEditingController(
-    text: widget.template?.rowLabels.join('\n') ?? '',
-  );
+  late final List<_ShiftGroupDraft> groups;
   late DateTime start =
       widget.template?.startDate ??
       DateTime(DateTime.now().year, DateTime.now().month);
@@ -3133,10 +3131,33 @@ class _MonthlyRosterTemplateDialogState
       DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
 
   @override
+  void initState() {
+    super.initState();
+    groups = widget.template == null
+        ? [_ShiftGroupDraft.empty(1)]
+        : widget.template!.groups
+              .map(_ShiftGroupDraft.fromGroup)
+              .toList(growable: true);
+  }
+
+  @override
   void dispose() {
     title.dispose();
-    rows.dispose();
+    for (final group in groups) {
+      group.dispose();
+    }
     super.dispose();
+  }
+
+  void _addGroup() {
+    setState(() => groups.add(_ShiftGroupDraft.empty(groups.length + 1)));
+  }
+
+  void _removeGroup(int index) {
+    if (groups.length == 1) return;
+    final removed = groups.removeAt(index);
+    removed.dispose();
+    setState(() {});
   }
 
   Future<void> _pickDate({required bool startDate}) async {
@@ -3160,13 +3181,13 @@ class _MonthlyRosterTemplateDialogState
 
   void _submit() {
     final name = title.text.trim();
-    final rowLabels = rows.text
-        .split(RegExp(r'[\r\n,]+'))
-        .map((row) => row.trim())
-        .where((row) => row.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
-    if (name.isEmpty || rowLabels.isEmpty) return;
+    final shiftGroups = groups.map((group) => group.value).toList();
+    if (name.isEmpty ||
+        shiftGroups.any(
+          (group) => group.title.isEmpty || group.rowLabels.isEmpty,
+        )) {
+      return;
+    }
     Navigator.pop(
       context,
       MonthlyRosterTemplate(
@@ -3176,7 +3197,7 @@ class _MonthlyRosterTemplateDialogState
         title: name,
         startDate: start,
         endDate: end,
-        rowLabels: rowLabels,
+        groups: shiftGroups,
       ),
     );
   }
@@ -3199,16 +3220,67 @@ class _MonthlyRosterTemplateDialogState
               decoration: const InputDecoration(labelText: 'ชื่อเทมเพลต'),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: rows,
-              minLines: 4,
-              maxLines: 8,
-              decoration: const InputDecoration(
-                labelText: 'แถวเวรหรือสถานที่',
-                hintText: 'หนึ่งแถวต่อหนึ่งบรรทัด',
-              ),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'กลุ่มเวร',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton.filledTonal(
+                  onPressed: _addGroup,
+                  icon: const Icon(Icons.add),
+                  tooltip: 'เพิ่มกลุ่มเวร',
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            for (var index = 0; index < groups.length; index++) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: groups[index].title,
+                            decoration: InputDecoration(
+                              labelText: 'ชื่อกลุ่มเวร ${index + 1}',
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: groups.length == 1
+                              ? null
+                              : () => _removeGroup(index),
+                          icon: const Icon(Icons.delete_outline),
+                          tooltip: 'ลบกลุ่มเวร',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: groups[index].rows,
+                      minLines: 3,
+                      maxLines: 6,
+                      decoration: const InputDecoration(
+                        labelText: 'แถวเวรหรือสถานที่',
+                        hintText: 'หนึ่งแถวต่อหนึ่งบรรทัด',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -3241,6 +3313,49 @@ class _MonthlyRosterTemplateDialogState
       ),
     ],
   );
+}
+
+class _ShiftGroupDraft {
+  _ShiftGroupDraft({
+    required this.id,
+    required String title,
+    required List<String> rowLabels,
+  }) : title = TextEditingController(text: title),
+       rows = TextEditingController(text: rowLabels.join('\n'));
+
+  factory _ShiftGroupDraft.empty(int number) => _ShiftGroupDraft(
+    id: 'group-${DateTime.now().microsecondsSinceEpoch}-$number',
+    title: 'กลุ่มเวร $number',
+    rowLabels: const [],
+  );
+
+  factory _ShiftGroupDraft.fromGroup(MonthlyRosterShiftGroup group) =>
+      _ShiftGroupDraft(
+        id: group.id,
+        title: group.title,
+        rowLabels: group.rowLabels,
+      );
+
+  final String id;
+  final TextEditingController title;
+  final TextEditingController rows;
+
+  MonthlyRosterShiftGroup get value => MonthlyRosterShiftGroup(
+    id: id,
+    title: title.text.trim(),
+    rowLabels: List.unmodifiable(
+      rows.text
+          .split(RegExp(r'[\r\n,]+'))
+          .map((row) => row.trim())
+          .where((row) => row.isNotEmpty)
+          .toSet(),
+    ),
+  );
+
+  void dispose() {
+    title.dispose();
+    rows.dispose();
+  }
 }
 
 class _MonthlyRosterEmptyState extends StatelessWidget {
