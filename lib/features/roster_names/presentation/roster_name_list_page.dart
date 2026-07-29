@@ -173,17 +173,12 @@ class RosterNameStatusList extends StatelessWidget {
           ),
           title: Text(entries[index].name),
           subtitle: entries[index].statuses.isEmpty
-              ? const Text('ยังไม่ได้กำหนดสถานะ')
+              ? entries[index].lockedDutyPoint == null
+                    ? const Text('ยังไม่ได้กำหนดสถานะ')
+                    : _RosterNameLabels(entry: entries[index])
               : Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final status in entries[index].statuses)
-                        Chip(label: Text(status)),
-                    ],
-                  ),
+                  child: _RosterNameLabels(entry: entries[index]),
                 ),
           trailing: onEdit == null && onDelete == null
               ? null
@@ -204,6 +199,26 @@ class RosterNameStatusList extends StatelessWidget {
   );
 }
 
+class _RosterNameLabels extends StatelessWidget {
+  const _RosterNameLabels({required this.entry});
+
+  final RosterNameEntry entry;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    children: [
+      if (entry.lockedDutyPoint case final point?)
+        Chip(
+          avatar: const Icon(Icons.lock_outline, size: 16),
+          label: Text('ล็อก: $point'),
+        ),
+      for (final status in entry.statuses) Chip(label: Text(status)),
+    ],
+  );
+}
+
 class _RosterNameDialog extends StatefulWidget {
   const _RosterNameDialog({this.entry});
 
@@ -216,12 +231,16 @@ class _RosterNameDialog extends StatefulWidget {
 class _RosterNameDialogState extends State<_RosterNameDialog> {
   late final name = TextEditingController(text: widget.entry?.name ?? '');
   late final status = TextEditingController();
+  late final lockedDutyPoint = TextEditingController(
+    text: widget.entry?.lockedDutyPoint ?? '',
+  );
   late final List<String> statuses = [...?widget.entry?.statuses];
 
   @override
   void dispose() {
     name.dispose();
     status.dispose();
+    lockedDutyPoint.dispose();
     super.dispose();
   }
 
@@ -245,6 +264,9 @@ class _RosterNameDialogState extends State<_RosterNameDialog> {
             'roster-name-${DateTime.now().microsecondsSinceEpoch}',
         name: displayName,
         statuses: List.unmodifiable(statuses),
+        lockedDutyPoint: lockedDutyPoint.text.trim().isEmpty
+            ? null
+            : lockedDutyPoint.text.trim(),
       ),
     );
   }
@@ -262,6 +284,15 @@ class _RosterNameDialogState extends State<_RosterNameDialog> {
             controller: name,
             autofocus: true,
             decoration: const InputDecoration(labelText: 'ชื่อ'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: lockedDutyPoint,
+            decoration: const InputDecoration(
+              labelText: 'ล็อกจุดเวร',
+              hintText: 'เว้นว่างหากไม่ต้องการล็อก',
+              prefixIcon: Icon(Icons.lock_outline),
+            ),
           ),
           const SizedBox(height: 12),
           Row(

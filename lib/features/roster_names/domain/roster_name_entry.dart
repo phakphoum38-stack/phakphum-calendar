@@ -7,11 +7,13 @@ class RosterNameEntry {
     required this.id,
     required this.name,
     required this.statuses,
+    this.lockedDutyPoint,
   });
 
   final String id;
   final String name;
   final List<String> statuses;
+  final String? lockedDutyPoint;
 }
 
 class RosterNameRepository {
@@ -28,7 +30,7 @@ class RosterNameRepository {
     if (source == null) return const [];
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic> ||
-        decoded['formatVersion'] != 1 ||
+        !{1, 2}.contains(decoded['formatVersion']) ||
         decoded['entries'] is! List) {
       throw const FormatException('ข้อมูลรายชื่อไม่ถูกต้อง');
     }
@@ -46,6 +48,10 @@ class RosterNameRepository {
           statuses: List.unmodifiable(
             (raw['statuses'] as List).map((status) => '$status'),
           ),
+          lockedDutyPoint: switch (raw['lockedDutyPoint']) {
+            final String value when value.trim().isNotEmpty => value,
+            _ => null,
+          },
         );
       }),
     );
@@ -55,10 +61,15 @@ class RosterNameRepository {
     await (await _store).setString(
       storageKey,
       jsonEncode({
-        'formatVersion': 1,
+        'formatVersion': 2,
         'entries': [
           for (final entry in entries)
-            {'id': entry.id, 'name': entry.name, 'statuses': entry.statuses},
+            {
+              'id': entry.id,
+              'name': entry.name,
+              'statuses': entry.statuses,
+              'lockedDutyPoint': entry.lockedDutyPoint,
+            },
         ],
       }),
     );

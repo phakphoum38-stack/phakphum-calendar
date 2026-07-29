@@ -208,6 +208,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('เพิ่มรายชื่อ'), findsOneWidget);
     expect(find.text('ชื่อ'), findsOneWidget);
+    expect(find.text('ล็อกจุดเวร'), findsOneWidget);
     expect(find.byTooltip('เพิ่มสถานะ'), findsOneWidget);
     await tester.tap(find.text('ยกเลิก'));
     await tester.pumpAndSettle();

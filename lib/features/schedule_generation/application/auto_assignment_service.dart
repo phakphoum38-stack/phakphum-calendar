@@ -65,10 +65,25 @@ class AutoAssignmentService {
                 .where(
                   (employee) =>
                       employee.active &&
-                      employee.department.id == requirement.departmentId,
+                      employee.department.id == requirement.departmentId &&
+                      _canWorkAt(
+                        request.lockedDutyPointsByEmployeeId[employee.id],
+                        requirement.location,
+                      ),
                 )
                 .toList()
               ..sort((left, right) {
+                final lockComparison =
+                    _lockPriority(
+                      request.lockedDutyPointsByEmployeeId[right.id],
+                      requirement.location,
+                    ).compareTo(
+                      _lockPriority(
+                        request.lockedDutyPointsByEmployeeId[left.id],
+                        requirement.location,
+                      ),
+                    );
+                if (lockComparison != 0) return lockComparison;
                 final countComparison = (assignmentCounts[left.id] ?? 0)
                     .compareTo(assignmentCounts[right.id] ?? 0);
                 return countComparison != 0
@@ -135,6 +150,18 @@ class AutoAssignmentService {
       assignmentsCreated: created,
     );
   }
+
+  bool _canWorkAt(String? lockedPoint, String? requirementPoint) =>
+      lockedPoint == null ||
+      lockedPoint.trim().isEmpty ||
+      lockedPoint.trim() == requirementPoint?.trim();
+
+  int _lockPriority(String? lockedPoint, String? requirementPoint) =>
+      lockedPoint != null &&
+          lockedPoint.trim().isNotEmpty &&
+          lockedPoint.trim() == requirementPoint?.trim()
+      ? 1
+      : 0;
 
   ScheduleConflict _coverageConflict(
     CoverageRequirement requirement,

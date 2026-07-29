@@ -15,6 +15,7 @@ class MonthlyRosterRequestBuilder {
     required StaffDirectory directory,
     required MonthlyRosterBlueprint blueprint,
     required List<RosterStaffingRule> staffingRules,
+    Map<String, String> lockedDutyPointsByEmployeeId = const {},
   }) {
     final normalizedMonth = DateTime(month.year, month.month);
     final schedule = const _EmptyScheduleFactory().create(normalizedMonth);
@@ -56,6 +57,7 @@ class MonthlyRosterRequestBuilder {
       employees: directory.allEmployees,
       shiftTypes: blueprint.shiftTypes,
       coverageRequirements: requirements,
+      lockedDutyPointsByEmployeeId: lockedDutyPointsByEmployeeId,
     );
   }
 }
