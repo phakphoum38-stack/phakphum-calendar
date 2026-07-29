@@ -154,6 +154,9 @@ void main() {
       '2026-12',
       '2027-01',
     ]);
+    expect(settings.includesPeriod(2026, 12), isTrue);
+    expect(settings.includesPeriod(2027, 1), isTrue);
+    expect(settings.includesPeriod(2027, 2), isFalse);
   });
 
   test('persists Auto refresh values from 1 through 60 seconds', () async {

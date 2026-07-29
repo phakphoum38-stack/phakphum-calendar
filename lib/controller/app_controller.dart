@@ -362,6 +362,8 @@ class AppController extends ChangeNotifier implements ControllerState {
       settings.effectivePeriods,
     );
     if (periodChanged) {
+      _pendingCalendarWorkflow?.dispose();
+      _pendingCalendarWorkflow = null;
       calendarPeriods = [];
       existingKeys = {};
     }
@@ -983,7 +985,7 @@ class AppController extends ChangeNotifier implements ControllerState {
   _createPreparedCalendarWorkflow() async {
     final workflow = await _calendarWorkflowControllerFactory();
     try {
-      await workflow.prepareSchedule(canonicalSchedule);
+      await workflow.prepareSchedule(_scheduleForActivePeriods());
       if (workflow.hasBlockingFailures) {
         throw StateError(
           workflow.validationResult?.errors
@@ -1374,8 +1376,19 @@ class AppController extends ChangeNotifier implements ControllerState {
         targetName: searchNames.first,
         targetAliases: searchNames.skip(1),
       );
-      if (allPeriods.isNotEmpty || settings.effectivePeriods.isEmpty) {
-        return allPeriods.map(_applyShiftOverride).toList(growable: false)
+      final selectedPeriods = settings.effectivePeriods;
+      final selectedShifts = selectedPeriods.isEmpty
+          ? allPeriods
+          : allPeriods
+                .where(
+                  (shift) => settings.includesPeriod(
+                    shift.start.year,
+                    shift.start.month,
+                  ),
+                )
+                .toList(growable: false);
+      if (allPeriods.isNotEmpty || selectedPeriods.isEmpty) {
+        return selectedShifts.map(_applyShiftOverride).toList(growable: false)
           ..sort((left, right) => left.start.compareTo(right.start));
       }
     }
@@ -1503,8 +1516,23 @@ class AppController extends ChangeNotifier implements ControllerState {
   }
 
   List<RosterPeriod> _activeRosterPeriods() {
+    final selectedPeriods = settings.effectivePeriods;
+    if (selectedPeriods.isNotEmpty) return selectedPeriods;
     final periods = _periodsForShifts(shifts);
     return periods.isEmpty ? _requirePeriods() : periods;
+  }
+
+  Schedule _scheduleForActivePeriods() {
+    final activePeriods = _activeRosterPeriods().toSet();
+    return canonicalSchedule.copyWith(
+      months: canonicalSchedule.months
+          .where(
+            (month) => activePeriods.contains(
+              RosterPeriod(year: month.month.year, month: month.month.month),
+            ),
+          )
+          .toList(growable: false),
+    );
   }
 
   void _rememberShiftOverride(Shift shift) {
