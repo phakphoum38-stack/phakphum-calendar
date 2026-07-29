@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/features/shift_parser/application/monthly_roster_section_parser.dart';
+import 'package:phakphum_calendar/features/shift_parser/domain/monthly_roster_section.dart';
 import 'package:phakphum_calendar/features/shift_parser/domain/normalized_cell.dart';
 import 'package:phakphum_calendar/features/shift_parser/domain/shift_parser_input.dart';
 
@@ -62,6 +63,47 @@ void main() {
     expect(report.assignments.single.rowLabel, 'ห้องทดลองใหม่');
     expect(report.assignments.single.workerName, 'ภาคภูมิ');
     expect(report.assignments.single.date, DateTime(2026, 8, 1));
+  });
+
+  test('filters assignments by query, section, and selected month', () {
+    final report = MonthlyRosterParseReport(
+      sections: [
+        MonthlyRosterSection(
+          title: 'เวรใหญ่',
+          headerRowIndex: 0,
+          assignments: [
+            MonthlyRosterAssignment(
+              sectionTitle: 'เวรใหญ่',
+              rowLabel: 'ER',
+              rowIndex: 1,
+              workerName: 'สมชาย',
+              date: DateTime(2026, 7, 1),
+              sourceCell: 'B2',
+            ),
+            MonthlyRosterAssignment(
+              sectionTitle: 'เวรใหญ่',
+              rowLabel: 'CT',
+              rowIndex: 2,
+              workerName: 'สมหญิง',
+              date: DateTime(2026, 8, 1),
+              sourceCell: 'B3',
+            ),
+          ],
+        ),
+      ],
+      warnings: const [],
+    );
+
+    final filtered = report.filtered(
+      query: 'สมชาย',
+      sectionTitle: 'เวรใหญ่',
+      includesDate: (date) => date.month == 7,
+    );
+
+    expect(filtered.sections, hasLength(1));
+    expect(filtered.assignments, hasLength(1));
+    expect(filtered.assignments.single.workerName, 'สมชาย');
+    expect(filtered.assignments.single.date.month, 7);
   });
 }
 

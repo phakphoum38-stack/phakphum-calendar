@@ -2452,22 +2452,11 @@ class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
   @override
   Widget build(BuildContext context) {
     final report = widget.controller.monthlyRoster;
-    final query = search.text.trim().toLowerCase();
-    final sections = report.sections
-        .where((section) {
-          final matchesSection =
-              selectedSection == null || section.title == selectedSection;
-          final matchesQuery =
-              query.isEmpty ||
-              section.title.toLowerCase().contains(query) ||
-              section.assignments.any(
-                (assignment) =>
-                    assignment.rowLabel.toLowerCase().contains(query) ||
-                    assignment.workerName.toLowerCase().contains(query),
-              );
-          return matchesSection && matchesQuery;
-        })
-        .toList(growable: false);
+    final filteredReport = report.filtered(
+      query: search.text,
+      sectionTitle: selectedSection,
+    );
+    final sections = filteredReport.sections;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
