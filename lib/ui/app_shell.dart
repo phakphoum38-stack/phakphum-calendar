@@ -1126,7 +1126,7 @@ class _DashboardPageState extends State<_DashboardPage> {
     if (!mounted) return;
 
     if (controller.recentOwnedSheets.isEmpty) {
-      throw StateError('ไม่พบ Google Sheets ที่บัญชีนี้เป็นเจ้าของ');
+      throw StateError('ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้');
     }
 
     final selected = await showDialog<List<RecentOwnedSheet>>(
@@ -1142,43 +1142,6 @@ class _DashboardPageState extends State<_DashboardPage> {
 
     if (selected == null || selected.isEmpty || !mounted) return;
     await controller.selectRecentSourceSheets(selected);
-  }
-
-  Future<void> _pasteGoogleSheetUrl() async {
-    final input = TextEditingController();
-    final url = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('วาง URL ของ Google Sheets'),
-        content: SizedBox(
-          width: 540,
-          child: TextField(
-            controller: input,
-            autofocus: true,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              labelText: 'URL ที่คัดลอกจากเบราว์เซอร์',
-              hintText: 'https://docs.google.com/spreadsheets/d/…/edit',
-              helperText:
-                  'บันทึกเฉพาะในเครื่องของบัญชีนี้ และไม่ส่ง URL ขึ้น GitHub',
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('ยกเลิก'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, input.text.trim()),
-            child: const Text('ตรวจและใช้ไฟล์นี้'),
-          ),
-        ],
-      ),
-    );
-    input.dispose();
-    if (url == null || url.isEmpty) return;
-    await widget.controller.selectSourceForCurrentAccount(url);
   }
 
   Future<void> _addPeriod() async {
@@ -1310,7 +1273,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                           ? 'อ่านในหน่วยความจำ • ไม่อัปโหลดไฟล์หรือชื่อไฟล์'
                                           : controller.hasRosterSource
                                           ? 'ไฟล์หลักสำหรับอ่านตารางเวร • บันทึกไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
-                                          : 'ค้นหาจาก Drive หรือวาง URL ที่คัดลอกจากเบราว์เซอร์',
+                                          : 'เลือกไฟล์จาก Google Sheets ของบัญชีที่ล็อกอิน',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -1332,30 +1295,10 @@ class _DashboardPageState extends State<_DashboardPage> {
                           FilledButton.icon(
                             onPressed:
                                 controller.auth.isSignedIn && !controller.busy
-                                ? () => widget.perform(
-                                    () => _pickGoogleSheet(
-                                      order: OwnedSheetOrder.firstCreated,
-                                    ),
-                                  )
-                                : null,
-                            icon: const Icon(Icons.history_outlined),
-                            label: const Text('ค้นหาไฟล์แรก'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
-                                controller.auth.isSignedIn && !controller.busy
                                 ? () => widget.perform(_pickGoogleSheet)
                                 : null,
-                            icon: const Icon(Icons.update_outlined),
-                            label: const Text('แก้ไขล่าสุด'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
-                                controller.auth.isSignedIn && !controller.busy
-                                ? () => widget.perform(_pasteGoogleSheetUrl)
-                                : null,
-                            icon: const Icon(Icons.link),
-                            label: const Text('วาง URL จากเบราว์เซอร์'),
+                            icon: const Icon(Icons.table_chart_outlined),
+                            label: const Text('เลือกไฟล์จาก Google Sheets'),
                           ),
                           OutlinedButton.icon(
                             onPressed: controller.busy

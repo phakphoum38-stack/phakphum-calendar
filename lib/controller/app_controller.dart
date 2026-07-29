@@ -443,8 +443,11 @@ class AppController extends ChangeNotifier implements ControllerState {
         drive.DriveApi.driveMetadataReadonlyScope,
       ]);
       try {
-        recentOwnedSheets = await _ownershipService
-            .listFirstSpreadsheetOfEachMonth(client, limit: 1000);
+        recentOwnedSheets = await _ownershipService.listOwnedSpreadsheets(
+          client,
+          limit: 1000,
+          order: order,
+        );
         recentSheetHistoryLoaded = true;
         status = recentOwnedSheets.isEmpty
             ? 'ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้'
