@@ -11,6 +11,7 @@ void main() {
       id: 'person-a',
       name: 'ผู้ใช้ A',
       statuses: ['เช้า', 'OFF', 'แทนเวร'],
+      lockedDutyPoint: 'CT IPD',
     );
 
     await repository.saveAll([entry]);
@@ -19,6 +20,7 @@ void main() {
     expect(loaded.single.id, entry.id);
     expect(loaded.single.name, entry.name);
     expect(loaded.single.statuses, ['เช้า', 'OFF', 'แทนเวร']);
+    expect(loaded.single.lockedDutyPoint, 'CT IPD');
   });
 
   test('roster name storage starts empty', () async {

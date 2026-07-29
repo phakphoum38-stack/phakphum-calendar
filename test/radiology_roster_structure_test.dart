@@ -84,6 +84,7 @@ void main() {
       month: DateTime(2026, 8),
       directory: directory,
       blueprint: blueprint,
+      lockedDutyPointsByEmployeeId: {directory.allEmployees.last.id: 'CT IPD'},
       staffingRules: const [
         RosterStaffingRule(
           slotId: 'ct-ipd-morning',
@@ -106,5 +107,11 @@ void main() {
     final generated = const ScheduleGenerator().autoAssign(request);
     expect(generated.assignmentsCreated, 21);
     expect(generated.uncoveredRequirements, isEmpty);
+    final assignedEmployees = generated.schedule.months
+        .expand((month) => month.days)
+        .expand((day) => day.assignments)
+        .map((assignment) => assignment.employee.id)
+        .toSet();
+    expect(assignedEmployees, {directory.allEmployees.last.id});
   });
 }
