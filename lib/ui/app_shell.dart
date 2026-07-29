@@ -162,6 +162,7 @@ class _AppShellState extends State<AppShell> {
               controller: controller,
               perform: _perform,
               compareCalendar: _compareCalendar,
+              deleteDuplicateCalendarEvents: _deleteDuplicateCalendarEvents,
               sync: _sync,
               openAlerts: () =>
                   unawaited(_openUtilityPage(_UtilityPage.notifications)),
@@ -541,6 +542,24 @@ class _AppShellState extends State<AppShell> {
     );
     if (compared && widget.controller.pendingAlertCount > 0) {
       await _showConflictWarningDialog();
+    }
+  }
+
+  Future<void> _deleteDuplicateCalendarEvents() async {
+    final scanned = await _performWithResult(
+      widget.controller.findDuplicateCalendarEvents,
+    );
+    if (!scanned || !mounted) return;
+    final count = widget.controller.duplicateCalendarEventCount;
+    if (count == 0) return;
+    final confirmed = await _showConfirmationDialog(
+      title: 'ลบเวรซ้ำ $count รายการ?',
+      message:
+          'ระบบจะเก็บหนึ่งรายการต่อเวร และลบเฉพาะรายการซ้ำที่มี metadata '
+          'ของ Shift Tools กิจกรรมส่วนตัวจะไม่ถูกลบ',
+    );
+    if (confirmed == true) {
+      await _perform(widget.controller.deleteDuplicateCalendarEvents);
     }
   }
 
@@ -1048,6 +1067,7 @@ class _DashboardPage extends StatefulWidget {
     required this.controller,
     required this.perform,
     required this.compareCalendar,
+    required this.deleteDuplicateCalendarEvents,
     required this.sync,
     required this.openAlerts,
     required this.configureGoogleOAuth,
@@ -1057,6 +1077,7 @@ class _DashboardPage extends StatefulWidget {
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
   final Future<void> Function() compareCalendar;
+  final Future<void> Function() deleteDuplicateCalendarEvents;
   final Future<void> Function() sync;
   final VoidCallback openAlerts;
   final Future<void> Function() configureGoogleOAuth;
@@ -1636,6 +1657,16 @@ class _DashboardPageState extends State<_DashboardPage> {
                                 : null,
                             icon: const Icon(Icons.difference_outlined),
                             label: const Text('เปรียบเทียบ Calendar'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                controller.auth.isSignedIn &&
+                                    controller.shifts.isNotEmpty &&
+                                    !controller.busy
+                                ? widget.deleteDuplicateCalendarEvents
+                                : null,
+                            icon: const Icon(Icons.delete_sweep_outlined),
+                            label: const Text('ลบเวรซ้ำ'),
                           ),
                           FilledButton.tonalIcon(
                             onPressed:

@@ -201,6 +201,7 @@ class AppController extends ChangeNotifier implements ControllerState {
   List<Shift> get shifts => _legacySchedule.toLegacyShifts();
   List<ShiftAlert> alerts = [];
   List<CalendarBusyPeriod> calendarPeriods = [];
+  Set<String> _duplicateCalendarEventIds = {};
   Map<String, ShiftAlertDecision> alertDecisions = {};
   List<AuditEntry> auditEntries = [];
   List<SavedSheet> savedSheets = [];
@@ -248,6 +249,7 @@ class AppController extends ChangeNotifier implements ControllerState {
 
   int get includedCount => shifts.where((shift) => !shift.excluded).length;
   int get existingCount => shifts.where(_matchesCurrentCalendar).length;
+  int get duplicateCalendarEventCount => _duplicateCalendarEventIds.length;
   int get newCount => shifts
       .where((shift) => !shift.excluded && !_matchesCurrentCalendar(shift))
       .length;
@@ -946,6 +948,81 @@ class AppController extends ChangeNotifier implements ControllerState {
           'calendar.compare',
           'ตรวจแบบอ่านอย่างเดียว: มีแล้ว $existingCount, ใหม่ $newCount, '
               'กิจกรรมที่นำมาตรวจชน ${calendarPeriods.length}',
+          true,
+        );
+      } finally {
+        client.close();
+      }
+    });
+  }
+
+  Future<int> findDuplicateCalendarEvents() async {
+    if (!auth.isSignedIn) {
+      throw StateError('กรุณาเชื่อมต่อบัญชี Google ก่อนตรวจเวรซ้ำ');
+    }
+    await _run('ตรวจหาเวรซ้ำใน Google Calendar', () async {
+      final client = await auth.clientFor([
+        calendar.CalendarApi.calendarEventsReadonlyScope,
+      ]);
+      try {
+        final duplicateIds = <String>{};
+        for (final period in _activeRosterPeriods()) {
+          duplicateIds.addAll(
+            await _calendarService.findManagedDuplicateEventIds(
+              client,
+              year: period.year,
+              month: period.month,
+              desiredShifts: shifts
+                  .where(
+                    (shift) =>
+                        !shift.excluded &&
+                        shift.start.year == period.year &&
+                        shift.start.month == period.month,
+                  )
+                  .toList(growable: false),
+            ),
+          );
+        }
+        _duplicateCalendarEventIds = duplicateIds;
+        status = duplicateIds.isEmpty
+            ? 'ไม่พบเวรซ้ำที่สร้างโดย Shift Tools'
+            : 'พบเวรซ้ำที่ลบได้ ${duplicateIds.length} รายการ';
+        await _addAudit(
+          'calendar.duplicate.scan',
+          'ตรวจแบบอ่านอย่างเดียว พบเวรซ้ำที่มี metadata ของระบบ '
+              '${duplicateIds.length} รายการ',
+          true,
+        );
+      } finally {
+        client.close();
+      }
+    });
+    return duplicateCalendarEventCount;
+  }
+
+  Future<void> deleteDuplicateCalendarEvents() async {
+    final ids = _duplicateCalendarEventIds.toList(growable: false);
+    if (ids.isEmpty) {
+      throw StateError('กรุณากดตรวจหาเวรซ้ำก่อนลบ');
+    }
+    await _run('ลบเวรซ้ำจาก Google Calendar', () async {
+      final client = await auth.clientFor([
+        calendar.CalendarApi.calendarEventsScope,
+      ]);
+      var deleted = 0;
+      try {
+        for (final eventId in ids) {
+          await _calendarService.deleteEvent(client, eventId: eventId);
+          deleted++;
+        }
+        _duplicateCalendarEventIds = {};
+        existingKeys = {};
+        calendarPeriods = [];
+        _rebuildAlerts();
+        status = 'ลบเวรซ้ำจาก Google Calendar แล้ว $deleted รายการ';
+        await _addAudit(
+          'calendar.duplicate.delete',
+          'ผู้ใช้ยืนยันลบเวรซ้ำที่มี metadata ของระบบ $deleted รายการ',
           true,
         );
       } finally {
