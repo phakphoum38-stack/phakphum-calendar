@@ -2962,11 +2962,9 @@ class _PreviewPage extends StatelessWidget {
                     builder: (context, constraints) {
                       final narrow = constraints.maxWidth < 620;
                       final selector = OutlinedButton.icon(
-                        onPressed: shift.generated
-                            ? null
-                            : () => _editShift(context, index, shift),
+                        onPressed: () => _editShift(context, index, shift),
                         icon: const Icon(Icons.palette_outlined),
-                        label: const Text('ตั้งชื่อ เวลา ประเภท และสี'),
+                        label: const Text('ตั้งวันที่ เวลา ชื่อ ประเภท และสี'),
                       );
                       final details = Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2995,7 +2993,7 @@ class _PreviewPage extends StatelessWidget {
                                     Icons.bedtime_outlined,
                                     size: 16,
                                   ),
-                                  label: Text('OFF อัตโนมัติ'),
+                                  label: Text('OFF ค่าเริ่มต้น'),
                                 ),
                               if (shift.sourceColorValue != null)
                                 Chip(
@@ -3039,17 +3037,17 @@ class _PreviewPage extends StatelessWidget {
                             '${shift.sheetTitle} • ${shift.cell} • ${shift.assignedName}',
                           ),
                           if (shift.generated)
-                            const Text('ช่วงพัก 08:00–16:00 หลังเวรดึก'),
+                            const Text(
+                              'ระบบสร้างจากค่าเริ่มต้น กดตั้งค่าเพื่อแก้ไขได้',
+                            ),
                         ],
                       );
                       final check = Checkbox(
                         value: !shift.excluded,
-                        onChanged: shift.generated
-                            ? null
-                            : (value) => controller.updateShift(
-                                index,
-                                excluded: value != true,
-                              ),
+                        onChanged: (value) => controller.updateShift(
+                          index,
+                          excluded: value != true,
+                        ),
                       );
                       final bar = Container(
                         width: 5,

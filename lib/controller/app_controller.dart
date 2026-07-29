@@ -1084,9 +1084,6 @@ class AppController extends ChangeNotifier implements ControllerState {
   }) {
     final updatedShifts = shifts.toList();
     final shift = updatedShifts[index];
-    if (shift.generated) {
-      throw StateError('รายการ OFF อัตโนมัติปรับจากเวรดึกต้นทางเท่านั้น');
-    }
     if (!end.isAfter(start)) {
       throw const FormatException('เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม');
     }
@@ -1098,6 +1095,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       start: start,
       end: end,
       category: category,
+      generated: false,
       calendarColorId: color?.id,
       clearCalendarColor: color == null,
     );
