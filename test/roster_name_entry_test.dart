@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/features/roster_names/domain/roster_name_entry.dart';
+import 'package:phakphum_calendar/features/roster_names/presentation/roster_name_list_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -25,5 +26,13 @@ void main() {
 
   test('roster name storage starts empty', () async {
     expect(await RosterNameRepository().load(), isEmpty);
+  });
+
+  test('sheet row labels map to daily roster statuses', () {
+    expect(rosterStatusFromRowLabel('เวรเช้า'), 'เวร');
+    expect(rosterStatusFromRowLabel('เจ้าหน้าที่ OFF'), 'OFF');
+    expect(rosterStatusFromRowLabel('แทนเวร'), 'แทนเวร');
+    expect(rosterStatusFromRowLabel('ลาป่วย'), 'ลาป่วย');
+    expect(rosterStatusFromRowLabel('ลาพักร้อน'), 'ลาพักร้อน');
   });
 }

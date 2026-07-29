@@ -181,7 +181,7 @@ class _AppShellState extends State<AppShell> {
               openRosterEditor: _openRosterEditor,
             ),
             _MonthlyRosterPage(controller: controller, perform: _perform),
-            const RosterNameListPage(),
+            RosterNameListPage(controller: controller, perform: _perform),
             EmployeeDirectoryPage(
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.employeeDirectoryControllerFactory,

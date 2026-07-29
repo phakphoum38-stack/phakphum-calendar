@@ -203,6 +203,7 @@ void main() {
     await tester.tap(find.text('รายชื่อ'));
     await tester.pumpAndSettle();
     expect(find.text('ค้นหาชื่อหรือสถานะ'), findsOneWidget);
+    expect(find.text('Import ไฟล์'), findsOneWidget);
     expect(find.byTooltip('เพิ่มลิสต์รายชื่อ'), findsOneWidget);
     await tester.tap(find.byTooltip('เพิ่มลิสต์รายชื่อ'));
     await tester.pumpAndSettle();

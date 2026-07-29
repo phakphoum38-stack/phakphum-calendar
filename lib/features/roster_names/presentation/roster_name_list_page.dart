@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../controller/app_controller.dart';
+import '../../shift_parser/domain/monthly_roster_section.dart';
 import '../domain/roster_name_entry.dart';
 
 const rosterStatusOptions = [
@@ -15,8 +17,27 @@ const rosterStatusOptions = [
   'ลาบวช',
 ];
 
+String rosterStatusFromRowLabel(String rowLabel) {
+  final value = rowLabel.trim().toLowerCase();
+  if (value.contains('แทน')) return 'แทนเวร';
+  if (value.contains('off') || value.contains('ออฟ')) return 'OFF';
+  if (value.contains('กิจ')) return 'ลากิจ';
+  if (value.contains('ป่วย')) return 'ลาป่วย';
+  if (value.contains('พักร้อน')) return 'ลาพักร้อน';
+  if (value.contains('คลอด')) return 'ลาคลอด';
+  if (value.contains('บวช')) return 'ลาบวช';
+  return 'เวร';
+}
+
 class RosterNameListPage extends StatefulWidget {
-  const RosterNameListPage({super.key});
+  const RosterNameListPage({
+    super.key,
+    required this.controller,
+    required this.perform,
+  });
+
+  final AppController controller;
+  final Future<void> Function(Future<void> Function()) perform;
 
   @override
   State<RosterNameListPage> createState() => _RosterNameListPageState();
@@ -27,6 +48,12 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
   final search = TextEditingController();
   List<RosterNameEntry> entries = const [];
   bool loading = true;
+  DateTime selectedDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
+  MonthlyRosterParseReport? importedReport;
 
   @override
   void initState() {
@@ -136,6 +163,72 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
     if (mounted) setState(() => entries = List.unmodifiable(updated));
   }
 
+  Future<void> _importFile() => widget.perform(() async {
+    await widget.controller.importLocalMonthlyRosterFile();
+    importedReport = widget.controller.monthlyRoster;
+    await _applyImportedDate();
+  });
+
+  Future<void> _pickDate() async {
+    final value = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(selectedDate.year - 10),
+      lastDate: DateTime(selectedDate.year + 10, 12, 31),
+    );
+    if (value == null) return;
+    selectedDate = value;
+    if (importedReport == null) {
+      setState(() {});
+    } else {
+      await _applyImportedDate();
+    }
+  }
+
+  Future<void> _applyImportedDate() async {
+    final report = importedReport;
+    if (report == null) return;
+    final allNames = report.assignments
+        .map((assignment) => assignment.workerName.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    final statusByName = <String, String>{};
+    for (final assignment in report.assignments) {
+      if (!_sameDay(assignment.date, selectedDate)) continue;
+      final name = assignment.workerName.trim();
+      if (name.isEmpty) continue;
+      statusByName[name] = rosterStatusFromRowLabel(assignment.rowLabel);
+    }
+    final existingByName = {
+      for (final entry in entries) entry.name.toLowerCase(): entry,
+    };
+    final updated = <RosterNameEntry>[
+      for (final name in allNames)
+        RosterNameEntry(
+          id:
+              existingByName[name.toLowerCase()]?.id ??
+              'sheet-name-${name.hashCode}',
+          name: name,
+          statuses: statusByName[name] == null
+              ? const []
+              : [statusByName[name]!],
+          lockedDutyPoint: existingByName[name.toLowerCase()]?.lockedDutyPoint,
+        ),
+      for (final entry in entries)
+        if (!allNames.any(
+          (name) => name.toLowerCase() == entry.name.toLowerCase(),
+        ))
+          entry,
+    ]..sort((left, right) => left.name.compareTo(right.name));
+    await repository.saveAll(updated);
+    if (mounted) setState(() => entries = List.unmodifiable(updated));
+  }
+
+  bool _sameDay(DateTime left, DateTime right) =>
+      left.year == right.year &&
+      left.month == right.month &&
+      left.day == right.day;
+
   Future<void> _delete(RosterNameEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -191,11 +284,25 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
               icon: const Icon(Icons.playlist_add),
               tooltip: 'เพิ่มลิสต์รายชื่อ',
             ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: widget.controller.busy ? null : _importFile,
+              icon: const Icon(Icons.upload_file_outlined),
+              label: const Text('Import ไฟล์'),
+            ),
           ],
         ),
         const SizedBox(height: 6),
         const Text('รายชื่อและสถานะสำหรับใช้อ้างอิงในตารางเวรรายวัน'),
         const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: _pickDate,
+          icon: const Icon(Icons.calendar_today_outlined),
+          label: Text(
+            MaterialLocalizations.of(context).formatShortDate(selectedDate),
+          ),
+        ),
+        const SizedBox(height: 12),
         TextField(
           controller: search,
           onChanged: (_) => setState(() {}),
