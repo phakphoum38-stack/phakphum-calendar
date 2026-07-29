@@ -285,6 +285,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     }
     try {
       savedSheets = await _settingsService.loadSavedSheets();
+      await _ensureActiveSavedSheetPerAccount();
     } catch (caught) {
       error ??= 'โหลดรายการชีตที่บันทึกไม่สำเร็จ: $caught';
     }
@@ -362,6 +363,31 @@ class AppController extends ChangeNotifier implements ControllerState {
     notifyListeners();
   }
 
+  Future<void> _ensureActiveSavedSheetPerAccount() async {
+    final accountIds = savedSheets
+        .map((sheet) => sheet.ownerAccountId)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    var changed = false;
+    for (final accountId in accountIds) {
+      final accountSheets = savedSheets
+          .where((sheet) => sheet.ownerAccountId == accountId)
+          .toList()
+        ..sort((left, right) => right.savedAt.compareTo(left.savedAt));
+      if (accountSheets.any((sheet) => sheet.isActive) ||
+          accountSheets.isEmpty) {
+        continue;
+      }
+      final activeKey = accountSheets.first.key;
+      savedSheets = [
+        for (final item in savedSheets)
+          if (item.key == activeKey) item.copyWith(isActive: true) else item,
+      ];
+      changed = true;
+    }
+    if (changed) await _settingsService.saveSavedSheets(savedSheets);
+  }
+
   Iterable<ToolDefinition> get pinnedTools =>
       toolCatalog.where((tool) => pinnedToolIds.contains(tool.id));
 
@@ -371,11 +397,14 @@ class AppController extends ChangeNotifier implements ControllerState {
     return savedSheets
         .where((sheet) => sheet.ownerAccountId == accountId)
         .toList()
-      ..sort((left, right) => right.savedAt.compareTo(left.savedAt));
+      ..sort((left, right) {
+        if (left.isActive != right.isActive) return left.isActive ? -1 : 1;
+        return right.savedAt.compareTo(left.savedAt);
+      });
   }
 
   SavedSheet? get currentSourceSheet =>
-      savedSheetsForCurrentAccount.firstOrNull;
+      savedSheetsForCurrentAccount.where((sheet) => sheet.isActive).firstOrNull;
 
   String get currentSourceUrl => currentSourceSheet?.url ?? '';
 
@@ -433,8 +462,16 @@ class AppController extends ChangeNotifier implements ControllerState {
         drive.DriveApi.driveMetadataReadonlyScope,
       ]);
       try {
-        recentOwnedSheets = await _ownershipService
-            .listFirstSpreadsheetOfEachMonth(client, limit: 1000);
+        recentOwnedSheets = order == OwnedSheetOrder.firstCreated
+            ? await _ownershipService.listFirstSpreadsheetOfEachMonth(
+                client,
+                limit: 1000,
+              )
+            : await _ownershipService.listOwnedSpreadsheets(
+                client,
+                limit: 100,
+                order: order,
+              );
         recentSheetHistoryLoaded = true;
         status = recentOwnedSheets.isEmpty
             ? 'ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้'
@@ -562,7 +599,10 @@ class AppController extends ChangeNotifier implements ControllerState {
     _requireSheetOwner(sheet);
     await _run('ลบชีตออกจากรายการบันทึก', () async {
       final wasCurrent = currentSourceSheet?.key == sheet.key;
-      savedSheets.removeWhere((item) => item.key == sheet.key);
+      savedSheets = [
+        for (final item in savedSheets)
+          if (item.key == sheet.key) item.copyWith(isActive: false) else item,
+      ];
       await _settingsService.saveSavedSheets(savedSheets);
       if (wasCurrent) {
         _replaceLegacyShifts(const []);
@@ -572,10 +612,10 @@ class AppController extends ChangeNotifier implements ControllerState {
         sheetTitles = [];
         _autoRefreshTimer?.cancel();
       }
-      status = 'ลบ “${sheet.displayTitle}” ออกจากรายการแล้ว';
+      status = 'นำ “${sheet.displayTitle}” ออกจากไฟล์หลักแล้ว; ยังเก็บไว้ในประวัติ';
       await _addAudit(
         'sheet.reference.delete',
-        'ลบ “${sheet.displayTitle}” ออกจากรายการในเครื่อง; ไม่ได้ลบไฟล์ Google Sheets',
+        'นำ “${sheet.displayTitle}” ออกจากไฟล์หลัก; ยังเก็บประวัติไว้และไม่ได้ลบไฟล์ Google Sheets',
         true,
       );
     });
@@ -586,7 +626,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       final sourceUrl = localSourceLabel == null ? currentSourceUrl : '';
       if (sourceUrl.isEmpty) {
         throw StateError(
-          'กรุณาวางลิงก์และเลือกไฟล์ Google Sheets หลักของบัญชีนี้ก่อน',
+          'ยังไม่ได้เลือกไฟล์หลักของบัญชีนี้',
         );
       }
       final searchNames = rosterSearchNames;
@@ -1185,8 +1225,9 @@ class AppController extends ChangeNotifier implements ControllerState {
 
   Future<SavedSheet> _saveSheetReference(
     String accountId,
-    SheetReference reference,
-  ) async {
+    SheetReference reference, {
+    bool setActive = true,
+  }) async {
     final saved = SavedSheet(
       ownerAccountId: accountId,
       spreadsheetId: reference.spreadsheetId,
@@ -1195,7 +1236,17 @@ class AppController extends ChangeNotifier implements ControllerState {
       sheetTitle: reference.sheetTitle,
       url: reference.url,
       savedAt: DateTime.now(),
+      isActive: setActive,
     );
+    if (setActive) {
+      savedSheets = [
+        for (final item in savedSheets)
+          if (item.ownerAccountId == accountId)
+            item.copyWith(isActive: false)
+          else
+            item,
+      ];
+    }
     savedSheets.removeWhere((item) => item.key == saved.key);
     savedSheets.insert(0, saved);
     await _settingsService.saveSavedSheets(savedSheets);

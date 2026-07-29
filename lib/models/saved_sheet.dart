@@ -7,6 +7,7 @@ class SavedSheet {
     required this.savedAt,
     this.sheetId,
     this.sheetTitle,
+    this.isActive = false,
   });
 
   final String ownerAccountId;
@@ -16,6 +17,7 @@ class SavedSheet {
   final String? sheetTitle;
   final String url;
   final DateTime savedAt;
+  final bool isActive;
 
   String get key => '$ownerAccountId:$spreadsheetId:${sheetId ?? 'all'}';
 
@@ -46,6 +48,7 @@ class SavedSheet {
     'sheetTitle': sheetTitle,
     'url': url,
     'savedAt': savedAt.toIso8601String(),
+    'isActive': isActive,
   };
 
   factory SavedSheet.fromJson(Map<String, Object?> json) {
@@ -69,6 +72,18 @@ class SavedSheet {
       savedAt:
           DateTime.tryParse(json['savedAt']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
+      isActive: json['isActive'] == true,
     );
   }
+
+  SavedSheet copyWith({DateTime? savedAt, bool? isActive}) => SavedSheet(
+    ownerAccountId: ownerAccountId,
+    spreadsheetId: spreadsheetId,
+    spreadsheetTitle: spreadsheetTitle,
+    sheetId: sheetId,
+    sheetTitle: sheetTitle,
+    url: url,
+    savedAt: savedAt ?? this.savedAt,
+    isActive: isActive ?? this.isActive,
+  );
 }
