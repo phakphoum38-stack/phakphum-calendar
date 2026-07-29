@@ -66,12 +66,11 @@ void main() {
     );
   });
 
-  test('customizing a default OFF keeps the user-defined range', () {
+  test('customizing a default OFF accepts any user-defined date and time', () {
     final controller = demoController();
     addTearDown(controller.dispose);
     final index = controller.shifts.indexWhere((shift) => shift.generated);
-    final original = controller.shifts[index];
-    final customStart = original.start.add(const Duration(hours: 1));
+    final customStart = DateTime(2026, 8, 7, 9);
     final customEnd = customStart.add(const Duration(hours: 4));
 
     controller.customizeShift(
@@ -117,7 +116,7 @@ void main() {
         controller.shifts
             .where((shift) => !shift.generated)
             .map((shift) => shift.start.day),
-        [3, 8, 10, 10],
+        [3, 8, 10],
       );
     },
   );
