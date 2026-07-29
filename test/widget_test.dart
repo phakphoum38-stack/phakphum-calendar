@@ -16,6 +16,16 @@ void main() {
   AppController demoController() =>
       AppDependencies.production().createDemoAppController();
 
+  test('default monthly roster contains no personal names', () {
+    final controller = demoController();
+    addTearDown(controller.dispose);
+
+    expect(
+      controller.shifts.every((shift) => shift.assignedName.isEmpty),
+      isTrue,
+    );
+  });
+
   test(
     'accepting an OFF conflict keeps duty and excludes generated OFF',
     () async {
