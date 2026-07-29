@@ -4,6 +4,17 @@ import 'package:flutter/material.dart';
 
 import '../domain/roster_name_entry.dart';
 
+const rosterStatusOptions = [
+  'เวร',
+  'แทนเวร',
+  'OFF',
+  'ลากิจ',
+  'ลาป่วย',
+  'ลาพักร้อน',
+  'ลาคลอด',
+  'ลาบวช',
+];
+
 class RosterNameListPage extends StatefulWidget {
   const RosterNameListPage({super.key});
 
@@ -108,6 +119,23 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
     if (mounted) setState(() => entries = List.unmodifiable(updated));
   }
 
+  Future<void> _changeStatus(RosterNameEntry entry, String? status) async {
+    final updated = [
+      for (final item in entries)
+        if (item.id == entry.id)
+          RosterNameEntry(
+            id: item.id,
+            name: item.name,
+            statuses: status == null ? const [] : [status],
+            lockedDutyPoint: item.lockedDutyPoint,
+          )
+        else
+          item,
+    ];
+    await repository.saveAll(updated);
+    if (mounted) setState(() => entries = List.unmodifiable(updated));
+  }
+
   Future<void> _delete(RosterNameEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -196,6 +224,7 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
             onEdit: _edit,
             onDelete: _delete,
             onLockChanged: _toggleLock,
+            onStatusChanged: _changeStatus,
           ),
       ],
     );
@@ -209,12 +238,14 @@ class RosterNameStatusList extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onLockChanged,
+    this.onStatusChanged,
   });
 
   final List<RosterNameEntry> entries;
   final ValueChanged<RosterNameEntry>? onEdit;
   final ValueChanged<RosterNameEntry>? onDelete;
   final void Function(RosterNameEntry entry, bool locked)? onLockChanged;
+  final void Function(RosterNameEntry entry, String? status)? onStatusChanged;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -237,12 +268,31 @@ class RosterNameStatusList extends StatelessWidget {
                 const Text('ล็อก'),
                 const SizedBox(width: 8),
               ],
-              ActionChip(
-                avatar: const Icon(Icons.label_outline, size: 16),
-                label: const Text('สถานะ'),
-                onPressed: onEdit == null
-                    ? null
-                    : () => onEdit?.call(entries[index]),
+              SizedBox(
+                width: 132,
+                child: DropdownButtonFormField<String>(
+                  initialValue:
+                      rosterStatusOptions.contains(
+                        entries[index].statuses.firstOrNull,
+                      )
+                      ? entries[index].statuses.first
+                      : null,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'สถานะ',
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                  ),
+                  items: [
+                    for (final status in rosterStatusOptions)
+                      DropdownMenuItem(value: status, child: Text(status)),
+                  ],
+                  onChanged: onStatusChanged == null
+                      ? null
+                      : (value) => onStatusChanged?.call(entries[index], value),
+                ),
               ),
               if (onEdit != null || onDelete != null)
                 PopupMenuButton<String>(
@@ -257,10 +307,8 @@ class RosterNameStatusList extends StatelessWidget {
                 ),
             ],
           ),
-          subtitle: entries[index].statuses.isEmpty
-              ? entries[index].lockedDutyPoint == null
-                    ? const Text('ยังไม่ได้กำหนดสถานะ')
-                    : _RosterNameLabels(entry: entries[index])
+          subtitle: entries[index].lockedDutyPoint == null
+              ? null
               : Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: _RosterNameLabels(entry: entries[index]),
@@ -287,7 +335,6 @@ class _RosterNameLabels extends StatelessWidget {
           avatar: const Icon(Icons.lock_outline, size: 16),
           label: Text('ล็อก: $point'),
         ),
-      for (final status in entry.statuses) Chip(label: Text(status)),
     ],
   );
 }
@@ -402,27 +449,19 @@ class _RosterNameDialog extends StatefulWidget {
 
 class _RosterNameDialogState extends State<_RosterNameDialog> {
   late final name = TextEditingController(text: widget.entry?.name ?? '');
-  late final status = TextEditingController();
   late final lockedDutyPoint = TextEditingController(
     text: widget.entry?.lockedDutyPoint ?? '',
   );
-  late final List<String> statuses = [...?widget.entry?.statuses];
+  late String? selectedStatus =
+      rosterStatusOptions.contains(widget.entry?.statuses.firstOrNull)
+      ? widget.entry!.statuses.first
+      : null;
 
   @override
   void dispose() {
     name.dispose();
-    status.dispose();
     lockedDutyPoint.dispose();
     super.dispose();
-  }
-
-  void _addStatus() {
-    final value = status.text.trim();
-    if (value.isEmpty || statuses.contains(value)) return;
-    setState(() {
-      statuses.add(value);
-      status.clear();
-    });
   }
 
   void _submit() {
@@ -435,7 +474,7 @@ class _RosterNameDialogState extends State<_RosterNameDialog> {
             widget.entry?.id ??
             'roster-name-${DateTime.now().microsecondsSinceEpoch}',
         name: displayName,
-        statuses: List.unmodifiable(statuses),
+        statuses: selectedStatus == null ? const [] : [selectedStatus!],
         lockedDutyPoint: lockedDutyPoint.text.trim().isEmpty
             ? null
             : lockedDutyPoint.text.trim(),
@@ -467,40 +506,15 @@ class _RosterNameDialogState extends State<_RosterNameDialog> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: status,
-                  onSubmitted: (_) => _addStatus(),
-                  decoration: const InputDecoration(
-                    labelText: 'สถานะ',
-                    hintText: 'เช่น เช้า, OFF, เวร, แทนเวร',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
-                onPressed: _addStatus,
-                icon: const Icon(Icons.add),
-                tooltip: 'เพิ่มสถานะ',
-              ),
+          DropdownButtonFormField<String>(
+            initialValue: selectedStatus,
+            decoration: const InputDecoration(labelText: 'สถานะ'),
+            items: [
+              for (final status in rosterStatusOptions)
+                DropdownMenuItem(value: status, child: Text(status)),
             ],
+            onChanged: (value) => setState(() => selectedStatus = value),
           ),
-          if (statuses.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final value in statuses)
-                  InputChip(
-                    label: Text(value),
-                    onDeleted: () => setState(() => statuses.remove(value)),
-                  ),
-              ],
-            ),
-          ],
         ],
       ),
     ),
