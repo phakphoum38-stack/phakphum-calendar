@@ -63,10 +63,18 @@ void main() {
 
     expect(find.text('แดชบอร์ด'), findsOneWidget);
     expect(find.text('ตารางเวร'), findsOneWidget);
+    expect(find.text('รายเดือน'), findsOneWidget);
     expect(find.text('บุคลากร'), findsOneWidget);
     expect(find.text('แลกเวร'), findsOneWidget);
     expect(find.text('รายงาน'), findsOneWidget);
     expect(find.text('ตั้งค่า'), findsOneWidget);
+
+    await tester.tap(find.text('รายเดือน'));
+    await tester.pumpAndSettle();
+    expect(find.text('ตารางเวรรายเดือน'), findsOneWidget);
+    expect(find.textContaining('เวรใหญ่, exten, คลินิก'), findsOneWidget);
+    await tester.tap(find.text('แดชบอร์ด'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();

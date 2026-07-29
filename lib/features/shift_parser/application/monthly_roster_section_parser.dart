@@ -82,6 +82,7 @@ class MonthlyRosterSectionParser {
             MonthlyRosterAssignment(
               sectionTitle: title,
               rowLabel: rowLabel,
+              rowIndex: rowIndex,
               workerName: worker,
               date: date,
               sourceCell: A1Notation.fromZeroBased(

@@ -12,6 +12,7 @@ import '../features/dashboard/application/dashboard_summary_service.dart';
 import '../features/dashboard/presentation/widgets/dashboard_summary_grid.dart';
 import '../features/shift_exchange/presentation/pages/shift_exchange_page.dart';
 import '../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
+import '../features/shift_parser/domain/monthly_roster_section.dart';
 import '../features/shift_templates/application/shift_template_controller.dart';
 import '../features/shift_templates/presentation/shift_templates_page.dart';
 import '../features/schedule/presentation/controllers/schedule_controller.dart';
@@ -87,6 +88,10 @@ class _AppShellState extends State<AppShell> {
     NavigationDestination(
       icon: const Icon(Icons.event_note_outlined),
       label: context.l10n.schedule,
+    ),
+    const NavigationDestination(
+      icon: Icon(Icons.calendar_view_month_outlined),
+      label: 'รายเดือน',
     ),
     NavigationDestination(
       icon: const Icon(Icons.groups_outlined),
@@ -165,6 +170,7 @@ class _AppShellState extends State<AppShell> {
               perform: _perform,
               openRosterEditor: _openRosterEditor,
             ),
+            _MonthlyRosterPage(controller: controller, perform: _perform),
             EmployeeDirectoryPage(
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.employeeDirectoryControllerFactory,
@@ -2480,6 +2486,307 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
   );
 }
 
+class _MonthlyRosterPage extends StatefulWidget {
+  const _MonthlyRosterPage({required this.controller, required this.perform});
+
+  final AppController controller;
+  final Future<void> Function(Future<void> Function()) perform;
+
+  @override
+  State<_MonthlyRosterPage> createState() => _MonthlyRosterPageState();
+}
+
+class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
+  final search = TextEditingController();
+  String? selectedSection;
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final report = widget.controller.monthlyRoster;
+    final query = search.text.trim().toLowerCase();
+    final sections = report.sections
+        .where((section) {
+          final matchesSection =
+              selectedSection == null || section.title == selectedSection;
+          final matchesQuery =
+              query.isEmpty ||
+              section.title.toLowerCase().contains(query) ||
+              section.assignments.any(
+                (assignment) =>
+                    assignment.rowLabel.toLowerCase().contains(query) ||
+                    assignment.workerName.toLowerCase().contains(query),
+              );
+          return matchesSection && matchesQuery;
+        })
+        .toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ตารางเวรรายเดือน',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          report.sections.isEmpty
+                              ? 'อ่านบล็อกเวรใหญ่, exten, คลินิก และหมวดอื่นจากโครงสร้างชีต'
+                              : '${report.sections.length} บล็อก • '
+                                    '${report.assignments.length} ช่องปฏิบัติงาน',
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed:
+                        widget.controller.busy ||
+                            !widget.controller.hasRosterSource
+                        ? null
+                        : () => widget.perform(widget.controller.loadRoster),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('อ่านใหม่'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: search,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'ค้นหาบล็อก สถานที่ หรือชื่อผู้ปฏิบัติงาน',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+              if (report.sections.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('ทั้งหมด'),
+                        selected: selectedSection == null,
+                        onSelected: (_) =>
+                            setState(() => selectedSection = null),
+                      ),
+                      const SizedBox(width: 8),
+                      for (final title
+                          in report.sections
+                              .map((section) => section.title)
+                              .toSet()) ...[
+                        ChoiceChip(
+                          label: Text(_compactSectionTitle(title)),
+                          selected: selectedSection == title,
+                          onSelected: (_) =>
+                              setState(() => selectedSection = title),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: report.sections.isEmpty
+              ? _MonthlyRosterEmptyState(controller: widget.controller)
+              : sections.isEmpty
+              ? const _EmptyState(
+                  icon: Icons.search_off,
+                  title: 'ไม่พบข้อมูลที่ค้นหา',
+                  message: 'ลองเปลี่ยนคำค้นหาหรือตัวกรองบล็อก',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: sections.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) =>
+                      _MonthlyRosterSectionCard(section: sections[index]),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthlyRosterEmptyState extends StatelessWidget {
+  const _MonthlyRosterEmptyState({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) => _EmptyState(
+    icon: Icons.calendar_view_month_outlined,
+    title: controller.hasRosterSource
+        ? 'ยังไม่ได้อ่านตารางรายเดือน'
+        : 'ยังไม่ได้เลือกแหล่งข้อมูลเวร',
+    message: controller.hasRosterSource
+        ? 'กด “อ่านใหม่” เพื่อค้นหาบล็อกที่มีแถววันที่ในชีต'
+        : 'เลือก Google Sheets ในหน้าแรก แล้วกลับมากด “อ่านใหม่”',
+  );
+}
+
+class _MonthlyRosterSectionCard extends StatelessWidget {
+  const _MonthlyRosterSectionCard({required this.section});
+
+  final MonthlyRosterSection section;
+
+  @override
+  Widget build(BuildContext context) {
+    final dates = section.assignments.map((item) => item.date).toSet().toList()
+      ..sort();
+    final rowIndexes =
+        section.assignments.map((item) => item.rowIndex).toSet().toList()
+          ..sort();
+    final rowLabels = <int, String>{
+      for (final assignment in section.assignments)
+        assignment.rowIndex: assignment.rowLabel,
+    };
+    final byPosition = <(int, DateTime), MonthlyRosterAssignment>{
+      for (final assignment in section.assignments)
+        (assignment.rowIndex, assignment.date): assignment,
+    };
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CircleAvatar(child: Icon(Icons.view_week_outlined)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        section.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${rowIndexes.length} แถว • '
+                        '${section.assignments.length} ช่อง',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (section.assignments.isEmpty)
+              const Text('บล็อกนี้ยังไม่มีรายชื่อผู้ปฏิบัติงาน')
+            else
+              Scrollbar(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columnSpacing: 20,
+                    headingRowHeight: 44,
+                    dataRowMinHeight: 48,
+                    dataRowMaxHeight: 64,
+                    columns: [
+                      const DataColumn(label: Text('เวร / สถานที่')),
+                      for (final date in dates)
+                        DataColumn(
+                          numeric: false,
+                          label: Text('${date.day}\n${_shortWeekday(date)}'),
+                        ),
+                    ],
+                    rows: [
+                      for (final rowIndex in rowIndexes)
+                        DataRow(
+                          cells: [
+                            DataCell(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minWidth: 110,
+                                  maxWidth: 180,
+                                ),
+                                child: Text(
+                                  rowLabels[rowIndex]!,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            for (final date in dates)
+                              DataCell(
+                                _MonthlyRosterCell(
+                                  assignment: byPosition[(rowIndex, date)],
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyRosterCell extends StatelessWidget {
+  const _MonthlyRosterCell({this.assignment});
+
+  final MonthlyRosterAssignment? assignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = assignment;
+    if (item == null) return const SizedBox(width: 72);
+    final color = _colorFromHex(item.backgroundColor);
+    return Tooltip(
+      message: '${item.sourceCell} • ${item.workerName}',
+      child: Container(
+        width: 92,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: color?.withValues(alpha: 0.18),
+          border: Border.all(
+            color: color ?? Theme.of(context).colorScheme.outlineVariant,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          item.workerName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
 class _PreviewPage extends StatelessWidget {
   const _PreviewPage({
     required this.controller,
@@ -3682,6 +3989,21 @@ const _thaiMonths = [
 
 String _thaiDate(DateTime value) =>
     '${value.day} ${_thaiMonths[value.month - 1]} ${value.year + 543}';
+String _shortWeekday(DateTime value) =>
+    const ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'][value.weekday - 1];
+String _compactSectionTitle(String value) {
+  final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return normalized.length <= 28
+      ? normalized
+      : '${normalized.substring(0, 27)}…';
+}
+
+Color? _colorFromHex(String? value) {
+  if (value == null) return null;
+  final rgb = int.tryParse(value.replaceFirst('#', ''), radix: 16);
+  return rgb == null ? null : Color(0xFF000000 | rgb);
+}
+
 String _time(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 String _clock(DateTime value) =>

@@ -18,6 +18,11 @@ import '../models/tool_definition.dart';
 import '../domain/entities/schedule.dart';
 import '../domain/repositories/schedule_repository.dart';
 import '../features/schedule/data/legacy_schedule_adapter.dart';
+import '../features/google_sheets/domain/sheet_color.dart';
+import '../features/shift_parser/application/monthly_roster_section_parser.dart';
+import '../features/shift_parser/domain/monthly_roster_section.dart';
+import '../features/shift_parser/domain/normalized_cell.dart';
+import '../features/shift_parser/domain/shift_parser_input.dart';
 import '../features/workflow/application/shift_calendar_workflow_controller.dart';
 import '../services/calendar_service.dart';
 import '../services/calendar_color_service.dart';
@@ -215,6 +220,10 @@ class AppController extends ChangeNotifier implements ControllerState {
   List<Shift> localReferenceShifts = [];
   List<Shift> _currentAllRosterShifts = [];
   List<Shift> _referenceAllRosterShifts = [];
+  MonthlyRosterParseReport monthlyRoster = const MonthlyRosterParseReport(
+    sections: [],
+    warnings: [],
+  );
   final Map<String, _ShiftOverride> _shiftOverrides = {};
   ShiftCalendarWorkflowController? _pendingCalendarWorkflow;
 
@@ -322,6 +331,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     calendarPeriods = [];
     existingKeys = {};
     sheetTitles = [];
+    monthlyRoster = const MonthlyRosterParseReport(sections: [], warnings: []);
     recentOwnedSheets = [];
     localSourceLabel = null;
     _shiftOverrides.clear();
@@ -570,6 +580,10 @@ class AppController extends ChangeNotifier implements ControllerState {
         calendarPeriods = [];
         existingKeys = {};
         sheetTitles = [];
+        monthlyRoster = const MonthlyRosterParseReport(
+          sections: [],
+          warnings: [],
+        );
         _autoRefreshTimer?.cancel();
       }
       status = 'ลบ “${sheet.displayTitle}” ออกจากรายการแล้ว';
@@ -603,6 +617,10 @@ class AppController extends ChangeNotifier implements ControllerState {
         final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
         await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final snapshots = await _sheetsService.readAll(client, sourceUrl);
+        monthlyRoster = _parseMonthlyRosterSnapshots(
+          snapshots,
+          spreadsheetId: spreadsheetId,
+        );
         final parsed = _parseRosterSnapshots(
           snapshots,
           searchNames: searchNames,
@@ -662,6 +680,10 @@ class AppController extends ChangeNotifier implements ControllerState {
         document.snapshots,
         searchNames: searchNames,
       );
+      monthlyRoster = _parseMonthlyRosterSnapshots(
+        document.snapshots,
+        spreadsheetId: 'local-${document.extension}',
+      );
       _currentAllRosterShifts = _parseAllRosterSnapshots(
         document.snapshots,
         fallback: parsed,
@@ -687,6 +709,72 @@ class AppController extends ChangeNotifier implements ControllerState {
         true,
       );
     });
+  }
+
+  MonthlyRosterParseReport _parseMonthlyRosterSnapshots(
+    List<SheetSnapshot> snapshots, {
+    required String spreadsheetId,
+  }) {
+    final sections = <MonthlyRosterSection>[];
+    final warnings = <String>[];
+    const parser = MonthlyRosterSectionParser();
+
+    for (var sheetIndex = 0; sheetIndex < snapshots.length; sheetIndex++) {
+      final snapshot = snapshots[sheetIndex];
+      final cells = <NormalizedCell>[];
+      for (var rowIndex = 0; rowIndex < snapshot.rows.length; rowIndex++) {
+        final row = snapshot.rows[rowIndex];
+        for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+          final value = row[columnIndex];
+          final text = value?.toString().trim();
+          if ((text == null || text.isEmpty) &&
+              snapshot.backgroundColorAt(rowIndex, columnIndex) == null) {
+            continue;
+          }
+          cells.add(
+            NormalizedCell(
+              sheetId: sheetIndex,
+              sheetTitle: snapshot.title,
+              a1: '',
+              rowIndex: rowIndex,
+              columnIndex: columnIndex,
+              text: text == null || text.isEmpty ? null : text,
+              rawValue: value,
+              backgroundColor: _sheetColor(
+                snapshot.backgroundColorAt(rowIndex, columnIndex),
+              ),
+            ),
+          );
+        }
+      }
+      final report = parser.parse(
+        ShiftParserInput(
+          spreadsheetId: spreadsheetId,
+          spreadsheetTitle: selectedSourceSheetTitle,
+          sheetId: sheetIndex,
+          sheetTitle: snapshot.title,
+          timeZone: 'Asia/Bangkok',
+          cells: cells,
+        ),
+      );
+      sections.addAll(report.sections);
+      warnings.addAll(report.warnings);
+    }
+
+    return MonthlyRosterParseReport(
+      sections: List.unmodifiable(sections),
+      warnings: List.unmodifiable(warnings),
+    );
+  }
+
+  SheetColor? _sheetColor(int? value) {
+    if (value == null) return null;
+    return SheetColor(
+      red: ((value >> 16) & 0xFF) / 255,
+      green: ((value >> 8) & 0xFF) / 255,
+      blue: (value & 0xFF) / 255,
+      alpha: ((value >> 24) & 0xFF) / 255,
+    );
   }
 
   Future<void> attachLocalReferenceFile() async {

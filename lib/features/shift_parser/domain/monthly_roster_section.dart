@@ -14,6 +14,7 @@ class MonthlyRosterAssignment {
   const MonthlyRosterAssignment({
     required this.sectionTitle,
     required this.rowLabel,
+    required this.rowIndex,
     required this.workerName,
     required this.date,
     required this.sourceCell,
@@ -22,6 +23,7 @@ class MonthlyRosterAssignment {
 
   final String sectionTitle;
   final String rowLabel;
+  final int rowIndex;
   final String workerName;
   final DateTime date;
   final String sourceCell;
