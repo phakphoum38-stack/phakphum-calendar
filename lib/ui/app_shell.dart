@@ -1174,6 +1174,31 @@ class _DashboardPageState extends State<_DashboardPage> {
         ),
       );
 
+  Future<void> _pickSyncRangeDate({required bool start}) async {
+    final controller = widget.controller;
+    final currentStart =
+        controller.syncRangeStart ??
+        DateTime(year ?? DateTime.now().year, month ?? DateTime.now().month);
+    final currentEnd =
+        controller.syncRangeEnd ??
+        DateTime(currentStart.year, currentStart.month + 1, 0);
+    final initialDate = start ? currentStart : currentEnd;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(initialDate.year - 5),
+      lastDate: DateTime(initialDate.year + 10, 12, 31),
+    );
+    if (selected == null) return;
+    final nextStart = start ? selected : currentStart;
+    final nextEnd = start && currentEnd.isBefore(selected)
+        ? selected
+        : start
+        ? currentEnd
+        : selected;
+    await controller.updateSyncDateRange(nextStart, nextEnd);
+  }
+
   Future<void> _addManualSourceItem({
     Uint8List? capturedImageBytes,
     String initialSourceKind = 'รูป/ภาพถ่าย',
@@ -1532,6 +1557,43 @@ class _DashboardPageState extends State<_DashboardPage> {
                             const Text(
                               'ถ้าไม่กดเพิ่ม แอปจะอ่านเดือนที่เลือก 1 เดือน',
                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: controller.busy
+                                ? null
+                                : () => widget.perform(
+                                    () => _pickSyncRangeDate(start: true),
+                                  ),
+                            icon: const Icon(Icons.date_range_outlined),
+                            label: Text(
+                              controller.syncRangeStart == null
+                                  ? 'กำหนดวันเริ่มซิงก์'
+                                  : 'เริ่ม ${_thaiDate(controller.syncRangeStart!)}',
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: controller.busy
+                                ? null
+                                : () => widget.perform(
+                                    () => _pickSyncRangeDate(start: false),
+                                  ),
+                            icon: const Icon(Icons.event_available_outlined),
+                            label: Text(
+                              controller.syncRangeEnd == null
+                                  ? 'กำหนดวันสิ้นสุดซิงก์'
+                                  : 'สิ้นสุด ${_thaiDate(controller.syncRangeEnd!)}',
+                            ),
+                          ),
+                          const Text(
+                            'หัวตารางเป็นค่าเริ่มต้น แก้ช่วงได้ก่อน Preview และ Sync',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),

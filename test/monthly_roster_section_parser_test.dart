@@ -65,6 +65,27 @@ void main() {
     expect(report.assignments.single.date, DateTime(2026, 8, 1));
   });
 
+  test('keeps the exact cross-month range declared by the roster', () {
+    final input = ShiftParserInput(
+      spreadsheetId: 'spreadsheet',
+      spreadsheetTitle: 'Roster',
+      sheetId: 1,
+      sheetTitle: '16 ส.ค. - 15 ก.ย. 2569',
+      timeZone: 'Asia/Bangkok',
+      cells: [
+        ..._row(0, ['เวร 16 สิงหาคม 2569 - 15 กันยายน 2569']),
+        ..._row(1, ['วันที่', 16, 17, 18, 19, 20, 21, 22]),
+        ..._row(2, ['ER', 'ภาคภูมิ']),
+      ],
+    );
+
+    final report = const MonthlyRosterSectionParser().parse(input);
+
+    expect(report.dateRanges, hasLength(1));
+    expect(report.dateRanges.single.start, DateTime(2026, 8, 16));
+    expect(report.dateRanges.single.end, DateTime(2026, 9, 15));
+  });
+
   test('filters assignments by query, section, and selected month', () {
     final report = MonthlyRosterParseReport(
       sections: [

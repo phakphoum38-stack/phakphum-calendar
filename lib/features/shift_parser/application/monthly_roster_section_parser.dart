@@ -100,6 +100,8 @@ class MonthlyRosterSectionParser {
           title: title,
           headerRowIndex: headerRow,
           assignments: List.unmodifiable(assignments),
+          startDate: start,
+          endDate: end,
         ),
       );
     }
