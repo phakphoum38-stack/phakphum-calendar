@@ -66,6 +66,8 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ใช้กล้องเพื่อถ่ายภาพตารางเวรสำหรับบันทึกและนำเข้าในแอป</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
