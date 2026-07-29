@@ -125,7 +125,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       Shift(
         code: 'UP1',
         rowLabel: 'P1 เช้า',
-        assignedName: 'ผู้ใช้งานตัวอย่าง',
+        assignedName: '',
         start: DateTime(2026, 8, 3, 8),
         end: DateTime(2026, 8, 3, 16),
         sheetTitle: 'ตัวอย่าง',
@@ -135,7 +135,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       Shift(
         code: 'UG',
         rowLabel: 'GEN',
-        assignedName: 'ผู้ใช้งานตัวอย่าง',
+        assignedName: '',
         start: DateTime(2026, 8, 8, 7, 30),
         end: DateTime(2026, 8, 8, 12),
         sheetTitle: 'ตัวอย่าง',
@@ -145,7 +145,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       Shift(
         code: 'NP2',
         rowLabel: 'P2 ดึก',
-        assignedName: 'ผู้ใช้งานตัวอย่าง',
+        assignedName: '',
         start: DateTime(2026, 8, 10),
         end: DateTime(2026, 8, 10, 8),
         sheetTitle: 'ตัวอย่าง',
@@ -155,7 +155,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       Shift(
         code: 'UP3',
         rowLabel: 'P3 เช้า',
-        assignedName: 'ผู้ใช้งานตัวอย่าง',
+        assignedName: '',
         start: DateTime(2026, 8, 11, 8),
         end: DateTime(2026, 8, 11, 16),
         sheetTitle: 'ตัวอย่าง',
