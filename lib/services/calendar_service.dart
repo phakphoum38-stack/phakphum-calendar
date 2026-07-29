@@ -21,6 +21,12 @@ abstract interface class LegacyCalendarGateway {
     List<Shift> shifts,
     Set<String> existingKeys,
   );
+  Future<List<String>> findManagedDuplicateEventIds(
+    http.Client client, {
+    required int year,
+    required int month,
+    required List<Shift> desiredShifts,
+  });
   Future<void> deleteEvent(http.Client client, {required String eventId});
 }
 
@@ -149,6 +155,93 @@ class CalendarService implements LegacyCalendarGateway {
       inserted++;
     }
     return inserted;
+  }
+
+  @override
+  Future<List<String>> findManagedDuplicateEventIds(
+    http.Client client, {
+    required int year,
+    required int month,
+    required List<Shift> desiredShifts,
+  }) async {
+    final api = calendar.CalendarApi(client);
+    final start = DateTime.utc(
+      year,
+      month,
+      1,
+    ).subtract(const Duration(hours: 7));
+    final end = DateTime.utc(
+      year,
+      month + 1,
+      1,
+    ).subtract(const Duration(hours: 7));
+    final byManagedKey = <String, Map<String, calendar.Event>>{};
+    String? pageToken;
+    do {
+      final page = await api.events.list(
+        'primary',
+        timeMin: start,
+        timeMax: end,
+        singleEvents: true,
+        showDeleted: false,
+        maxResults: 2500,
+        pageToken: pageToken,
+      );
+      for (final event in page.items ?? const <calendar.Event>[]) {
+        final eventId = event.id?.trim() ?? '';
+        final properties = event.extendedProperties?.private;
+        final sourceApp = properties?['sourceApp']?.trim() ?? '';
+        final syncId = properties?['sceSyncId']?.trim() ?? '';
+        final sourceKey = properties?['sourceKey']?.trim() ?? '';
+        final managed =
+            sourceApp == CalendarService.sourceApp || syncId.isNotEmpty;
+        if (!managed || eventId.isEmpty) continue;
+        final key = syncId.isNotEmpty
+            ? 'sync:$syncId'
+            : sourceKey.isNotEmpty
+            ? 'source:$sourceKey'
+            : '';
+        if (key.isEmpty) continue;
+        byManagedKey.putIfAbsent(
+          key,
+          () => <String, calendar.Event>{},
+        )[eventId] = event;
+      }
+      pageToken = page.nextPageToken;
+    } while (pageToken != null && pageToken.isNotEmpty);
+
+    final duplicates = <String>[];
+    for (final eventsById in byManagedKey.values) {
+      if (eventsById.length < 2) continue;
+      final events = eventsById.values.toList()
+        ..sort((left, right) => left.id!.compareTo(right.id!));
+      final exactIndex = events.indexWhere(
+        (event) => _matchesDesiredShift(event, desiredShifts),
+      );
+      final retainedIndex = exactIndex < 0 ? 0 : exactIndex;
+      for (var index = 0; index < events.length; index++) {
+        if (index != retainedIndex) duplicates.add(events[index].id!);
+      }
+    }
+    duplicates.sort();
+    return List.unmodifiable(duplicates);
+  }
+
+  bool _matchesDesiredShift(calendar.Event event, List<Shift> desiredShifts) {
+    final start = _wallTime(event.start);
+    final end = _wallTime(event.end);
+    if (start == null || end == null) return false;
+    final title = event.summary ?? '';
+    return desiredShifts.any(
+      (shift) => CalendarEventMatcher.isExactEquivalent(
+        rosterTitle: summaryFor(shift),
+        rosterStart: shift.start,
+        rosterEnd: shift.end,
+        calendarTitle: title,
+        calendarStart: start,
+        calendarEnd: end,
+      ),
+    );
   }
 
   @override

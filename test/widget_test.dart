@@ -179,6 +179,7 @@ void main() {
     expect(find.text('แลกเวร'), findsOneWidget);
     expect(find.text('รายงาน'), findsOneWidget);
     expect(find.text('ตั้งค่า'), findsOneWidget);
+    expect(find.text('ลบเวรซ้ำ'), findsOneWidget);
 
     await tester.tap(find.text('รายเดือน'));
     await tester.pumpAndSettle();
