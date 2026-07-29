@@ -225,6 +225,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     warnings: [],
   );
   final Map<String, _ShiftOverride> _shiftOverrides = {};
+  final Map<String, String> _shiftOverrideSourceKeys = {};
   ShiftCalendarWorkflowController? _pendingCalendarWorkflow;
 
   static const _runtimeScheduleId = 'legacy-runtime';
@@ -1083,23 +1084,23 @@ class AppController extends ChangeNotifier implements ControllerState {
   }) {
     final updatedShifts = shifts.toList();
     final shift = updatedShifts[index];
-    if (shift.generated) {
-      throw StateError('รายการ OFF อัตโนมัติปรับจากเวรดึกต้นทางเท่านั้น');
-    }
     if (!end.isAfter(start)) {
       throw const FormatException('เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม');
     }
     final color = CalendarColorService.parseCommand(colorCommand);
+    final sourceKey =
+        _shiftOverrideSourceKeys[shift.sourceKey] ?? shift.sourceKey;
     final updated = shift.copyWith(
       customTitle: title.trim().isEmpty ? shift.displayName : title.trim(),
       start: start,
       end: end,
       category: category,
+      generated: false,
       calendarColorId: color?.id,
       clearCalendarColor: color == null,
     );
     updatedShifts[index] = updated;
-    _rememberShiftOverride(updated);
+    _rememberShiftOverride(updated, sourceKey: sourceKey);
     _replaceLegacyShifts(
       _alertService.addOffDutyPeriods(
         updatedShifts.where((item) => !item.generated).toList(),
@@ -1541,8 +1542,12 @@ class AppController extends ChangeNotifier implements ControllerState {
     );
   }
 
-  void _rememberShiftOverride(Shift shift) {
-    _shiftOverrides[shift.sourceKey] = _ShiftOverride(
+  void _rememberShiftOverride(Shift shift, {String? sourceKey}) {
+    final stableSourceKey =
+        sourceKey ??
+        _shiftOverrideSourceKeys[shift.sourceKey] ??
+        shift.sourceKey;
+    _shiftOverrides[stableSourceKey] = _ShiftOverride(
       category: shift.category,
       excluded: shift.excluded,
       start: shift.start,
@@ -1550,12 +1555,13 @@ class AppController extends ChangeNotifier implements ControllerState {
       customTitle: shift.customTitle,
       calendarColorId: shift.calendarColorId,
     );
+    _shiftOverrideSourceKeys[shift.sourceKey] = stableSourceKey;
   }
 
   Shift _applyShiftOverride(Shift shift) {
     final override = _shiftOverrides[shift.sourceKey];
     if (override == null) return shift;
-    return shift.copyWith(
+    final updated = shift.copyWith(
       category: override.category,
       excluded: override.excluded,
       start: override.start,
@@ -1564,6 +1570,8 @@ class AppController extends ChangeNotifier implements ControllerState {
       calendarColorId: override.calendarColorId,
       clearCalendarColor: override.calendarColorId == null,
     );
+    _shiftOverrideSourceKeys[updated.sourceKey] = shift.sourceKey;
+    return updated;
   }
 
   Future<CalendarReadResult> _readCalendarPeriods(

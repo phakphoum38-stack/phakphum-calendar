@@ -5,6 +5,7 @@ import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/controller/app_controller.dart';
 import 'package:phakphum_calendar/core/di/app_dependencies.dart';
 import 'package:phakphum_calendar/features/excel_import/presentation/pages/import_excel_page.dart';
+import 'package:phakphum_calendar/models/shift.dart';
 import 'package:phakphum_calendar/models/shift_alert.dart';
 import 'package:phakphum_calendar/ui/app_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,75 @@ void main() {
       controller.dispose();
     },
   );
+
+  test('customizing a shift accepts a new date and an overnight end', () {
+    final controller = demoController();
+    addTearDown(controller.dispose);
+    final index = controller.shifts.indexWhere((shift) => !shift.generated);
+    final original = controller.shifts[index];
+    final newDate = DateTime(
+      original.start.year,
+      original.start.month,
+      original.start.day + 3,
+      20,
+    );
+
+    controller.customizeShift(
+      index,
+      title: original.displayName,
+      start: newDate,
+      end: newDate.add(const Duration(hours: 12)),
+      category: original.category,
+      colorCommand: '',
+    );
+
+    expect(controller.shifts[index].start, newDate);
+    expect(
+      controller.shifts[index].end,
+      DateTime(newDate.year, newDate.month, newDate.day + 1, 8),
+    );
+  });
+
+  test('customizing a default OFF keeps the user-defined range', () {
+    final controller = demoController();
+    addTearDown(controller.dispose);
+    final index = controller.shifts.indexWhere((shift) => shift.generated);
+    final original = controller.shifts[index];
+    final customStart = original.start.add(const Duration(hours: 1));
+    final customEnd = customStart.add(const Duration(hours: 4));
+
+    controller.customizeShift(
+      index,
+      title: 'OFF กำหนดเอง',
+      start: customStart,
+      end: customEnd,
+      category: ShiftCategory.off,
+      colorCommand: '',
+    );
+
+    final offShifts = controller.shifts.where((shift) => shift.isOffDuty);
+    expect(offShifts, hasLength(1));
+    expect(offShifts.single.start, customStart);
+    expect(offShifts.single.end, customEnd);
+    expect(offShifts.single.generated, isFalse);
+  });
+
+  testWidgets('shift settings allow selecting a different date', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(ShiftToolsApp(controller: demoController()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ตารางเวร'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ตั้งวันที่ เวลา ชื่อ ประเภท และสี').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('ตั้งค่ารายการก่อนใช้'), findsOneWidget);
+    expect(find.byIcon(Icons.calendar_month_outlined), findsOneWidget);
+  });
 
   testWidgets('desktop layout shows the full navigation and dashboard', (
     tester,

@@ -95,10 +95,17 @@ class Shift {
   final String? calendarColorId;
   final String? relationshipComment;
 
-  bool get isNightShift =>
-      !isOffDuty &&
-      start.hour == 0 &&
-      end.difference(start) == const Duration(hours: 8);
+  bool get isNightShift {
+    if (isOffDuty) return false;
+    final normalizedCode = code.trim().toUpperCase();
+    final normalizedLabel = rowLabel.trim().toLowerCase();
+    return normalizedCode == 'N' ||
+        normalizedCode.startsWith('N') ||
+        normalizedLabel.contains('ดึก') ||
+        normalizedLabel.contains('night') ||
+        (start.hour == 0 && end.difference(start) == const Duration(hours: 8));
+  }
+
   bool get isOffDuty => category == ShiftCategory.off || code == 'OFF';
 
   String get displayName {
@@ -125,6 +132,7 @@ class Shift {
   Shift copyWith({
     ShiftCategory? category,
     bool? excluded,
+    bool? generated,
     DateTime? start,
     DateTime? end,
     String? customTitle,
@@ -142,7 +150,7 @@ class Shift {
     cell: cell,
     category: category ?? this.category,
     excluded: excluded ?? this.excluded,
-    generated: generated,
+    generated: generated ?? this.generated,
     linkedShiftKey: linkedShiftKey,
     sourceColorValue: sourceColorValue,
     customTitle: customTitle ?? this.customTitle,

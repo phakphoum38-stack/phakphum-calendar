@@ -32,6 +32,56 @@ void main() {
     expect(shifts.where((shift) => shift.isOffDuty), hasLength(1));
   });
 
+  test('uses a user-defined night range and configurable OFF duration', () {
+    const configured = ShiftAlertService(
+      defaultOffDutyDuration: Duration(hours: 6),
+    );
+    final night = Shift(
+      code: 'N-CUSTOM',
+      rowLabel: 'เวรดึกกำหนดเอง',
+      assignedName: 'ผู้ใช้',
+      start: DateTime(2026, 8, 1, 22),
+      end: DateTime(2026, 8, 2, 6),
+      sheetTitle: 'กำหนดเอง',
+      cell: 'A1',
+      category: ShiftCategory.own,
+    );
+
+    final shifts = configured.addOffDutyPeriods([night]);
+    final off = shifts.singleWhere((shift) => shift.isOffDuty);
+
+    expect(off.start, DateTime(2026, 8, 2, 6));
+    expect(off.end, DateTime(2026, 8, 2, 12));
+  });
+
+  test('keeps a user-configured OFF instead of regenerating its default', () {
+    final night = Shift(
+      code: 'N',
+      rowLabel: 'เวรดึก',
+      assignedName: 'ผู้ใช้',
+      start: DateTime(2026, 8, 1, 22),
+      end: DateTime(2026, 8, 2, 6),
+      sheetTitle: 'กำหนดเอง',
+      cell: 'A1',
+      category: ShiftCategory.own,
+    );
+    final customOff = Shift(
+      code: 'OFF',
+      rowLabel: 'OFF กำหนดเอง',
+      assignedName: 'ผู้ใช้',
+      start: DateTime(2026, 8, 2, 7),
+      end: DateTime(2026, 8, 2, 11),
+      sheetTitle: 'กำหนดเอง',
+      cell: 'A1',
+      category: ShiftCategory.off,
+      linkedShiftKey: night.sourceKey,
+    );
+
+    final shifts = service.addOffDutyPeriods([night, customOff]);
+
+    expect(shifts.where((shift) => shift.isOffDuty), [customOff]);
+  });
+
   test('flags a roster duty that overlaps OFF after a night shift', () {
     final shifts = service.addOffDutyPeriods([
       _shift('NP1', DateTime(2026, 8, 10), DateTime(2026, 8, 10, 8)),
@@ -78,7 +128,7 @@ void main() {
     final conflict = alerts.singleWhere(
       (alert) => alert.type == ShiftAlertType.calendarOverlap,
     );
-    expect(conflict.title, contains('OFF 08:00–16:00'));
+    expect(conflict.title, contains('OFF ที่กำหนดไว้'));
     expect(conflict.start, DateTime(2026, 8, 12, 9));
     expect(conflict.end, DateTime(2026, 8, 12, 10));
     expect(conflict.isPending, isTrue);
