@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:phakphum_calendar/models/app_settings.dart';
 import 'package:phakphum_calendar/models/saved_sheet.dart';
 import 'package:phakphum_calendar/models/roster_period.dart';
@@ -280,6 +282,19 @@ void main() {
     );
     expect(SheetsService.spreadsheetIdFromUrl(id), id);
     expect(
+      SheetsService.spreadsheetIdFromUrl(
+        'https://docs.google.com/spreadsheets/d/'
+        '1vWgLMa0CXGfy7 nsV0zw4FfFrKwPsXryT7pONV-wGgHQ/edit',
+      ),
+      '1vWgLMa0CXGfy7nsV0zw4FfFrKwPsXryT7pONV-wGgHQ',
+    );
+    expect(
+      SheetsService.spreadsheetIdFromUrl(
+        '1vWgLMa0CXGfy7 nsV0zw4FfFrKwPsXryT7pONV-wGgHQ',
+      ),
+      '1vWgLMa0CXGfy7nsV0zw4FfFrKwPsXryT7pONV-wGgHQ',
+    );
+    expect(
       SheetsService.sheetIdFromUrl(
         'https://docs.google.com/spreadsheets/d/$id/edit#gid=456',
       ),
@@ -289,6 +304,30 @@ void main() {
     expect(
       () => SheetsService.spreadsheetIdFromUrl('not-a-sheet'),
       throwsFormatException,
+    );
+  });
+
+  test('reports an inaccessible Drive file without exposing API errors', () {
+    final client = MockClient(
+      (_) async => http.Response(
+        '{"error":{"code":404,"message":"File not found"}}',
+        404,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+
+    expect(
+      const DriveOwnershipService().requireOwnedSpreadsheet(
+        client,
+        '1vWgLMa0CXGfy7 nsV0zw4FfFrKwPsXryT7pONV-wGgHQ',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('กรุณาเลือกไฟล์ใหม่'),
+        ),
+      ),
     );
   });
 

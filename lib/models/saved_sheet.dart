@@ -50,7 +50,8 @@ class SavedSheet {
 
   factory SavedSheet.fromJson(Map<String, Object?> json) {
     final ownerAccountId = json['ownerAccountId']?.toString().trim() ?? '';
-    final spreadsheetId = json['spreadsheetId']?.toString().trim() ?? '';
+    final spreadsheetId =
+        json['spreadsheetId']?.toString().replaceAll(RegExp(r'\s+'), '') ?? '';
     final url = json['url']?.toString().trim() ?? '';
     if (ownerAccountId.isEmpty || spreadsheetId.isEmpty || url.isEmpty) {
       throw const FormatException('ข้อมูลชีตที่บันทึกไม่ครบถ้วน');
