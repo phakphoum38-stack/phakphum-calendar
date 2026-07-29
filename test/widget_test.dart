@@ -200,6 +200,17 @@ void main() {
     expect(find.text('ชื่อกลุ่มเวร 2'), findsOneWidget);
     await tester.tap(find.text('ยกเลิก'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('รายชื่อ'));
+    await tester.pumpAndSettle();
+    expect(find.text('ค้นหาชื่อหรือสถานะ'), findsOneWidget);
+    expect(find.byTooltip('เพิ่มรายชื่อ'), findsOneWidget);
+    await tester.tap(find.byTooltip('เพิ่มรายชื่อ'));
+    await tester.pumpAndSettle();
+    expect(find.text('เพิ่มรายชื่อ'), findsOneWidget);
+    expect(find.text('ชื่อ'), findsOneWidget);
+    expect(find.byTooltip('เพิ่มสถานะ'), findsOneWidget);
+    await tester.tap(find.text('ยกเลิก'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('แดชบอร์ด'));
     await tester.pumpAndSettle();
 

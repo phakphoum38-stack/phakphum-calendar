@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../domain/entities/schedule.dart';
 import '../../../../core/result/result.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../roster_names/presentation/roster_name_list_page.dart';
 import '../../domain/schedule_day.dart';
 import '../../domain/employee.dart';
 import '../../domain/shift.dart';
@@ -60,6 +61,8 @@ class _ScheduleWorkspacePageState extends State<ScheduleWorkspacePage> {
                 }
               },
             ),
+            if (mode == ScheduleViewMode.day)
+              const DailyRosterNameStatusPanel(),
             if (widget.editable) ...[
               const SizedBox(height: 20),
               _ManualAssignmentPanel(
