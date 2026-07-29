@@ -42,4 +42,44 @@ class MonthlyRosterParseReport {
   List<MonthlyRosterAssignment> get assignments => [
     for (final section in sections) ...section.assignments,
   ];
+
+  MonthlyRosterParseReport filtered({
+    String query = '',
+    String? sectionTitle,
+    bool Function(DateTime date)? includesDate,
+  }) {
+    final normalizedQuery = query.trim().toLowerCase();
+    final filteredSections = <MonthlyRosterSection>[];
+
+    for (final section in sections) {
+      if (sectionTitle != null && section.title != sectionTitle) continue;
+      final sectionMatches = section.title.toLowerCase().contains(
+        normalizedQuery,
+      );
+      final filteredAssignments = section.assignments
+          .where((assignment) {
+            if (includesDate != null && !includesDate(assignment.date)) {
+              return false;
+            }
+            return normalizedQuery.isEmpty ||
+                sectionMatches ||
+                assignment.rowLabel.toLowerCase().contains(normalizedQuery) ||
+                assignment.workerName.toLowerCase().contains(normalizedQuery);
+          })
+          .toList(growable: false);
+      if (filteredAssignments.isEmpty) continue;
+      filteredSections.add(
+        MonthlyRosterSection(
+          title: section.title,
+          headerRowIndex: section.headerRowIndex,
+          assignments: List.unmodifiable(filteredAssignments),
+        ),
+      );
+    }
+
+    return MonthlyRosterParseReport(
+      sections: List.unmodifiable(filteredSections),
+      warnings: warnings,
+    );
+  }
 }

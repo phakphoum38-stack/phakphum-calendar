@@ -766,10 +766,16 @@ class AppController extends ChangeNotifier implements ControllerState {
       warnings.addAll(report.warnings);
     }
 
-    return MonthlyRosterParseReport(
+    final report = MonthlyRosterParseReport(
       sections: List.unmodifiable(sections),
       warnings: List.unmodifiable(warnings),
     );
+    return settings.effectivePeriods.isEmpty
+        ? report
+        : report.filtered(
+            includesDate: (date) =>
+                settings.includesPeriod(date.year, date.month),
+          );
   }
 
   SheetColor? _sheetColor(int? value) {
