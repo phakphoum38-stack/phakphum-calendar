@@ -10,6 +10,7 @@ void main() {
       ..._row(1, ['เวร', 'พ', 'พฤ', 'ศ', 'ส', 'อา', 'จ', 'อ']),
       ..._row(2, ['วันที่', 1, 2, 3, 4, 5, 6, 7]),
       ..._row(3, ['MRI', 'ก', 'ข', null, null, null, null, null]),
+      ..._row(4, ['MRI', 'ง', null, null, null, null, null, null]),
       ..._row(6, ['GEN คลินิคพิเศษ ประจำเดือน กรกฎาคม พ.ศ. 2569']),
       ..._row(7, ['เวร', 'พ', 'พฤ', 'ศ', 'ส', 'อา', 'จ', 'อ']),
       ..._row(8, ['วันที่', 1, 2, 3, 4, 5, 6, 7]),
@@ -30,9 +31,13 @@ void main() {
     expect(report.sections, hasLength(2));
     expect(report.sections.first.title, contains('เวรใหญ่'));
     expect(report.sections.last.title, contains('คลินิคพิเศษ'));
-    expect(report.assignments, hasLength(3));
+    expect(report.assignments, hasLength(4));
     expect(report.assignments.first.rowLabel, 'MRI');
     expect(report.assignments.first.date, DateTime(2026, 7, 1));
+    expect(
+      report.sections.first.assignments.map((item) => item.rowIndex).toSet(),
+      containsAll(<int>{3, 4}),
+    );
     expect(report.assignments.last.rowLabel, 'คลินิก A');
     expect(report.assignments.last.sourceCell, 'B10');
   });
