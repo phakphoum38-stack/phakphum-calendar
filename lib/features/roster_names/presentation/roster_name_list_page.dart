@@ -57,6 +57,57 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
     if (mounted) setState(() => entries = List.unmodifiable(updated));
   }
 
+  Future<void> _addList() async {
+    final names = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => const _RosterNameBulkDialog(),
+    );
+    if (names == null || names.isEmpty) return;
+    final existingNames = entries
+        .map((entry) => entry.name.toLowerCase())
+        .toSet();
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final additions = [
+      for (var index = 0; index < names.length; index++)
+        if (existingNames.add(names[index].toLowerCase()))
+          RosterNameEntry(
+            id: 'roster-name-$now-$index',
+            name: names[index],
+            statuses: const [],
+          ),
+    ];
+    final updated = [...entries, ...additions]
+      ..sort((left, right) => left.name.compareTo(right.name));
+    await repository.saveAll(updated);
+    if (mounted) setState(() => entries = List.unmodifiable(updated));
+  }
+
+  Future<void> _toggleLock(RosterNameEntry entry, bool locked) async {
+    String? point;
+    if (locked) {
+      point = await showDialog<String>(
+        context: context,
+        builder: (context) =>
+            _DutyPointDialog(initialValue: entry.lockedDutyPoint),
+      );
+      if (point == null) return;
+    }
+    final updated = [
+      for (final item in entries)
+        if (item.id == entry.id)
+          RosterNameEntry(
+            id: item.id,
+            name: item.name,
+            statuses: item.statuses,
+            lockedDutyPoint: point,
+          )
+        else
+          item,
+    ];
+    await repository.saveAll(updated);
+    if (mounted) setState(() => entries = List.unmodifiable(updated));
+  }
+
   Future<void> _delete(RosterNameEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -108,9 +159,9 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
               ),
             ),
             IconButton.filled(
-              onPressed: loading ? null : () => _edit(),
-              icon: const Icon(Icons.add),
-              tooltip: 'เพิ่มรายชื่อ',
+              onPressed: loading ? null : _addList,
+              icon: const Icon(Icons.playlist_add),
+              tooltip: 'เพิ่มลิสต์รายชื่อ',
             ),
           ],
         ),
@@ -144,6 +195,7 @@ class _RosterNameListPageState extends State<RosterNameListPage> {
             entries: visible,
             onEdit: _edit,
             onDelete: _delete,
+            onLockChanged: _toggleLock,
           ),
       ],
     );
@@ -156,11 +208,13 @@ class RosterNameStatusList extends StatelessWidget {
     required this.entries,
     this.onEdit,
     this.onDelete,
+    this.onLockChanged,
   });
 
   final List<RosterNameEntry> entries;
   final ValueChanged<RosterNameEntry>? onEdit;
   final ValueChanged<RosterNameEntry>? onDelete;
+  final void Function(RosterNameEntry entry, bool locked)? onLockChanged;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -171,18 +225,27 @@ class RosterNameStatusList extends StatelessWidget {
           leading: CircleAvatar(
             child: Text(entries[index].name.characters.firstOrNull ?? '?'),
           ),
-          title: Text(entries[index].name),
-          subtitle: entries[index].statuses.isEmpty
-              ? entries[index].lockedDutyPoint == null
-                    ? const Text('ยังไม่ได้กำหนดสถานะ')
-                    : _RosterNameLabels(entry: entries[index])
-              : Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: _RosterNameLabels(entry: entries[index]),
+          title: Row(
+            children: [
+              Expanded(child: Text(entries[index].name)),
+              if (onLockChanged != null) ...[
+                Checkbox(
+                  value: entries[index].lockedDutyPoint != null,
+                  onChanged: (value) =>
+                      onLockChanged?.call(entries[index], value ?? false),
                 ),
-          trailing: onEdit == null && onDelete == null
-              ? null
-              : PopupMenuButton<String>(
+                const Text('ล็อก'),
+                const SizedBox(width: 8),
+              ],
+              ActionChip(
+                avatar: const Icon(Icons.label_outline, size: 16),
+                label: const Text('สถานะ'),
+                onPressed: onEdit == null
+                    ? null
+                    : () => onEdit?.call(entries[index]),
+              ),
+              if (onEdit != null || onDelete != null)
+                PopupMenuButton<String>(
                   tooltip: 'จัดการรายชื่อ',
                   onSelected: (value) => value == 'edit'
                       ? onEdit?.call(entries[index])
@@ -191,6 +254,16 @@ class RosterNameStatusList extends StatelessWidget {
                     PopupMenuItem(value: 'edit', child: Text('แก้ไข')),
                     PopupMenuItem(value: 'delete', child: Text('ลบ')),
                   ],
+                ),
+            ],
+          ),
+          subtitle: entries[index].statuses.isEmpty
+              ? entries[index].lockedDutyPoint == null
+                    ? const Text('ยังไม่ได้กำหนดสถานะ')
+                    : _RosterNameLabels(entry: entries[index])
+              : Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: _RosterNameLabels(entry: entries[index]),
                 ),
         ),
         if (index != entries.length - 1) const Divider(height: 1),
@@ -215,6 +288,105 @@ class _RosterNameLabels extends StatelessWidget {
           label: Text('ล็อก: $point'),
         ),
       for (final status in entry.statuses) Chip(label: Text(status)),
+    ],
+  );
+}
+
+class _RosterNameBulkDialog extends StatefulWidget {
+  const _RosterNameBulkDialog();
+
+  @override
+  State<_RosterNameBulkDialog> createState() => _RosterNameBulkDialogState();
+}
+
+class _RosterNameBulkDialogState extends State<_RosterNameBulkDialog> {
+  final names = TextEditingController();
+
+  @override
+  void dispose() {
+    names.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final values = names.text
+        .split(RegExp(r'[\r\n,]+'))
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (values.isEmpty) return;
+    Navigator.pop(context, values);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('เพิ่มลิสต์รายชื่อ'),
+    content: SizedBox(
+      width: 520,
+      child: TextField(
+        controller: names,
+        autofocus: true,
+        minLines: 6,
+        maxLines: 12,
+        decoration: const InputDecoration(
+          labelText: 'รายชื่อเจ้าหน้าที่',
+          hintText: 'หนึ่งคนต่อหนึ่งบรรทัด',
+        ),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('ยกเลิก'),
+      ),
+      FilledButton.icon(
+        onPressed: _submit,
+        icon: const Icon(Icons.playlist_add),
+        label: const Text('เพิ่มรายชื่อ'),
+      ),
+    ],
+  );
+}
+
+class _DutyPointDialog extends StatefulWidget {
+  const _DutyPointDialog({this.initialValue});
+
+  final String? initialValue;
+
+  @override
+  State<_DutyPointDialog> createState() => _DutyPointDialogState();
+}
+
+class _DutyPointDialogState extends State<_DutyPointDialog> {
+  late final point = TextEditingController(text: widget.initialValue ?? '');
+
+  @override
+  void dispose() {
+    point.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = point.text.trim();
+    if (value.isNotEmpty) Navigator.pop(context, value);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('ล็อกบุคคลไว้ที่จุดเวร'),
+    content: TextField(
+      controller: point,
+      autofocus: true,
+      onSubmitted: (_) => _submit(),
+      decoration: const InputDecoration(labelText: 'ชื่อจุดเวร'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('ยกเลิก'),
+      ),
+      FilledButton(onPressed: _submit, child: const Text('ล็อก')),
     ],
   );
 }
