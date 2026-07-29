@@ -8,7 +8,7 @@ import 'package:phakphum_calendar/services/shift_alert_service.dart';
 void main() {
   const service = ShiftAlertService();
 
-  test('creates OFF 08:00-16:00 after every night shift', () {
+  test('creates OFF 08:00-16:00 on the day after every night shift', () {
     final shifts = service.addOffDutyPeriods([
       _shift('NP1', DateTime(2026, 8, 10), DateTime(2026, 8, 10, 8)),
       _shift('NP2', DateTime(2026, 8, 11), DateTime(2026, 8, 11, 8)),
@@ -16,10 +16,10 @@ void main() {
 
     final offShifts = shifts.where((shift) => shift.isOffDuty).toList();
     expect(offShifts, hasLength(2));
-    expect(offShifts[0].start, DateTime(2026, 8, 10, 8));
-    expect(offShifts[0].end, DateTime(2026, 8, 10, 16));
-    expect(offShifts[1].start, DateTime(2026, 8, 11, 8));
-    expect(offShifts[1].end, DateTime(2026, 8, 11, 16));
+    expect(offShifts[0].start, DateTime(2026, 8, 11, 8));
+    expect(offShifts[0].end, DateTime(2026, 8, 11, 16));
+    expect(offShifts[1].start, DateTime(2026, 8, 12, 8));
+    expect(offShifts[1].end, DateTime(2026, 8, 12, 16));
     expect(offShifts.every((shift) => shift.generated), isTrue);
     expect(offShifts.first.displayName, 'OFF — เวรออฟหลังเวรดึก');
   });
@@ -32,27 +32,31 @@ void main() {
     expect(shifts.where((shift) => shift.isOffDuty), hasLength(1));
   });
 
-  test('uses a user-defined night range and configurable OFF duration', () {
-    const configured = ShiftAlertService(
-      defaultOffDutyDuration: Duration(hours: 6),
-    );
-    final night = Shift(
-      code: 'N-CUSTOM',
-      rowLabel: 'เวรดึกกำหนดเอง',
-      assignedName: 'ผู้ใช้',
-      start: DateTime(2026, 8, 1, 22),
-      end: DateTime(2026, 8, 2, 6),
-      sheetTitle: 'กำหนดเอง',
-      cell: 'A1',
-      category: ShiftCategory.own,
-    );
+  test(
+    'uses configurable OFF start time and duration after overnight duty',
+    () {
+      const configured = ShiftAlertService(
+        defaultOffDutyStartTime: Duration(hours: 9),
+        defaultOffDutyDuration: Duration(hours: 6),
+      );
+      final night = Shift(
+        code: 'N-CUSTOM',
+        rowLabel: 'เวรดึกกำหนดเอง',
+        assignedName: 'ผู้ใช้',
+        start: DateTime(2026, 8, 1, 22),
+        end: DateTime(2026, 8, 2, 6),
+        sheetTitle: 'กำหนดเอง',
+        cell: 'A1',
+        category: ShiftCategory.own,
+      );
 
-    final shifts = configured.addOffDutyPeriods([night]);
-    final off = shifts.singleWhere((shift) => shift.isOffDuty);
+      final shifts = configured.addOffDutyPeriods([night]);
+      final off = shifts.singleWhere((shift) => shift.isOffDuty);
 
-    expect(off.start, DateTime(2026, 8, 2, 6));
-    expect(off.end, DateTime(2026, 8, 2, 12));
-  });
+      expect(off.start, DateTime(2026, 8, 2, 9));
+      expect(off.end, DateTime(2026, 8, 2, 15));
+    },
+  );
 
   test('keeps a user-configured OFF instead of regenerating its default', () {
     final night = Shift(
@@ -85,7 +89,7 @@ void main() {
   test('flags a roster duty that overlaps OFF after a night shift', () {
     final shifts = service.addOffDutyPeriods([
       _shift('NP1', DateTime(2026, 8, 10), DateTime(2026, 8, 10, 8)),
-      _shift('UP1', DateTime(2026, 8, 10, 8), DateTime(2026, 8, 10, 16)),
+      _shift('UP1', DateTime(2026, 8, 11, 8), DateTime(2026, 8, 11, 16)),
     ]);
 
     final alerts = service.build(
@@ -117,8 +121,8 @@ void main() {
           id: 'external-off-conflict',
           htmlLink: 'https://calendar.google.com/calendar/event?eid=test',
           title: 'กิจกรรมทดสอบ',
-          start: DateTime(2026, 8, 12, 9),
-          end: DateTime(2026, 8, 12, 10),
+          start: DateTime(2026, 8, 13, 9),
+          end: DateTime(2026, 8, 13, 10),
           legacyKey: 'external',
         ),
       ],
@@ -129,8 +133,8 @@ void main() {
       (alert) => alert.type == ShiftAlertType.calendarOverlap,
     );
     expect(conflict.title, contains('OFF ที่กำหนดไว้'));
-    expect(conflict.start, DateTime(2026, 8, 12, 9));
-    expect(conflict.end, DateTime(2026, 8, 12, 10));
+    expect(conflict.start, DateTime(2026, 8, 13, 9));
+    expect(conflict.end, DateTime(2026, 8, 13, 10));
     expect(conflict.isPending, isTrue);
     expect(conflict.calendarEventId, 'external-off-conflict');
     expect(
