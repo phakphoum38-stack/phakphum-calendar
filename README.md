@@ -25,7 +25,7 @@ status are maintained in:
 - Employee Directory และ Shift Templates ใช้ storage key แยกจากข้อมูล legacy
   และ dependencies ทั้งหมดถูกสร้างจาก `AppDependencies`
 
-## โครงสร้างสร้างตารางเวรฝ่ายรังสีวิทยา
+## โครงสร้างสร้างตารางเวร
 
 โมดูล `lib/features/schedule_generation/` มีโครงสร้างกลางสำหรับนำรายชื่อ
 เจ้าหน้าที่มาสร้างตารางเวรรายเดือน โดยไม่ผูกตัวสร้างตารางเข้ากับ Google Sheets
