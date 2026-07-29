@@ -184,7 +184,18 @@ void main() {
     await tester.tap(find.text('รายเดือน'));
     await tester.pumpAndSettle();
     expect(find.text('ตารางเวรรายเดือน'), findsOneWidget);
-    expect(find.textContaining('เวรใหญ่, exten, คลินิก'), findsOneWidget);
+    expect(find.text('Excel / CSV / ไฟล์'), findsOneWidget);
+    expect(find.text('เปิดกล้อง'), findsOneWidget);
+    expect(find.text('เลือกรูป'), findsOneWidget);
+    expect(find.byTooltip('สร้างเทมเพลตรายเดือน'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('สร้างเทมเพลตรายเดือน'));
+    await tester.pumpAndSettle();
+    expect(find.text('สร้างเทมเพลตรายเดือน'), findsOneWidget);
+    expect(find.text('ชื่อเทมเพลต'), findsOneWidget);
+    expect(find.text('แถวเวรหรือสถานที่'), findsOneWidget);
+    await tester.tap(find.text('ยกเลิก'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('แดชบอร์ด'));
     await tester.pumpAndSettle();
 

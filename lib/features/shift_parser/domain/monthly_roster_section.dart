@@ -5,6 +5,7 @@ class MonthlyRosterSection {
     required this.title,
     required this.headerRowIndex,
     required this.assignments,
+    this.rowLabels = const [],
     this.startDate,
     this.endDate,
   });
@@ -12,6 +13,7 @@ class MonthlyRosterSection {
   final String title;
   final int headerRowIndex;
   final List<MonthlyRosterAssignment> assignments;
+  final List<String> rowLabels;
   final DateTime? startDate;
   final DateTime? endDate;
 }
@@ -159,6 +161,7 @@ class MonthlyRosterParseReport {
           title: section.title,
           headerRowIndex: section.headerRowIndex,
           assignments: List.unmodifiable(filteredAssignments),
+          rowLabels: section.rowLabels,
           startDate: section.startDate,
           endDate: section.endDate,
         ),
