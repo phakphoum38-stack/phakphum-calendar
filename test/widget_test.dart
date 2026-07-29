@@ -203,15 +203,28 @@ void main() {
     await tester.tap(find.text('รายชื่อ'));
     await tester.pumpAndSettle();
     expect(find.text('ค้นหาชื่อหรือสถานะ'), findsOneWidget);
-    expect(find.byTooltip('เพิ่มรายชื่อ'), findsOneWidget);
-    await tester.tap(find.byTooltip('เพิ่มรายชื่อ'));
+    expect(find.byTooltip('เพิ่มลิสต์รายชื่อ'), findsOneWidget);
+    await tester.tap(find.byTooltip('เพิ่มลิสต์รายชื่อ'));
     await tester.pumpAndSettle();
-    expect(find.text('เพิ่มรายชื่อ'), findsOneWidget);
-    expect(find.text('ชื่อ'), findsOneWidget);
-    expect(find.text('ล็อกจุดเวร'), findsOneWidget);
-    expect(find.byTooltip('เพิ่มสถานะ'), findsOneWidget);
-    await tester.tap(find.text('ยกเลิก'));
+    expect(find.text('เพิ่มลิสต์รายชื่อ'), findsOneWidget);
+    expect(find.text('รายชื่อเจ้าหน้าที่'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'รายชื่อเจ้าหน้าที่'),
+      'เจ้าหน้าที่ A\nเจ้าหน้าที่ B',
+    );
+    await tester.tap(find.text('เพิ่มรายชื่อ'));
     await tester.pumpAndSettle();
+    expect(find.text('เจ้าหน้าที่ A'), findsOneWidget);
+    expect(find.text('เจ้าหน้าที่ B'), findsOneWidget);
+    expect(find.text('ล็อก'), findsNWidgets(2));
+    expect(find.text('สถานะ'), findsNWidgets(2));
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(find.text('ล็อกบุคคลไว้ที่จุดเวร'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'ชื่อจุดเวร'), 'CT');
+    await tester.tap(find.widgetWithText(FilledButton, 'ล็อก'));
+    await tester.pumpAndSettle();
+    expect(find.text('ล็อก: CT'), findsOneWidget);
     await tester.tap(find.text('แดชบอร์ด'));
     await tester.pumpAndSettle();
 
