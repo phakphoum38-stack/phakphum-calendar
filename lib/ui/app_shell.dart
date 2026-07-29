@@ -2788,7 +2788,8 @@ class _MonthlyRosterEmptyState extends StatelessWidget {
         : 'ยังไม่ได้เลือกแหล่งข้อมูลเวร',
     message: controller.hasRosterSource
         ? 'กด “อ่านใหม่” เพื่อค้นหาบล็อกที่มีแถววันที่ในชีต'
-        : 'เลือก Google Sheets ในหน้าแรก แล้วกลับมากด “อ่านใหม่”',
+        : 'นำเข้าจาก Google Sheets, Excel, CSV, รูปภาพ, กล้อง '
+              'หรือแหล่งอื่นในหน้าแรก',
   );
 }
 

@@ -14,35 +14,35 @@ void main() {
       const SheetSnapshot(
         title: 'นักรังสีการแพทย์',
         rows: [
-          ['วธัญญู', null, 'พนิดา'],
+          ['บุคลากร A', null, 'บุคลากร B'],
           ['081-111-1111', null, '082-222-2222'],
         ],
       ),
       const SheetSnapshot(
         title: 'จนท.ห้องปฏิบัติการ',
         rows: [
-          ['ภาคภูมิ', null, 'บุบผา'],
+          ['บุคลากร C', null, 'บุคลากร D'],
           ['083-333-3333', null, '084-444-4444'],
         ],
       ),
       const SheetSnapshot(
         title: 'พยาบาล',
         rows: [
-          ['มัณฑนา'],
+          ['บุคลากร E'],
           ['085-555-5555'],
         ],
       ),
       const SheetSnapshot(
         title: 'ธุระการ',
         rows: [
-          ['ใจดาว'],
+          ['บุคลากร F'],
           ['086-666-6666'],
         ],
       ),
       const SheetSnapshot(
         title: 'อินชาร์จ',
         rows: [
-          ['1     วธัญญู', '2     พนิดา'],
+          ['1     บุคลากร A', '2     บุคลากร B'],
         ],
       ),
     ]);
@@ -51,13 +51,13 @@ void main() {
       directory
           .employeesFor(StaffGroup.radiologicTechnologist)
           .map((employee) => employee.fullName),
-      ['วธัญญู', 'พนิดา'],
+      ['บุคลากร A', 'บุคลากร B'],
     );
     expect(
       directory
           .employeesFor(StaffGroup.laboratoryOfficer)
           .map((employee) => employee.fullName),
-      ['ภาคภูมิ', 'บุบผา'],
+      ['บุคลากร C', 'บุคลากร D'],
     );
     expect(directory.inChargeEligible, hasLength(2));
     expect(
@@ -75,7 +75,7 @@ void main() {
       const SheetSnapshot(
         title: 'จนท.ห้องปฏิบัติการ',
         rows: [
-          ['ภาคภูมิ', null, 'บุบผา'],
+          ['บุคลากร A', null, 'บุคลากร B'],
           ['083-333-3333', null, '084-444-4444'],
         ],
       ),

@@ -1,3 +1,5 @@
+import '../../../models/shift.dart';
+
 class MonthlyRosterSection {
   const MonthlyRosterSection({
     required this.title,
@@ -42,6 +44,71 @@ class MonthlyRosterParseReport {
 
   final List<MonthlyRosterSection> sections;
   final List<String> warnings;
+
+  /// Builds a source-neutral monthly view when an imported source does not
+  /// expose a recognizable table grid, such as a confirmed camera entry.
+  factory MonthlyRosterParseReport.fromShifts(Iterable<Shift> shifts) {
+    final source = shifts.where((shift) => !shift.generated).toList()
+      ..sort((left, right) => left.start.compareTo(right.start));
+    if (source.isEmpty) {
+      return const MonthlyRosterParseReport(sections: [], warnings: []);
+    }
+
+    final grouped = <String, List<Shift>>{};
+    for (final shift in source) {
+      grouped.putIfAbsent(shift.sheetTitle.trim(), () => []).add(shift);
+    }
+    final sections = <MonthlyRosterSection>[];
+    for (final entry in grouped.entries) {
+      final rowIndexes = <String, int>{};
+      final assignments = <MonthlyRosterAssignment>[];
+      for (final shift in entry.value) {
+        final rowLabel = shift.rowLabel.trim().isEmpty
+            ? shift.code
+            : shift.rowLabel.trim();
+        final rowIndex = rowIndexes.putIfAbsent(
+          rowLabel,
+          () => rowIndexes.length,
+        );
+        assignments.add(
+          MonthlyRosterAssignment(
+            sectionTitle: entry.key.isEmpty ? 'ข้อมูลที่นำเข้า' : entry.key,
+            rowLabel: rowLabel,
+            rowIndex: rowIndex,
+            workerName: shift.assignedName.trim(),
+            date: DateTime(
+              shift.start.year,
+              shift.start.month,
+              shift.start.day,
+            ),
+            sourceCell: shift.cell,
+            backgroundColor: shift.sourceColorHex,
+          ),
+        );
+      }
+      sections.add(
+        MonthlyRosterSection(
+          title: entry.key.isEmpty ? 'ข้อมูลที่นำเข้า' : entry.key,
+          headerRowIndex: 0,
+          assignments: List.unmodifiable(assignments),
+          startDate: assignments.first.date,
+          endDate: assignments.last.date,
+        ),
+      );
+    }
+    return MonthlyRosterParseReport(
+      sections: List.unmodifiable(sections),
+      warnings: const [],
+    );
+  }
+
+  MonthlyRosterParseReport appendShift(Shift shift) {
+    final imported = MonthlyRosterParseReport.fromShifts([shift]);
+    return MonthlyRosterParseReport(
+      sections: List.unmodifiable([...sections, ...imported.sections]),
+      warnings: warnings,
+    );
+  }
 
   List<MonthlyRosterAssignment> get assignments => [
     for (final section in sections) ...section.assignments,

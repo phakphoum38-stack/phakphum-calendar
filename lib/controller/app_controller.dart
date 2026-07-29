@@ -660,14 +660,17 @@ class AppController extends ChangeNotifier implements ControllerState {
         final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
         await _ownershipService.requireOwnedSpreadsheet(client, spreadsheetId);
         final snapshots = await _sheetsService.readAll(client, sourceUrl);
-        monthlyRoster = _parseMonthlyRosterSnapshots(
-          snapshots,
-          spreadsheetId: spreadsheetId,
-        );
         final parsed = _parseRosterSnapshots(
           snapshots,
           searchNames: searchNames,
         );
+        final parsedMonthly = _parseMonthlyRosterSnapshots(
+          snapshots,
+          spreadsheetId: spreadsheetId,
+        );
+        monthlyRoster = parsedMonthly.sections.isEmpty
+            ? MonthlyRosterParseReport.fromShifts(parsed)
+            : parsedMonthly;
         _loadedRosterShifts = parsed;
         _setDefaultSyncDateRange(parsed);
         final rangedParsed = _filterToSyncDateRange(parsed);
@@ -732,10 +735,13 @@ class AppController extends ChangeNotifier implements ControllerState {
         document.snapshots,
         searchNames: searchNames,
       );
-      monthlyRoster = _parseMonthlyRosterSnapshots(
+      final parsedMonthly = _parseMonthlyRosterSnapshots(
         document.snapshots,
         spreadsheetId: 'local-${document.extension}',
       );
+      monthlyRoster = parsedMonthly.sections.isEmpty
+          ? MonthlyRosterParseReport.fromShifts(parsed)
+          : parsedMonthly;
       _loadedRosterShifts = parsed;
       _syncRangeCustomized = false;
       _setDefaultSyncDateRange(parsed);
@@ -1211,6 +1217,7 @@ class AppController extends ChangeNotifier implements ControllerState {
         shift,
       ]),
     );
+    monthlyRoster = monthlyRoster.appendShift(shift);
     localSourceLabel = 'รายการจาก $sourceKind (ผู้ใช้ตรวจแล้ว)';
     existingKeys = {};
     calendarPeriods = [];
