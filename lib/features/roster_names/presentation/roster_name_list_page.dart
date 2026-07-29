@@ -1,0 +1,367 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import '../domain/roster_name_entry.dart';
+
+class RosterNameListPage extends StatefulWidget {
+  const RosterNameListPage({super.key});
+
+  @override
+  State<RosterNameListPage> createState() => _RosterNameListPageState();
+}
+
+class _RosterNameListPageState extends State<RosterNameListPage> {
+  final repository = RosterNameRepository();
+  final search = TextEditingController();
+  List<RosterNameEntry> entries = const [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final loaded = await repository.load();
+    if (mounted) {
+      setState(() {
+        entries = loaded;
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _edit([RosterNameEntry? current]) async {
+    final result = await showDialog<RosterNameEntry>(
+      context: context,
+      builder: (context) => _RosterNameDialog(entry: current),
+    );
+    if (result == null) return;
+    final updated = [...entries];
+    final index = updated.indexWhere((entry) => entry.id == result.id);
+    if (index == -1) {
+      updated.add(result);
+    } else {
+      updated[index] = result;
+    }
+    updated.sort((left, right) => left.name.compareTo(right.name));
+    await repository.saveAll(updated);
+    if (mounted) setState(() => entries = List.unmodifiable(updated));
+  }
+
+  Future<void> _delete(RosterNameEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ลบรายชื่อ?'),
+        content: Text('ลบ “${entry.name}” จากรายการในเครื่องนี้'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ลบ'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final updated = entries
+        .where((item) => item.id != entry.id)
+        .toList(growable: false);
+    await repository.saveAll(updated);
+    if (mounted) setState(() => entries = updated);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = search.text.trim().toLowerCase();
+    final visible = entries
+        .where(
+          (entry) =>
+              query.isEmpty ||
+              entry.name.toLowerCase().contains(query) ||
+              entry.statuses.any(
+                (status) => status.toLowerCase().contains(query),
+              ),
+        )
+        .toList(growable: false);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'รายชื่อ',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+            IconButton.filled(
+              onPressed: loading ? null : () => _edit(),
+              icon: const Icon(Icons.add),
+              tooltip: 'เพิ่มรายชื่อ',
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text('รายชื่อและสถานะสำหรับใช้อ้างอิงในตารางเวรรายวัน'),
+        const SizedBox(height: 16),
+        TextField(
+          controller: search,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'ค้นหาชื่อหรือสถานะ',
+            prefixIcon: Icon(Icons.search),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (loading)
+          const LinearProgressIndicator()
+        else if (visible.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: Column(
+              children: [
+                Icon(Icons.badge_outlined, size: 48),
+                SizedBox(height: 12),
+                Text('ยังไม่มีรายชื่อ'),
+              ],
+            ),
+          )
+        else
+          RosterNameStatusList(
+            entries: visible,
+            onEdit: _edit,
+            onDelete: _delete,
+          ),
+      ],
+    );
+  }
+}
+
+class RosterNameStatusList extends StatelessWidget {
+  const RosterNameStatusList({
+    super.key,
+    required this.entries,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  final List<RosterNameEntry> entries;
+  final ValueChanged<RosterNameEntry>? onEdit;
+  final ValueChanged<RosterNameEntry>? onDelete;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (var index = 0; index < entries.length; index++) ...[
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          leading: CircleAvatar(
+            child: Text(entries[index].name.characters.firstOrNull ?? '?'),
+          ),
+          title: Text(entries[index].name),
+          subtitle: entries[index].statuses.isEmpty
+              ? const Text('ยังไม่ได้กำหนดสถานะ')
+              : Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final status in entries[index].statuses)
+                        Chip(label: Text(status)),
+                    ],
+                  ),
+                ),
+          trailing: onEdit == null && onDelete == null
+              ? null
+              : PopupMenuButton<String>(
+                  tooltip: 'จัดการรายชื่อ',
+                  onSelected: (value) => value == 'edit'
+                      ? onEdit?.call(entries[index])
+                      : onDelete?.call(entries[index]),
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(value: 'edit', child: Text('แก้ไข')),
+                    PopupMenuItem(value: 'delete', child: Text('ลบ')),
+                  ],
+                ),
+        ),
+        if (index != entries.length - 1) const Divider(height: 1),
+      ],
+    ],
+  );
+}
+
+class _RosterNameDialog extends StatefulWidget {
+  const _RosterNameDialog({this.entry});
+
+  final RosterNameEntry? entry;
+
+  @override
+  State<_RosterNameDialog> createState() => _RosterNameDialogState();
+}
+
+class _RosterNameDialogState extends State<_RosterNameDialog> {
+  late final name = TextEditingController(text: widget.entry?.name ?? '');
+  late final status = TextEditingController();
+  late final List<String> statuses = [...?widget.entry?.statuses];
+
+  @override
+  void dispose() {
+    name.dispose();
+    status.dispose();
+    super.dispose();
+  }
+
+  void _addStatus() {
+    final value = status.text.trim();
+    if (value.isEmpty || statuses.contains(value)) return;
+    setState(() {
+      statuses.add(value);
+      status.clear();
+    });
+  }
+
+  void _submit() {
+    final displayName = name.text.trim();
+    if (displayName.isEmpty) return;
+    Navigator.pop(
+      context,
+      RosterNameEntry(
+        id:
+            widget.entry?.id ??
+            'roster-name-${DateTime.now().microsecondsSinceEpoch}',
+        name: displayName,
+        statuses: List.unmodifiable(statuses),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.entry == null ? 'เพิ่มรายชื่อ' : 'แก้ไขรายชื่อ'),
+    content: SizedBox(
+      width: 520,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: name,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'ชื่อ'),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: status,
+                  onSubmitted: (_) => _addStatus(),
+                  decoration: const InputDecoration(
+                    labelText: 'สถานะ',
+                    hintText: 'เช่น เช้า, OFF, เวร, แทนเวร',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                onPressed: _addStatus,
+                icon: const Icon(Icons.add),
+                tooltip: 'เพิ่มสถานะ',
+              ),
+            ],
+          ),
+          if (statuses.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final value in statuses)
+                  InputChip(
+                    label: Text(value),
+                    onDeleted: () => setState(() => statuses.remove(value)),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('ยกเลิก'),
+      ),
+      FilledButton.icon(
+        onPressed: _submit,
+        icon: const Icon(Icons.save_outlined),
+        label: const Text('บันทึก'),
+      ),
+    ],
+  );
+}
+
+class DailyRosterNameStatusPanel extends StatefulWidget {
+  const DailyRosterNameStatusPanel({super.key});
+
+  @override
+  State<DailyRosterNameStatusPanel> createState() =>
+      _DailyRosterNameStatusPanelState();
+}
+
+class _DailyRosterNameStatusPanelState
+    extends State<DailyRosterNameStatusPanel> {
+  List<RosterNameEntry> entries = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final loaded = await RosterNameRepository().load();
+    if (mounted) setState(() => entries = loaded);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'รายชื่อและสถานะ',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            IconButton(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh),
+              tooltip: 'อ่านรายชื่อใหม่',
+            ),
+          ],
+        ),
+        RosterNameStatusList(entries: entries),
+      ],
+    );
+  }
+}

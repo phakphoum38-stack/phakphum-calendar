@@ -9,6 +9,7 @@ import '../controller/app_controller.dart';
 import '../domain/entities/schedule.dart';
 import '../features/reports/presentation/controllers/monthly_schedule_report_controller.dart';
 import '../features/reports/presentation/pages/monthly_schedule_report_page.dart';
+import '../features/roster_names/presentation/roster_name_list_page.dart';
 import '../features/employees/presentation/pages/employee_directory_page.dart';
 import '../features/employees/presentation/controllers/employee_directory_controller.dart';
 import '../features/dashboard/application/dashboard_summary_service.dart';
@@ -97,6 +98,10 @@ class _AppShellState extends State<AppShell> {
       icon: Icon(Icons.calendar_view_month_outlined),
       label: 'รายเดือน',
     ),
+    const NavigationDestination(
+      icon: Icon(Icons.badge_outlined),
+      label: 'รายชื่อ',
+    ),
     NavigationDestination(
       icon: const Icon(Icons.groups_outlined),
       label: context.l10n.employees,
@@ -176,6 +181,7 @@ class _AppShellState extends State<AppShell> {
               openRosterEditor: _openRosterEditor,
             ),
             _MonthlyRosterPage(controller: controller, perform: _perform),
+            const RosterNameListPage(),
             EmployeeDirectoryPage(
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.employeeDirectoryControllerFactory,
