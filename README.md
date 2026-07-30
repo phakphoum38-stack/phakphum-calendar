@@ -583,3 +583,9 @@ The existing application shell remains the active entry point while the producti
 ## Version 3.0 SaaS Foundation
 
 Version 3.0 adds multi-tenant isolation, public API contracts, idempotent writes, a plugin SDK foundation and platform administration metrics. See `VERSION_3_0_STATUS.md` and `docs/wiki/VERSION_3_ARCHITECTURE.md`.
+
+## License
+
+Copyright 2026 Phakphum
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
