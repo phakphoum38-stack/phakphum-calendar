@@ -263,13 +263,21 @@ class CalendarService implements LegacyCalendarGateway {
   static String summaryFor(Shift shift) =>
       CalendarEventMatcher.calendarTitle(shift.displayName);
 
-  static String descriptionFor(Shift shift) =>
-      '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
-      'ชื่อเวรจากชีต: ${shift.rowLabel}\n'
-      'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}\n'
-      '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
-      'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
-      'ประเภท: ${shift.category.label}';
+  static String descriptionFor(Shift shift) {
+    final relationship = shift.relationshipComment?.trim() ?? '';
+    return <String>[
+      shift.generated
+          ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก'
+          : 'สร้างจากตารางเวร (อ่านอย่างเดียว)',
+      'ชื่อเวรจากชีต: ${shift.rowLabel}',
+      'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}',
+      if (relationship.isNotEmpty) relationship,
+      if (shift.sourceColorHex != null)
+        'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}',
+      'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}',
+      'ประเภท: ${shift.category.label}',
+    ].join('\n');
+  }
 
   static String displayLegacyKeyFor(Shift shift) =>
       _legacyKey(summaryFor(shift), shift.start);
