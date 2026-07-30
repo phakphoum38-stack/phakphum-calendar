@@ -5,16 +5,36 @@ import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/controller/app_controller.dart';
 import 'package:phakphum_calendar/core/di/app_dependencies.dart';
 import 'package:phakphum_calendar/features/excel_import/presentation/pages/import_excel_page.dart';
+import 'package:phakphum_calendar/features/edition/domain/app_edition.dart';
 import 'package:phakphum_calendar/models/shift.dart';
 import 'package:phakphum_calendar/models/shift_alert.dart';
 import 'package:phakphum_calendar/ui/app_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(
+    () => SharedPreferences.setMockInitialValues({
+      AppEditionRepository.storageKey: AppEdition.organization.name,
+    }),
+  );
 
   AppController demoController() =>
       AppDependencies.production().createDemoAppController();
+
+  testWidgets('first launch asks for personal or organization edition', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final controller = demoController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(ShiftToolsApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('เลือกเวอร์ชัน Shift Tools'), findsOneWidget);
+    expect(find.text('บุคคลทั่วไป'), findsOneWidget);
+    expect(find.text('องค์กร'), findsOneWidget);
+  });
 
   test('default monthly roster contains no personal names', () {
     final controller = demoController();

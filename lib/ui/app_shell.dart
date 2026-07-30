@@ -10,6 +10,7 @@ import '../domain/entities/schedule.dart';
 import '../features/reports/presentation/controllers/monthly_schedule_report_controller.dart';
 import '../features/reports/presentation/pages/monthly_schedule_report_page.dart';
 import '../features/admin/presentation/admin_access_page.dart';
+import '../features/edition/domain/app_edition.dart';
 import '../features/roster_names/presentation/roster_name_list_page.dart';
 import '../features/employees/presentation/pages/employee_directory_page.dart';
 import '../features/employees/presentation/controllers/employee_directory_controller.dart';
@@ -80,12 +81,16 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int selectedIndex = 0;
+  final editionRepository = AppEditionRepository();
+  AppEdition? edition;
+  bool editionLoading = true;
   bool _permissionDialogOpen = false;
   String? _permissionDialogShownForEmail;
 
   List<NavigationDestination> _destinations(
     BuildContext context,
     AppController controller,
+    AppEdition currentEdition,
   ) => [
     NavigationDestination(
       icon: const Icon(Icons.dashboard_outlined),
@@ -99,26 +104,29 @@ class _AppShellState extends State<AppShell> {
       icon: Icon(Icons.calendar_view_month_outlined),
       label: 'รายเดือน',
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.badge_outlined),
-      label: 'รายชื่อ',
-    ),
-    NavigationDestination(
-      icon: const Icon(Icons.groups_outlined),
-      label: context.l10n.employees,
-    ),
-    NavigationDestination(
-      icon: const Icon(Icons.swap_horiz_outlined),
-      label: context.l10n.shiftExchange,
-    ),
+    if (currentEdition == AppEdition.organization) ...[
+      const NavigationDestination(
+        icon: Icon(Icons.badge_outlined),
+        label: 'รายชื่อ',
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.groups_outlined),
+        label: context.l10n.employees,
+      ),
+      NavigationDestination(
+        icon: const Icon(Icons.swap_horiz_outlined),
+        label: context.l10n.shiftExchange,
+      ),
+    ],
     NavigationDestination(
       icon: const Icon(Icons.print_outlined),
       label: context.l10n.reports,
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.admin_panel_settings_outlined),
-      label: 'Admin',
-    ),
+    if (currentEdition == AppEdition.organization)
+      const NavigationDestination(
+        icon: Icon(Icons.admin_panel_settings_outlined),
+        label: 'Admin',
+      ),
     NavigationDestination(
       icon: const Icon(Icons.settings_outlined),
       label: context.l10n.settings,
@@ -129,6 +137,7 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     widget.controller.addListener(_handleControllerChanged);
+    unawaited(_loadEdition());
   }
 
   @override
@@ -156,6 +165,26 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
+  Future<void> _loadEdition() async {
+    final loaded = await editionRepository.load();
+    if (mounted) {
+      setState(() {
+        edition = loaded;
+        editionLoading = false;
+      });
+    }
+  }
+
+  Future<void> _selectEdition(AppEdition value) async {
+    await editionRepository.save(value);
+    if (mounted) {
+      setState(() {
+        edition = value;
+        selectedIndex = 0;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.controller,
@@ -164,10 +193,21 @@ class _AppShellState extends State<AppShell> {
       if (!controller.initialized) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
+      if (editionLoading) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      if (edition == null) {
+        return _EditionSelectionPage(onSelected: _selectEdition);
+      }
       return LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 900;
-          final destinations = _destinations(context, controller);
+          final currentEdition = edition!;
+          final destinations = _destinations(
+            context,
+            controller,
+            currentEdition,
+          );
           final pages = <Widget>[
             _DashboardPage(
               controller: controller,
@@ -186,24 +226,29 @@ class _AppShellState extends State<AppShell> {
               openRosterEditor: _openRosterEditor,
             ),
             _MonthlyRosterPage(controller: controller, perform: _perform),
-            RosterNameListPage(controller: controller, perform: _perform),
-            EmployeeDirectoryPage(
-              schedule: controller.canonicalSchedule,
-              controllerFactory: widget.employeeDirectoryControllerFactory,
-            ),
-            ShiftExchangePage(
-              schedule: controller.canonicalSchedule,
-              controllerFactory: widget.shiftExchangeControllerFactory,
-            ),
+            if (currentEdition == AppEdition.organization) ...[
+              RosterNameListPage(controller: controller, perform: _perform),
+              EmployeeDirectoryPage(
+                schedule: controller.canonicalSchedule,
+                controllerFactory: widget.employeeDirectoryControllerFactory,
+              ),
+              ShiftExchangePage(
+                schedule: controller.canonicalSchedule,
+                controllerFactory: widget.shiftExchangeControllerFactory,
+              ),
+            ],
             MonthlyScheduleReportPage(
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.reportControllerFactory,
             ),
-            AdminAccessPage(currentEmail: controller.auth.account?.email),
+            if (currentEdition == AppEdition.organization)
+              AdminAccessPage(currentEmail: controller.auth.account?.email),
             _SettingsPage(
               controller: controller,
               createFutureSheet: _createFutureSheet,
               openShiftTemplates: _openShiftTemplates,
+              edition: currentEdition,
+              changeEdition: _selectEdition,
             ),
           ];
           final content = IndexedStack(index: selectedIndex, children: pages);
@@ -4507,21 +4552,99 @@ class _SavedSheetCard extends StatelessWidget {
   );
 }
 
+class _EditionSelectionPage extends StatelessWidget {
+  const _EditionSelectionPage({required this.onSelected});
+
+  final Future<void> Function(AppEdition edition) onSelected;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('เลือกเวอร์ชัน Shift Tools')),
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              'รูปแบบการใช้งาน',
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'เลือกตามลักษณะการใช้งาน เปลี่ยนภายหลังได้จากหน้าตั้งค่า',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            for (final value in AppEdition.values) ...[
+              Card(
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16),
+                  leading: CircleAvatar(
+                    child: Icon(
+                      value == AppEdition.personal
+                          ? Icons.person_outline
+                          : Icons.apartment_outlined,
+                    ),
+                  ),
+                  title: Text(
+                    value.label,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(value.description),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => onSelected(value),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _SettingsPage extends StatelessWidget {
   const _SettingsPage({
     required this.controller,
     required this.createFutureSheet,
     required this.openShiftTemplates,
+    required this.edition,
+    required this.changeEdition,
   });
   final AppController controller;
   final Future<void> Function(String template, String newTitle)
   createFutureSheet;
   final VoidCallback openShiftTemplates;
+  final AppEdition edition;
+  final Future<void> Function(AppEdition edition) changeEdition;
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
+      Card(
+        child: ListTile(
+          leading: CircleAvatar(
+            child: Icon(
+              edition == AppEdition.personal
+                  ? Icons.person_outline
+                  : Icons.apartment_outlined,
+            ),
+          ),
+          title: const Text('เวอร์ชันการใช้งาน'),
+          subtitle: Text('${edition.label} • ${edition.description}'),
+          trailing: const Icon(Icons.swap_horiz),
+          onTap: () => _showEditionDialog(context),
+        ),
+      ),
+      const SizedBox(height: 16),
       Card(
         child: ListTile(
           leading: const CircleAvatar(
@@ -4595,6 +4718,32 @@ class _SettingsPage extends StatelessWidget {
       ),
     ],
   );
+
+  Future<void> _showEditionDialog(BuildContext context) async {
+    final selected = await showDialog<AppEdition>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('เลือกเวอร์ชันการใช้งาน'),
+        children: [
+          for (final value in AppEdition.values)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, value),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  value == edition ? Icons.check_circle : Icons.circle_outlined,
+                ),
+                title: Text(value.label),
+                subtitle: Text(value.description),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (selected != null && selected != edition) {
+      await changeEdition(selected);
+    }
+  }
 }
 
 class _FutureSheetCard extends StatefulWidget {
