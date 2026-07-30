@@ -9,6 +9,7 @@ import '../controller/app_controller.dart';
 import '../domain/entities/schedule.dart';
 import '../features/reports/presentation/controllers/monthly_schedule_report_controller.dart';
 import '../features/reports/presentation/pages/monthly_schedule_report_page.dart';
+import '../features/admin/presentation/admin_access_page.dart';
 import '../features/roster_names/presentation/roster_name_list_page.dart';
 import '../features/employees/presentation/pages/employee_directory_page.dart';
 import '../features/employees/presentation/controllers/employee_directory_controller.dart';
@@ -114,6 +115,10 @@ class _AppShellState extends State<AppShell> {
       icon: const Icon(Icons.print_outlined),
       label: context.l10n.reports,
     ),
+    const NavigationDestination(
+      icon: Icon(Icons.admin_panel_settings_outlined),
+      label: 'Admin',
+    ),
     NavigationDestination(
       icon: const Icon(Icons.settings_outlined),
       label: context.l10n.settings,
@@ -194,6 +199,7 @@ class _AppShellState extends State<AppShell> {
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.reportControllerFactory,
             ),
+            AdminAccessPage(currentEmail: controller.auth.account?.email),
             _SettingsPage(
               controller: controller,
               createFutureSheet: _createFutureSheet,

@@ -178,6 +178,7 @@ void main() {
     expect(find.text('บุคลากร'), findsOneWidget);
     expect(find.text('แลกเวร'), findsOneWidget);
     expect(find.text('รายงาน'), findsOneWidget);
+    expect(find.text('Admin'), findsOneWidget);
     expect(find.text('ตั้งค่า'), findsOneWidget);
     expect(find.text('ลบเวรซ้ำ'), findsOneWidget);
 
