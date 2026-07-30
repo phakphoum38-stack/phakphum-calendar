@@ -4731,9 +4731,7 @@ class _SettingsPage extends StatelessWidget {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(
-                  value == edition
-                      ? Icons.check_circle
-                      : Icons.circle_outlined,
+                  value == edition ? Icons.check_circle : Icons.circle_outlined,
                 ),
                 title: Text(value.label),
                 subtitle: Text(value.description),
