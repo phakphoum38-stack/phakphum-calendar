@@ -6,6 +6,7 @@ import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/core/di/app_dependencies.dart';
 import 'package:phakphum_calendar/core/result/result.dart';
 import 'package:phakphum_calendar/domain/entities/schedule.dart';
+import 'package:phakphum_calendar/features/edition/domain/app_edition.dart';
 import 'package:phakphum_calendar/features/reports/domain/monthly_report_options.dart';
 import 'package:phakphum_calendar/features/reports/domain/report_service.dart';
 import 'package:phakphum_calendar/features/reports/infrastructure/monthly_schedule_pdf_service.dart';
@@ -17,7 +18,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'support/canonical_schedule_fixture.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(
+    () => SharedPreferences.setMockInitialValues({
+      AppEditionRepository.storageKey: AppEdition.organization.name,
+    }),
+  );
 
   test('AppDependencies constructs and injects report dependencies', () {
     final service = _FakeReportService();
