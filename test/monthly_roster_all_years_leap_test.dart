@@ -14,22 +14,19 @@ void main() {
       final dates = report.assignments.map((item) => item.date).toList();
 
       if (isLeapYear) {
-        expect(
-          dates,
-          [DateTime(gregorianYear, 2, 29), DateTime(gregorianYear, 3, 1)],
-          reason: 'ปี ค.ศ. $gregorianYear ต้องมีวันที่ 29 กุมภาพันธ์',
-        );
+        expect(dates, [
+          DateTime(gregorianYear, 2, 29),
+          DateTime(gregorianYear, 3, 1),
+        ], reason: 'ปี ค.ศ. $gregorianYear ต้องมีวันที่ 29 กุมภาพันธ์');
         expect(
           report.warnings,
           isEmpty,
           reason: 'ปี ค.ศ. $gregorianYear ไม่ควรมีคำเตือนสำหรับ 29 กุมภาพันธ์',
         );
       } else {
-        expect(
-          dates,
-          [DateTime(gregorianYear, 3, 1)],
-          reason: 'ปี ค.ศ. $gregorianYear ต้องข้ามวันที่ 29 กุมภาพันธ์',
-        );
+        expect(dates, [
+          DateTime(gregorianYear, 3, 1),
+        ], reason: 'ปี ค.ศ. $gregorianYear ต้องข้ามวันที่ 29 กุมภาพันธ์');
         expect(
           report.warnings.any((warning) => warning.contains('วันที่ 29')),
           isTrue,
@@ -59,9 +56,7 @@ ShiftParserInput _inputForYear(int buddhistYear) {
     sheetTitle: '28 ก.พ. $buddhistYear - 1 มี.ค. $buddhistYear',
     timeZone: 'Asia/Bangkok',
     cells: [
-      ..._row(0, [
-        'เวร 28 ก.พ. $buddhistYear - 1 มี.ค. $buddhistYear',
-      ]),
+      ..._row(0, ['เวร 28 ก.พ. $buddhistYear - 1 มี.ค. $buddhistYear']),
       ..._row(1, ['วันที่', 28, 29, 1]),
       ..._row(2, ['ER', null, '29 ก.พ.', '1 มี.ค.']),
     ],

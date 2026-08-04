@@ -28,11 +28,10 @@ void main() {
 
         for (var month = 1; month <= 12; month++) {
           final lastDay = DateTime(year, month + 1, 0).day;
-          final days = <int>[
-            for (var day = 1; day <= lastDay; day++) day,
-          ];
+          final days = <int>[for (var day = 1; day <= lastDay; day++) day];
           final monthName = thaiMonths[month - 1];
-          final title = '1 $monthName $buddhistYear - '
+          final title =
+              '1 $monthName $buddhistYear - '
               '$lastDay $monthName $buddhistYear';
 
           final input = ShiftParserInput(
@@ -53,8 +52,7 @@ void main() {
               .map((assignment) => assignment.date)
               .toList(growable: false);
           final expectedDates = <DateTime>[
-            for (var day = 1; day <= lastDay; day++)
-              DateTime(year, month, day),
+            for (var day = 1; day <= lastDay; day++) DateTime(year, month, day),
           ];
 
           expect(
@@ -72,50 +70,48 @@ void main() {
     },
   );
 
-  test(
-    'rejects impossible days for every month from 1900 to 2200',
-    () {
-      for (var year = 1900; year <= 2200; year++) {
-        final buddhistYear = year + 543;
+  test('rejects impossible days for every month from 1900 to 2200', () {
+    for (var year = 1900; year <= 2200; year++) {
+      final buddhistYear = year + 543;
 
-        for (var month = 1; month <= 12; month++) {
-          final lastDay = DateTime(year, month + 1, 0).day;
-          if (lastDay == 31) continue;
+      for (var month = 1; month <= 12; month++) {
+        final lastDay = DateTime(year, month + 1, 0).day;
+        if (lastDay == 31) continue;
 
-          final invalidDay = lastDay + 1;
-          final monthName = thaiMonths[month - 1];
-          final title = '1 $monthName $buddhistYear - '
-              '$lastDay $monthName $buddhistYear';
+        final invalidDay = lastDay + 1;
+        final monthName = thaiMonths[month - 1];
+        final title =
+            '1 $monthName $buddhistYear - '
+            '$lastDay $monthName $buddhistYear';
 
-          final input = ShiftParserInput(
-            spreadsheetId: 'spreadsheet',
-            spreadsheetTitle: 'Roster',
-            sheetId: 1,
-            sheetTitle: title,
-            timeZone: 'Asia/Bangkok',
-            cells: [
-              ..._row(0, ['เวร $title']),
-              ..._row(1, ['วันที่', lastDay, invalidDay]),
-              ..._row(2, ['ER', 'วันสุดท้าย', 'วันที่ไม่มีจริง']),
-            ],
-          );
+        final input = ShiftParserInput(
+          spreadsheetId: 'spreadsheet',
+          spreadsheetTitle: 'Roster',
+          sheetId: 1,
+          sheetTitle: title,
+          timeZone: 'Asia/Bangkok',
+          cells: [
+            ..._row(0, ['เวร $title']),
+            ..._row(1, ['วันที่', lastDay, invalidDay]),
+            ..._row(2, ['ER', 'วันสุดท้าย', 'วันที่ไม่มีจริง']),
+          ],
+        );
 
-          final report = parser.parse(input);
+        final report = parser.parse(input);
 
-          expect(
-            report.assignments.map((item) => item.date),
-            [DateTime(year, month, lastDay)],
-            reason: 'ต้องเก็บเฉพาะวันจริงของ $monthName $buddhistYear',
-          );
-          expect(
-            report.warnings,
-            isNotEmpty,
-            reason: 'ต้องเตือนวันที่ $invalidDay $monthName $buddhistYear',
-          );
-        }
+        expect(
+          report.assignments.map((item) => item.date),
+          [DateTime(year, month, lastDay)],
+          reason: 'ต้องเก็บเฉพาะวันจริงของ $monthName $buddhistYear',
+        );
+        expect(
+          report.warnings,
+          isNotEmpty,
+          reason: 'ต้องเตือนวันที่ $invalidDay $monthName $buddhistYear',
+        );
       }
-    },
-  );
+    }
+  });
 }
 
 List<NormalizedCell> _row(int rowIndex, List<Object?> values) {

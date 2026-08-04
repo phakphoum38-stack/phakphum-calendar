@@ -204,7 +204,8 @@ class MonthlyRosterSectionParser {
         monthCursor.month,
         displayedDay,
       );
-      final isValidDay = candidate.year == monthCursor.year &&
+      final isValidDay =
+          candidate.year == monthCursor.year &&
           candidate.month == monthCursor.month &&
           candidate.day == displayedDay;
 

@@ -268,9 +268,7 @@ void main() {
 
     final report = const MonthlyRosterSectionParser().parse(input);
 
-    expect(report.assignments.map((item) => item.date), [
-      DateTime(2026, 3, 1),
-    ]);
+    expect(report.assignments.map((item) => item.date), [DateTime(2026, 3, 1)]);
     expect(report.warnings, hasLength(1));
     expect(report.warnings.single, contains('วันที่ 29'));
     expect(report.warnings.single, contains('อยู่นอกช่วง'));

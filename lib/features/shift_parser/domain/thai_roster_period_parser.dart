@@ -127,9 +127,7 @@ class ThaiRosterPeriodParser {
     if (range == null) return null;
 
     final contexts = <(int, int)>{};
-    final contextMatches = RegExp(
-      r'([ก-๙.]+)\s*(\d{2,4})',
-    ).allMatches(text);
+    final contextMatches = RegExp(r'([ก-๙.]+)\s*(\d{2,4})').allMatches(text);
 
     for (final match in contextMatches) {
       final monthText = match.group(1)!;

@@ -37,17 +37,12 @@ void main() {
   });
 
   test('rejects bare day range when month-year context is missing', () {
-    expect(
-      () => parser.parse('วันที่ 2-5'),
-      throwsA(isA<FormatException>()),
-    );
+    expect(() => parser.parse('วันที่ 2-5'), throwsA(isA<FormatException>()));
   });
 
   test('rejects bare day range when context contains multiple months', () {
     expect(
-      () => parser.parse(
-        'วันที่ 2-5 ในช่วง 16 สิงหาคม 2569 - 15 กันยายน 2569',
-      ),
+      () => parser.parse('วันที่ 2-5 ในช่วง 16 สิงหาคม 2569 - 15 กันยายน 2569'),
       throwsA(isA<FormatException>()),
     );
   });

@@ -18,36 +18,33 @@ void main() {
     'ธันวาคม',
   ];
 
-  test(
-    'parses every valid single day of every month from 1900 to 2200',
-    () {
-      for (var year = 1900; year <= 2200; year++) {
-        final buddhistYear = year + 543;
+  test('parses every valid single day of every month from 1900 to 2200', () {
+    for (var year = 1900; year <= 2200; year++) {
+      final buddhistYear = year + 543;
 
-        for (var month = 1; month <= 12; month++) {
-          final monthName = thaiMonths[month - 1];
-          final lastDay = DateTime(year, month + 1, 0).day;
+      for (var month = 1; month <= 12; month++) {
+        final monthName = thaiMonths[month - 1];
+        final lastDay = DateTime(year, month + 1, 0).day;
 
-          for (var day = 1; day <= lastDay; day++) {
-            final source = '$day-$day $monthName $buddhistYear';
-            final period = parser.parse(source);
-            final expected = DateTime(year, month, day);
+        for (var day = 1; day <= lastDay; day++) {
+          final source = '$day-$day $monthName $buddhistYear';
+          final period = parser.parse(source);
+          final expected = DateTime(year, month, day);
 
-            expect(
-              period.start,
-              expected,
-              reason: 'วันเริ่มต้นต้องตรงสำหรับ $source',
-            );
-            expect(
-              period.end,
-              expected,
-              reason: 'วันสิ้นสุดต้องตรงสำหรับ $source',
-            );
-          }
+          expect(
+            period.start,
+            expected,
+            reason: 'วันเริ่มต้นต้องตรงสำหรับ $source',
+          );
+          expect(
+            period.end,
+            expected,
+            reason: 'วันสิ้นสุดต้องตรงสำหรับ $source',
+          );
         }
       }
-    },
-  );
+    }
+  });
 
   test('shows representative examples for every month in 2569', () {
     const examples = <String, DateTime>{
