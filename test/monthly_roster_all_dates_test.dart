@@ -83,6 +83,7 @@ void main() {
         final title =
             '1 $monthName $buddhistYear - '
             '$lastDay $monthName $buddhistYear';
+        final headerDays = <int>[1, 2, 3, 4, 5, 6, 7, lastDay, invalidDay];
 
         final input = ShiftParserInput(
           spreadsheetId: 'spreadsheet',
@@ -92,8 +93,19 @@ void main() {
           timeZone: 'Asia/Bangkok',
           cells: [
             ..._row(0, ['เวร $title']),
-            ..._row(1, ['วันที่', lastDay, invalidDay]),
-            ..._row(2, ['ER', 'วันสุดท้าย', 'วันที่ไม่มีจริง']),
+            ..._row(1, ['วันที่', ...headerDays]),
+            ..._row(2, [
+              'ER',
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              'วันสุดท้าย',
+              'วันที่ไม่มีจริง',
+            ]),
           ],
         );
 
