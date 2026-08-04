@@ -48,61 +48,170 @@ class ThaiRosterPeriodParser {
   };
 
   ThaiRosterPeriod parse(String text) {
-    final normalized = text
-        .replaceAll('พ.ศ.', '')
-        .replaceAll('พ.ศ', '')
-        .replaceAll('พศ.', '')
-        .replaceAll('พศ', '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final normalized = _normalizeText(text);
+
+    final compactSameMonth = _tryParseCompactSameMonth(
+      normalized,
+      source: text,
+    );
+    if (compactSameMonth != null) return compactSameMonth;
 
     final tokens = RegExp(
       r'(\d{1,2})\s*([ก-๙.]+)(?:\s*(\d{2,4}))?',
     ).allMatches(normalized).toList();
 
-    if (tokens.length < 2) {
-      throw FormatException('ไม่พบช่วงวันที่ในข้อความ: $text');
+    if (tokens.length >= 2) {
+      final startToken = _readToken(tokens.first);
+      final endToken = _readToken(tokens[1]);
+      return _buildPeriod(
+        startToken: startToken,
+        endToken: endToken,
+        source: text,
+      );
     }
 
-    final startToken = _readToken(tokens.first);
-    final endToken = _readToken(tokens[1]);
+    final contextualRange = _tryParseBareRangeWithContext(
+      normalized,
+      source: text,
+    );
+    if (contextualRange != null) return contextualRange;
+
+    throw FormatException('ไม่พบช่วงวันที่ในข้อความ: $text');
+  }
+
+  String _normalizeText(String text) {
+    return text
+        .replaceAll('พ.ศ.', '')
+        .replaceAll('พ.ศ', '')
+        .replaceAll('พศ.', '')
+        .replaceAll('พศ', '')
+        .replaceAll('–', '-')
+        .replaceAll('—', '-')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  ThaiRosterPeriod? _tryParseCompactSameMonth(
+    String text, {
+    required String source,
+  }) {
+    final match = RegExp(
+      r'(\d{1,2})\s*(?:-|ถึง)\s*(\d{1,2})\s*([ก-๙.]+)\s*(\d{2,4})',
+    ).firstMatch(text);
+    if (match == null) return null;
+
+    final month = _resolveMonth(match.group(3)!);
+    final year = _normalizeYear(int.parse(match.group(4)!));
+    return _buildPeriod(
+      startToken: _DateToken(
+        day: int.parse(match.group(1)!),
+        month: month,
+        year: year,
+      ),
+      endToken: _DateToken(
+        day: int.parse(match.group(2)!),
+        month: month,
+        year: year,
+      ),
+      source: source,
+    );
+  }
+
+  ThaiRosterPeriod? _tryParseBareRangeWithContext(
+    String text, {
+    required String source,
+  }) {
+    final range = RegExp(
+      r'(?<!\d)(\d{1,2})\s*(?:-|ถึง)\s*(\d{1,2})(?!\d)',
+    ).firstMatch(text);
+    if (range == null) return null;
+
+    final contexts = <(int, int)>{};
+    final contextMatches = RegExp(
+      r'([ก-๙.]+)\s*(\d{2,4})',
+    ).allMatches(text);
+
+    for (final match in contextMatches) {
+      final monthText = match.group(1)!;
+      final month = _tryResolveMonth(monthText);
+      if (month == null) continue;
+      final year = _normalizeYear(int.parse(match.group(2)!));
+      contexts.add((month, year));
+    }
+
+    if (contexts.length != 1) {
+      if (contexts.length > 1) {
+        throw FormatException(
+          'ช่วงวันที่ "$source" มีหลายเดือนหรือหลายปี กรุณาระบุเดือนและปีให้ชัดเจน',
+        );
+      }
+      return null;
+    }
+
+    final context = contexts.single;
+    return _buildPeriod(
+      startToken: _DateToken(
+        day: int.parse(range.group(1)!),
+        month: context.$1,
+        year: context.$2,
+      ),
+      endToken: _DateToken(
+        day: int.parse(range.group(2)!),
+        month: context.$1,
+        year: context.$2,
+      ),
+      source: source,
+    );
+  }
+
+  ThaiRosterPeriod _buildPeriod({
+    required _DateToken startToken,
+    required _DateToken endToken,
+    required String source,
+  }) {
     final years = _resolveYears(startToken: startToken, endToken: endToken);
 
     final start = _checkedDate(
       year: years.$1,
       month: startToken.month,
       day: startToken.day,
-      source: text,
+      source: source,
     );
     final end = _checkedDate(
       year: years.$2,
       month: endToken.month,
       day: endToken.day,
-      source: text,
+      source: source,
     );
 
     if (end.isBefore(start)) {
-      throw FormatException('วันสิ้นสุดอยู่ก่อนวันเริ่มต้น: $text');
+      throw FormatException('วันสิ้นสุดอยู่ก่อนวันเริ่มต้น: $source');
     }
 
     return ThaiRosterPeriod(start: start, end: end);
   }
 
   _DateToken _readToken(RegExpMatch match) {
-    final day = int.parse(match.group(1)!);
-    final monthText = match.group(2)!.trim();
-    final normalizedMonth = monthText.replaceAll('.', '');
-    final month = _months[monthText] ?? _months[normalizedMonth];
-    if (month == null) {
-      throw FormatException('ไม่รู้จักเดือนไทย: $monthText');
-    }
-
     final rawYear = match.group(3);
     return _DateToken(
-      day: day,
-      month: month,
+      day: int.parse(match.group(1)!),
+      month: _resolveMonth(match.group(2)!),
       year: rawYear == null ? null : _normalizeYear(int.parse(rawYear)),
     );
+  }
+
+  int _resolveMonth(String value) {
+    final month = _tryResolveMonth(value);
+    if (month == null) {
+      throw FormatException('ไม่รู้จักเดือนไทย: $value');
+    }
+    return month;
+  }
+
+  int? _tryResolveMonth(String value) {
+    final original = value.trim();
+    final normalized = original.replaceAll('.', '');
+    return _months[original] ?? _months[normalized];
   }
 
   (int, int) _resolveYears({
