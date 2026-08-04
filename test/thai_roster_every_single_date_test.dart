@@ -47,7 +47,7 @@ void main() {
   });
 
   test('shows representative examples for every month in 2569', () {
-    const examples = <String, DateTime>{
+    final examples = <String, DateTime>{
       '1-1 มกราคม 2569': DateTime(2026, 1, 1),
       '2-2 กุมภาพันธ์ 2569': DateTime(2026, 2, 2),
       '3-3 มีนาคม 2569': DateTime(2026, 3, 3),
