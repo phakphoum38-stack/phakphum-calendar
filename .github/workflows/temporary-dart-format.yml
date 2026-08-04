@@ -1,0 +1,54 @@
+name: Temporary Dart Format
+
+on:
+  push:
+    branches:
+      - fix/resolve-roster-dates-from-period
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: fix/resolve-roster-dates-from-period
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Format changed Dart files
+        run: |
+          dart format \
+            lib/features/shift_parser/application/monthly_roster_section_parser.dart \
+            lib/features/shift_parser/domain/thai_roster_period_parser.dart \
+            test/monthly_roster_all_dates_test.dart \
+            test/monthly_roster_all_years_leap_test.dart \
+            test/monthly_roster_cross_month_date_test.dart \
+            test/sce_thai_roster_period_parser_test.dart \
+            test/thai_roster_every_single_date_test.dart
+
+      - name: Commit formatted files
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            lib/features/shift_parser/application/monthly_roster_section_parser.dart \
+            lib/features/shift_parser/domain/thai_roster_period_parser.dart \
+            test/monthly_roster_all_dates_test.dart \
+            test/monthly_roster_all_years_leap_test.dart \
+            test/monthly_roster_cross_month_date_test.dart \
+            test/sce_thai_roster_period_parser_test.dart \
+            test/thai_roster_every_single_date_test.dart
+          git commit -m "style: format roster parser changes"
+          git push origin HEAD:fix/resolve-roster-dates-from-period
