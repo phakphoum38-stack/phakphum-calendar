@@ -1,0 +1,44 @@
+name: Fix PR60 range filtering
+
+on:
+  push:
+    branches:
+      - fix/strict-roster-data-range
+    paths:
+      - .github/workflows/fix-pr60-range.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          ref: fix/strict-roster-data-range
+
+      - name: Patch AppController and format
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/controller/app_controller.dart')
+          text = path.read_text()
+          old = """    _replaceLegacyShifts(\n      _alertService.addOffDutyPeriods(\n        _applyReferenceRelationships(\n          _filterToSyncDateRange(_loadedRosterShifts),\n        ),\n      ),\n    );"""
+          new = """    _replaceLegacyShifts(\n      _filterToSyncDateRange(\n        _alertService.addOffDutyPeriods(\n          _applyReferenceRelationships(\n            _filterToSyncDateRange(_loadedRosterShifts),\n          ),\n        ),\n      ),\n    );"""
+          if old not in text:
+              raise SystemExit('Target block not found or already changed')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          dart format lib/controller/app_controller.dart test/off_after_cross_month_roster_boundary_test.dart
+
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/fix-pr60-range.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/controller/app_controller.dart test/off_after_cross_month_roster_boundary_test.dart .github/workflows/fix-pr60-range.yml
+          git commit -m "Fix generated OFF range filtering"
+          git push origin HEAD:fix/strict-roster-data-range
