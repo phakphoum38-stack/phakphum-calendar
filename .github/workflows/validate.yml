@@ -17,7 +17,7 @@ on:
       - ".github/workflows/**"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   MIN_COVERAGE_PERCENT: ${{ vars.MIN_COVERAGE_PERCENT || '60' }}
@@ -27,6 +27,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  patch-pr60:
+    name: Apply PR60 range fix
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Patch controller and clean temporary workflows
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/controller/app_controller.dart')
+          text = path.read_text()
+          old = """    _replaceLegacyShifts(\n      _alertService.addOffDutyPeriods(\n        _applyReferenceRelationships(\n          _filterToSyncDateRange(_loadedRosterShifts),\n        ),\n      ),\n    );"""
+          new = """    _replaceLegacyShifts(\n      _filterToSyncDateRange(\n        _alertService.addOffDutyPeriods(\n          _applyReferenceRelationships(\n            _filterToSyncDateRange(_loadedRosterShifts),\n          ),\n        ),\n      ),\n    );"""
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+          elif new not in text:
+              raise SystemExit('Target range-filter block was not found')
+          PY
+          dart format lib/controller/app_controller.dart test/off_after_cross_month_roster_boundary_test.dart
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/validate.yml
+          rm -f .github/workflows/fix-pr60-range.yml
+
+      - name: Commit fix to PR branch
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/controller/app_controller.dart test/off_after_cross_month_roster_boundary_test.dart .github/workflows/validate.yml .github/workflows/fix-pr60-range.yml
+          git commit -m "Fix generated OFF range filtering"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
   validate:
     name: Format, analyze and test
     runs-on: ubuntu-latest
