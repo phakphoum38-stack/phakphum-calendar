@@ -66,25 +66,31 @@ class MonthlyRosterSectionParser {
         continue;
       }
 
+      final datesByColumn = _resolveDatesByColumn(
+        daysByColumn: daysByColumn,
+        start: start,
+        end: end,
+        sectionTitle: title,
+        warnings: warnings,
+      );
+
       final assignments = <MonthlyRosterAssignment>[];
       for (var rowIndex = headerRow + 1; rowIndex < nextHeader; rowIndex++) {
         final rowLabel =
             cellsByCoordinate[(rowIndex, 0)]?.text?.toString().trim() ?? '';
         if (rowLabel.isEmpty || _looksLikeHeading(rowLabel)) continue;
 
-        for (final entry in daysByColumn.entries) {
+        for (final entry in datesByColumn.entries) {
           final workerCell = cellsByCoordinate[(rowIndex, entry.key)];
           final worker = workerCell?.text?.toString().trim() ?? '';
           if (worker.isEmpty) continue;
-          final date = _dateInPeriod(entry.value, start, end);
-          if (date == null) continue;
           assignments.add(
             MonthlyRosterAssignment(
               sectionTitle: title,
               rowLabel: rowLabel,
               rowIndex: rowIndex,
               workerName: worker,
-              date: date,
+              date: entry.value,
               sourceCell: A1Notation.fromZeroBased(
                 rowIndex: rowIndex,
                 columnIndex: entry.key,
@@ -150,6 +156,75 @@ class MonthlyRosterSectionParser {
     return result;
   }
 
+  Map<int, DateTime> _resolveDatesByColumn({
+    required Map<int, int> daysByColumn,
+    required DateTime start,
+    required DateTime end,
+    required String sectionTitle,
+    required List<String> warnings,
+  }) {
+    final result = <int, DateTime>{};
+    final columns = daysByColumn.keys.toList()..sort();
+    var cursor = DateTime(start.year, start.month, start.day);
+
+    for (final column in columns) {
+      final displayedDay = daysByColumn[column]!;
+      final resolved = _nextDateWithDay(
+        displayedDay: displayedDay,
+        cursor: cursor,
+        end: end,
+      );
+
+      if (resolved == null) {
+        warnings.add(
+          'วันที่ $displayedDay ในส่วน "$sectionTitle" '
+          'อยู่นอกช่วง ${_formatDate(start)} - ${_formatDate(end)}',
+        );
+        continue;
+      }
+
+      result[column] = resolved;
+      cursor = resolved.add(const Duration(days: 1));
+    }
+
+    return result;
+  }
+
+  DateTime? _nextDateWithDay({
+    required int displayedDay,
+    required DateTime cursor,
+    required DateTime end,
+  }) {
+    var monthCursor = DateTime(cursor.year, cursor.month);
+    final lastMonth = DateTime(end.year, end.month);
+
+    while (!monthCursor.isAfter(lastMonth)) {
+      final candidate = DateTime(
+        monthCursor.year,
+        monthCursor.month,
+        displayedDay,
+      );
+      final isValidDay =
+          candidate.year == monthCursor.year &&
+          candidate.month == monthCursor.month &&
+          candidate.day == displayedDay;
+
+      if (isValidDay &&
+          !candidate.isBefore(cursor) &&
+          !candidate.isAfter(end)) {
+        return candidate;
+      }
+
+      monthCursor = DateTime(monthCursor.year, monthCursor.month + 1);
+    }
+
+    return null;
+  }
+
+  String _formatDate(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/${date.year}';
+
   String _sectionTitle({
     required ShiftParserInput input,
     required Map<int, List<dynamic>> cellsByRow,
@@ -176,15 +251,5 @@ class MonthlyRosterSectionParser {
   bool _looksLikeHeading(String value) {
     final normalized = value.replaceAll(RegExp(r'\s+'), '');
     return normalized == 'วันที่' || normalized == 'เวร';
-  }
-
-  DateTime? _dateInPeriod(int day, DateTime start, DateTime end) {
-    for (final base in [start, end]) {
-      final candidate = DateTime(base.year, base.month, day);
-      if (!candidate.isBefore(start) && !candidate.isAfter(end)) {
-        return candidate;
-      }
-    }
-    return null;
   }
 }
