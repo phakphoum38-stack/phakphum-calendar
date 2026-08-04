@@ -24,6 +24,34 @@ void main() {
     expect(period.end, DateTime(2026, 8, 15));
   });
 
+  test('parses compact same-month period', () {
+    final period = parser.parse('7-14 มิ.ย. 2569');
+    expect(period.start, DateTime(2026, 6, 7));
+    expect(period.end, DateTime(2026, 6, 14));
+  });
+
+  test('parses bare day range from one month-year context', () {
+    final period = parser.parse('เวรวันที่ 2-5 ประจำเดือน มิถุนายน 2569');
+    expect(period.start, DateTime(2026, 6, 2));
+    expect(period.end, DateTime(2026, 6, 5));
+  });
+
+  test('rejects bare day range when month-year context is missing', () {
+    expect(
+      () => parser.parse('วันที่ 2-5'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('rejects bare day range when context contains multiple months', () {
+    expect(
+      () => parser.parse(
+        'วันที่ 2-5 ในช่วง 16 สิงหาคม 2569 - 15 กันยายน 2569',
+      ),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('uses one trailing Buddhist year for both dates', () {
     final period = parser.parse('16 ส.ค. - 15 ก.ย. 69');
     expect(period.start, DateTime(2026, 8, 16));
