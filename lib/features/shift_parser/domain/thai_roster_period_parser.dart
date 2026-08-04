@@ -57,7 +57,7 @@ class ThaiRosterPeriodParser {
     if (compactSameMonth != null) return compactSameMonth;
 
     final tokens = RegExp(
-      r'(\d{1,2})\s*([ก-๙.]+)(?:\s*(\d{2,4}))?',
+      r'(?<!\d)(0?[1-9]|[12]\d|3[01])\s*([ก-๙.]+)(?:\s*(\d{2,4}))?(?!\d)',
     ).allMatches(normalized).toList();
 
     if (tokens.length >= 2) {
@@ -96,7 +96,7 @@ class ThaiRosterPeriodParser {
     required String source,
   }) {
     final match = RegExp(
-      r'(?<!\d)(\d{1,2})\s*(?:-|ถึง)\s*(\d{1,2})\s*([ก-๙.]+)\s*(\d{2,4})(?!\d)',
+      r'(?<!\d)(0?[1-9]|[12]\d|3[01])\s*(?:-|ถึง)\s*(0?[1-9]|[12]\d|3[01])\s*([ก-๙.]+)\s*(\d{2,4})(?!\d)',
     ).firstMatch(text);
     if (match == null) return null;
 
@@ -122,7 +122,7 @@ class ThaiRosterPeriodParser {
     required String source,
   }) {
     final range = RegExp(
-      r'(?<!\d)(\d{1,2})\s*(?:-|ถึง)\s*(\d{1,2})(?!\d)',
+      r'(?<!\d)(0?[1-9]|[12]\d|3[01])\s*(?:-|ถึง)\s*(0?[1-9]|[12]\d|3[01])(?!\d)',
     ).firstMatch(text);
     if (range == null) return null;
 
