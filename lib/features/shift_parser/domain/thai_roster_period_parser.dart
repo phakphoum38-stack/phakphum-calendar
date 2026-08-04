@@ -96,7 +96,7 @@ class ThaiRosterPeriodParser {
     required String source,
   }) {
     final match = RegExp(
-      r'(\d{1,2})\s*(?:-|ถึง)\s*(\d{1,2})\s*([ก-๙.]+)\s*(\d{2,4})',
+      r'(?<!\d)(\d{1,2})\s*(?:-|ถึง)\s*(\d{1,2})\s*([ก-๙.]+)\s*(\d{2,4})(?!\d)',
     ).firstMatch(text);
     if (match == null) return null;
 
