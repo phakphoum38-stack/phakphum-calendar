@@ -5,41 +5,70 @@ import 'package:phakphum_calendar/services/shift_alert_service.dart';
 void main() {
   const service = ShiftAlertService();
 
-  test(
-    'creates only OFF after the last real night shift across a roster cutoff',
-    () {
-      final night = Shift(
-        code: 'N',
-        rowLabel: 'เวรดึก',
-        assignedName: 'ผู้ใช้งาน',
-        start: DateTime(2026, 9, 15),
-        end: DateTime(2026, 9, 15, 8),
-        sheetTitle: '16 ส.ค. 69 - 15 ก.ย. 69',
-        cell: 'AF2',
-        category: ShiftCategory.own,
-      );
+  final cutoffCases = <({DateTime cutoff, DateTime expectedOff})>[
+    (
+      cutoff: DateTime(2026, 9, 14),
+      expectedOff: DateTime(2026, 9, 15, 8),
+    ),
+    (
+      cutoff: DateTime(2026, 9, 20),
+      expectedOff: DateTime(2026, 9, 21, 8),
+    ),
+    (
+      cutoff: DateTime(2026, 9, 30),
+      expectedOff: DateTime(2026, 10, 1, 8),
+    ),
+    (
+      cutoff: DateTime(2026, 10, 31),
+      expectedOff: DateTime(2026, 11, 1, 8),
+    ),
+    (
+      cutoff: DateTime(2026, 12, 31),
+      expectedOff: DateTime(2027, 1, 1, 8),
+    ),
+  ];
 
-      final result = service.addOffDutyPeriods([night]);
-      final generated = result.where((shift) => shift.generated).toList();
+  for (final testCase in cutoffCases) {
+    test(
+      'creates one linked OFF after night-shift cutoff '
+      '${testCase.cutoff.toIso8601String()}',
+      () {
+        final night = Shift(
+          code: 'N',
+          rowLabel: 'เวรดึก',
+          assignedName: 'ผู้ใช้งาน',
+          start: testCase.cutoff,
+          end: testCase.cutoff.add(const Duration(hours: 8)),
+          sheetTitle: 'ตารางเวรที่มีวันตัดรอบเปลี่ยนได้',
+          cell: 'A1',
+          category: ShiftCategory.own,
+        );
 
-      expect(result.where((shift) => !shift.generated), [night]);
-      expect(generated, hasLength(1));
-      expect(generated.single.isOffDuty, isTrue);
-      expect(generated.single.start, DateTime(2026, 9, 16, 8));
-      expect(generated.single.end, DateTime(2026, 9, 16, 16));
-      expect(generated.single.linkedShiftKey, night.sourceKey);
-    },
-  );
+        final result = service.addOffDutyPeriods([night]);
+        final generated = result.where((shift) => shift.generated).toList();
 
-  test('does not invent any ordinary shifts after the roster cutoff', () {
+        expect(result.where((shift) => !shift.generated), [night]);
+        expect(generated, hasLength(1));
+        expect(generated.single.isOffDuty, isTrue);
+        expect(generated.single.start, testCase.expectedOff);
+        expect(
+          generated.single.end,
+          testCase.expectedOff.add(const Duration(hours: 8)),
+        );
+        expect(generated.single.linkedShiftKey, night.sourceKey);
+      },
+    );
+  }
+
+  test('does not invent any ordinary shift after a non-night cutoff', () {
     final dayShift = Shift(
       code: 'M',
       rowLabel: 'เวรเช้า',
       assignedName: 'ผู้ใช้งาน',
-      start: DateTime(2026, 9, 15, 8),
-      end: DateTime(2026, 9, 15, 16),
-      sheetTitle: '16 ส.ค. 69 - 15 ก.ย. 69',
-      cell: 'AF3',
+      start: DateTime(2026, 9, 20, 8),
+      end: DateTime(2026, 9, 20, 16),
+      sheetTitle: 'ตารางเวรที่มีวันตัดรอบเปลี่ยนได้',
+      cell: 'A1',
       category: ShiftCategory.own,
     );
 
