@@ -7,6 +7,10 @@ class CalendarEventMatcher {
   /// title while retaining the code in internal identities and metadata.
   static String calendarTitle(String value) {
     final trimmed = value.trim();
+    if (trimmed == 'OFF — เวรออฟหลังเวรดึก' ||
+        trimmed == 'เวรออฟหลังเวรดึก') {
+      return 'ออฟ';
+    }
     final withoutCode = trimmed
         .replaceFirst(RegExp(r'(?:\s*\([^)]*\))+\s*$'), '')
         .trim();
