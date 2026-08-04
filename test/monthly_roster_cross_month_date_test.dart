@@ -132,6 +132,149 @@ void main() {
     expect(report.warnings.single, contains('วันที่ 30'));
     expect(report.warnings.single, contains('อยู่นอกช่วง'));
   });
+
+  test('accepts 29 February in a leap year', () {
+    final input = ShiftParserInput(
+      spreadsheetId: 'spreadsheet',
+      spreadsheetTitle: 'Roster',
+      sheetId: 1,
+      sheetTitle: '16 ก.พ. 67 - 15 มี.ค. 67',
+      timeZone: 'Asia/Bangkok',
+      cells: [
+        ..._row(0, ['เวร 16 ก.พ. 67 - 15 มี.ค. 67']),
+        ..._row(1, [
+          'วันที่',
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+        ]),
+        ..._row(2, [
+          'ER',
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          '29 ก.พ.',
+          '1 มี.ค.',
+        ]),
+      ],
+    );
+
+    final report = const MonthlyRosterSectionParser().parse(input);
+
+    expect(report.warnings, isEmpty);
+    expect(report.assignments.map((item) => item.date), [
+      DateTime(2024, 2, 29),
+      DateTime(2024, 3, 1),
+    ]);
+  });
+
+  test('rejects 29 February in a non-leap year', () {
+    final input = ShiftParserInput(
+      spreadsheetId: 'spreadsheet',
+      spreadsheetTitle: 'Roster',
+      sheetId: 1,
+      sheetTitle: '16 ก.พ. 69 - 15 มี.ค. 69',
+      timeZone: 'Asia/Bangkok',
+      cells: [
+        ..._row(0, ['เวร 16 ก.พ. 69 - 15 มี.ค. 69']),
+        ..._row(1, [
+          'วันที่',
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+        ]),
+        ..._row(2, [
+          'ER',
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          '29 ก.พ.',
+          '1 มี.ค.',
+        ]),
+      ],
+    );
+
+    final report = const MonthlyRosterSectionParser().parse(input);
+
+    expect(report.assignments.map((item) => item.date), [
+      DateTime(2026, 3, 1),
+    ]);
+    expect(report.warnings, hasLength(1));
+    expect(report.warnings.single, contains('วันที่ 29'));
+    expect(report.warnings.single, contains('อยู่นอกช่วง'));
+  });
 }
 
 List<NormalizedCell> _row(int rowIndex, List<Object?> values) {
