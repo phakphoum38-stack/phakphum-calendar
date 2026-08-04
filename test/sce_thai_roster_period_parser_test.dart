@@ -84,6 +84,13 @@ void main() {
     );
   });
 
+  test('rejects a year followed by a day as an invalid range', () {
+    expect(
+      () => parser.parse('2502 - 31 มกราคม 2502'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test(
     'throws FormatException when a period contains fewer than two dates',
     () {
