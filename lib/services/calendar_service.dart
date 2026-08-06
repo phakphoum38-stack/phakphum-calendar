@@ -89,7 +89,7 @@ class CalendarService implements LegacyCalendarGateway {
             wallEnd != null &&
             wallEnd.isAfter(wallStart)) {
           sourceKeys.add(
-            _managedTimeKey(summary ?? '', wallStart, wallEnd),
+            _managedTimeKey(event.summary ?? '', wallStart, wallEnd),
           );
         }
         final startTime = event.start?.dateTime;
@@ -319,11 +319,7 @@ class CalendarService implements LegacyCalendarGateway {
       '${wallTime.hour.toString().padLeft(2, '0')}:'
       '${wallTime.minute.toString().padLeft(2, '0')}';
 
-  static String _managedTimeKey(
-    String title,
-    DateTime start,
-    DateTime end,
-  ) =>
+  static String _managedTimeKey(String title, DateTime start, DateTime end) =>
       'managed-time|${_managedTitleIdentity(title)}|'
       '${_wallIdentity(start)}|${_wallIdentity(end)}';
 
