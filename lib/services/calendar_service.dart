@@ -88,7 +88,9 @@ class CalendarService implements LegacyCalendarGateway {
             wallStart != null &&
             wallEnd != null &&
             wallEnd.isAfter(wallStart)) {
-          sourceKeys.add(_managedTimeKey(wallStart, wallEnd));
+          sourceKeys.add(
+            _managedTimeKey(summary ?? '', wallStart, wallEnd),
+          );
         }
         final startTime = event.start?.dateTime;
         final summary = event.summary;
@@ -304,7 +306,7 @@ class CalendarService implements LegacyCalendarGateway {
       keys.contains(managedTimeKeyFor(shift));
 
   static String managedTimeKeyFor(Shift shift) =>
-      _managedTimeKey(shift.start, shift.end);
+      _managedTimeKey(summaryFor(shift), shift.start, shift.end);
 
   @override
   bool matchesExistingShift(Shift shift, Set<String> keys) =>
@@ -317,8 +319,16 @@ class CalendarService implements LegacyCalendarGateway {
       '${wallTime.hour.toString().padLeft(2, '0')}:'
       '${wallTime.minute.toString().padLeft(2, '0')}';
 
-  static String _managedTimeKey(DateTime start, DateTime end) =>
-      'managed-time|${_wallIdentity(start)}|${_wallIdentity(end)}';
+  static String _managedTimeKey(
+    String title,
+    DateTime start,
+    DateTime end,
+  ) =>
+      'managed-time|${_managedTitleIdentity(title)}|'
+      '${_wallIdentity(start)}|${_wallIdentity(end)}';
+
+  static String _managedTitleIdentity(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
   static String _wallIdentity(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'
