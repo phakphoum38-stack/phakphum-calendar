@@ -292,7 +292,7 @@ class AiRosterAnalyzer {
     if (_clean(row[profile.person]) != null) score += 0.1;
     if (_clean(row[profile.role]) != null) score += 0.1;
     if (_clean(row[profile.site]) != null) score += 0.05;
-    return score.clamp(0.0, 0.95);
+    return score.clamp(0.0, 0.95).toDouble();
   }
 
   List<String> _notesFor(RosterDutyKind kind, String rawText) {
