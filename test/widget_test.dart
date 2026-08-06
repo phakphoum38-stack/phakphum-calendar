@@ -139,14 +139,14 @@ void main() {
 
       await controller.updateSyncDateRange(
         DateTime(2026, 8, 3),
-        DateTime(2026, 8, 10),
+        DateTime(2026, 8, 11),
       );
 
       expect(
         controller.shifts
             .where((shift) => !shift.generated)
             .map((shift) => shift.start.day),
-        [3, 8, 10, 10],
+        [3, 8, 10, 11],
       );
     },
   );

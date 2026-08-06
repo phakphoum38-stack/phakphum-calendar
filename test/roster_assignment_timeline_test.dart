@@ -43,9 +43,45 @@ void main() {
 
     expect(timelines, isEmpty);
   });
+
+  test('keeps timeline semantics across month, year, and century dates', () {
+    final dates = <DateTime>[
+      DateTime(1900, 2, 28),
+      DateTime(2000, 2, 29),
+      DateTime(2100, 3, 1),
+      DateTime(2200, 12, 31),
+      DateTime(2400, 2, 29),
+    ];
+
+    for (final shiftDate in dates) {
+      final timeline = buildRosterAssignmentTimelines([
+        _revision('1', shiftDate.add(const Duration(hours: 9)), 'A', shiftDate),
+        _revision(
+          '2',
+          shiftDate.add(const Duration(hours: 10)),
+          'B',
+          shiftDate,
+        ),
+        _revision(
+          '3',
+          shiftDate.add(const Duration(hours: 11)),
+          'A',
+          shiftDate,
+        ),
+      ]).values.single;
+
+      expect(timeline.workerChain, ['A', 'B', 'A'], reason: '$shiftDate');
+    }
+  });
 }
 
-RosterRevisionShifts _revision(String id, DateTime time, String worker) {
+RosterRevisionShifts _revision(
+  String id,
+  DateTime time,
+  String worker, [
+  DateTime? shiftDate,
+]) {
+  final date = shiftDate ?? DateTime(2026, 8, 18);
   return RosterRevisionShifts(
     revisionId: id,
     modifiedAt: time,
@@ -54,8 +90,8 @@ RosterRevisionShifts _revision(String id, DateTime time, String worker) {
         code: 'UP3',
         rowLabel: 'P3 เช้า',
         assignedName: worker,
-        start: DateTime(2026, 8, 18, 8),
-        end: DateTime(2026, 8, 18, 16),
+        start: DateTime(date.year, date.month, date.day, 8),
+        end: DateTime(date.year, date.month, date.day, 16),
         sheetTitle: '16 สค - 15 กย 69',
         cell: 'D11',
         category: ShiftCategory.own,

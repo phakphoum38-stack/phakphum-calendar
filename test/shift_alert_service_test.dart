@@ -33,6 +33,38 @@ void main() {
   });
 
   test(
+    'rolls next-day OFF across month, year, leap, and century boundaries',
+    () {
+      final cases = <(DateTime, DateTime)>[
+        (DateTime(1900, 2, 28), DateTime(1900, 3, 1, 8)),
+        (DateTime(2000, 2, 28), DateTime(2000, 2, 29, 8)),
+        (DateTime(2000, 2, 29), DateTime(2000, 3, 1, 8)),
+        (DateTime(2100, 2, 28), DateTime(2100, 3, 1, 8)),
+        (DateTime(2200, 12, 31), DateTime(2201, 1, 1, 8)),
+        (DateTime(2400, 2, 28), DateTime(2400, 2, 29, 8)),
+      ];
+
+      for (final (dutyDate, expectedOffStart) in cases) {
+        final shifts = service.addOffDutyPeriods([
+          _shift(
+            'N',
+            dutyDate,
+            DateTime(dutyDate.year, dutyDate.month, dutyDate.day, 8),
+          ),
+        ]);
+        final off = shifts.singleWhere((shift) => shift.isOffDuty);
+
+        expect(off.start, expectedOffStart, reason: 'night duty $dutyDate');
+        expect(
+          off.end,
+          expectedOffStart.add(const Duration(hours: 8)),
+          reason: 'night duty $dutyDate',
+        );
+      }
+    },
+  );
+
+  test(
     'uses configurable OFF start time and duration after overnight duty',
     () {
       const configured = ShiftAlertService(
