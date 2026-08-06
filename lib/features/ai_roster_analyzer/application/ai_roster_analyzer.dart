@@ -49,74 +49,80 @@ class AiRosterAnalyzer {
 
     for (final column in columns) {
       final normalized = _normalize(column);
-      if (date == null && _containsAny(normalized, const [
-        'date',
-        'day',
-        'วันที่',
-        'วัน',
-        'เวรวันที่',
-      ])) {
+      if (date == null &&
+          _containsAny(normalized, const [
+            'date',
+            'day',
+            'วันที่',
+            'วัน',
+            'เวรวันที่',
+          ])) {
         date = column;
         continue;
       }
-      if (person == null && _containsAny(normalized, const [
-        'name',
-        'person',
-        'staff',
-        'employee',
-        'ชื่อ',
-        'คนอยู่เวร',
-        'ผู้ปฏิบัติงาน',
-        'บุคลากร',
-      ])) {
+      if (person == null &&
+          _containsAny(normalized, const [
+            'name',
+            'person',
+            'staff',
+            'employee',
+            'ชื่อ',
+            'คนอยู่เวร',
+            'ผู้ปฏิบัติงาน',
+            'บุคลากร',
+          ])) {
         person = column;
         continue;
       }
-      if (role == null && _containsAny(normalized, const [
-        'shift',
-        'duty',
-        'role',
-        'ward',
-        'เวร',
-        'หน้าที่',
-        'ตำแหน่ง',
-        'แผนก',
-      ])) {
+      if (role == null &&
+          _containsAny(normalized, const [
+            'shift',
+            'duty',
+            'role',
+            'ward',
+            'เวร',
+            'หน้าที่',
+            'ตำแหน่ง',
+            'แผนก',
+          ])) {
         role = column;
         continue;
       }
-      if (site == null && _containsAny(normalized, const [
-        'site',
-        'location',
-        'station',
-        'ward',
-        'จุด',
-        'ไซต์',
-        'แอดไซต์',
-        'สถานที่',
-      ])) {
+      if (site == null &&
+          _containsAny(normalized, const [
+            'site',
+            'location',
+            'station',
+            'ward',
+            'จุด',
+            'ไซต์',
+            'แอดไซต์',
+            'สถานที่',
+          ])) {
         site = column;
         continue;
       }
-      if (relatedPerson == null && _containsAny(normalized, const [
-        'แทน',
-        'รับต่อ',
-        'แลก',
-        'ผู้แทน',
-        'replace',
-        'replacement',
-        'exchange',
-      ])) {
+      if (relatedPerson == null &&
+          _containsAny(normalized, const [
+            'แทน',
+            'รับต่อ',
+            'แลก',
+            'ผู้แทน',
+            'replace',
+            'replacement',
+            'exchange',
+          ])) {
         relatedPerson = column;
         continue;
       }
-      if (note == null && _containsAny(normalized, const [
-        'note',
-        'remark',
-        'comment',
-        'หมายเหตุ',
-        'บันทึก',
-      ])) {
+      if (note == null &&
+          _containsAny(normalized, const [
+            'note',
+            'remark',
+            'comment',
+            'หมายเหตุ',
+            'บันทึก',
+          ])) {
         note = column;
       }
     }
@@ -136,7 +142,9 @@ class AiRosterAnalyzer {
     _DetectedRosterColumns profile,
     Map<String, String> row,
   ) {
-    final rawText = row.values.where((value) => value.trim().isNotEmpty).join(' ');
+    final rawText = row.values
+        .where((value) => value.trim().isNotEmpty)
+        .join(' ');
     if (rawText.trim().isEmpty) return null;
 
     final date = _parseDate(row[profile.date] ?? rawText);
@@ -176,28 +184,65 @@ class AiRosterAnalyzer {
   RosterDutyKind _classifyDutyKind(String text) {
     final value = _normalize(text);
 
-    if (_containsAny(value, const ['ลาป่วย', 'ลากิจ', 'ลาพัก', 'leave', 'vacation'])) {
+    if (_containsAny(value, const [
+      'ลาป่วย',
+      'ลากิจ',
+      'ลาพัก',
+      'leave',
+      'vacation',
+    ])) {
       return RosterDutyKind.leave;
     }
-    if (_containsAny(value, const ['ขาด', 'ไม่มา', 'absent', 'missing', 'no show', 'noshow'])) {
+    if (_containsAny(value, const [
+      'ขาด',
+      'ไม่มา',
+      'absent',
+      'missing',
+      'no show',
+      'noshow',
+    ])) {
       return RosterDutyKind.absent;
     }
     if (_containsAny(value, const ['off', 'ออฟ', 'หยุด', 'พักเวร', 'พัก'])) {
       return RosterDutyKind.offDuty;
     }
-    if (_containsAny(value, const ['รับเวร', 'รับต่อ', 'รับแทน', 'received', 'take over'])) {
+    if (_containsAny(value, const [
+      'รับเวร',
+      'รับต่อ',
+      'รับแทน',
+      'received',
+      'take over',
+    ])) {
       return RosterDutyKind.receivedExchange;
     }
-    if (_containsAny(value, const ['แลกเวร', 'ให้เวร', 'ส่งเวร', 'given', 'swap out'])) {
+    if (_containsAny(value, const [
+      'แลกเวร',
+      'ให้เวร',
+      'ส่งเวร',
+      'given',
+      'swap out',
+    ])) {
       return RosterDutyKind.givenExchange;
     }
     if (_containsAny(value, const ['แทน', 'คนแทน', 'replacement', 'replace'])) {
       return RosterDutyKind.replacement;
     }
-    if (_containsAny(value, const ['เสริม', 'คนเสริม', 'extra', 'backup', 'support'])) {
+    if (_containsAny(value, const [
+      'เสริม',
+      'คนเสริม',
+      'extra',
+      'backup',
+      'support',
+    ])) {
       return RosterDutyKind.extraStaff;
     }
-    if (_containsAny(value, const ['แอดไซต์', 'add site', 'add-site', 'onsite', 'site'])) {
+    if (_containsAny(value, const [
+      'แอดไซต์',
+      'add site',
+      'add-site',
+      'onsite',
+      'site',
+    ])) {
       return RosterDutyKind.onsite;
     }
     if (_containsAny(value, const ['ประจำ', 'regular', 'default', 'owner'])) {
@@ -223,7 +268,11 @@ class AiRosterAnalyzer {
   List<DailyRosterPlan> _buildDailyPlans(List<RosterAnalysisRecord> records) {
     final grouped = <DateTime, List<RosterAnalysisRecord>>{};
     for (final record in records) {
-      final date = DateTime(record.date.year, record.date.month, record.date.day);
+      final date = DateTime(
+        record.date.year,
+        record.date.month,
+        record.date.day,
+      );
       grouped.putIfAbsent(date, () => <RosterAnalysisRecord>[]).add(record);
     }
 
@@ -238,14 +287,19 @@ class AiRosterAnalyzer {
     ];
   }
 
-  List<String> _dailyWarnings(DateTime date, List<RosterAnalysisRecord> records) {
+  List<String> _dailyWarnings(
+    DateTime date,
+    List<RosterAnalysisRecord> records,
+  ) {
     final warnings = <String>[];
     final unavailable = records
         .where((record) => record.personName != null)
-        .where((record) =>
-            record.kind == RosterDutyKind.offDuty ||
-            record.kind == RosterDutyKind.leave ||
-            record.kind == RosterDutyKind.absent)
+        .where(
+          (record) =>
+              record.kind == RosterDutyKind.offDuty ||
+              record.kind == RosterDutyKind.leave ||
+              record.kind == RosterDutyKind.absent,
+        )
         .map((record) => record.personName!.trim())
         .toSet();
 
@@ -266,9 +320,13 @@ class AiRosterAnalyzer {
       );
     }
 
-    final unknownCount = records.where((record) => record.kind == RosterDutyKind.unknown).length;
+    final unknownCount = records
+        .where((record) => record.kind == RosterDutyKind.unknown)
+        .length;
     if (unknownCount > 0) {
-      warnings.add('มี $unknownCount รายการที่ AI Analyzer ยังไม่มั่นใจในการจำแนก');
+      warnings.add(
+        'มี $unknownCount รายการที่ AI Analyzer ยังไม่มั่นใจในการจำแนก',
+      );
     }
 
     return warnings;
@@ -307,7 +365,9 @@ class AiRosterAnalyzer {
     final iso = DateTime.tryParse(value);
     if (iso != null) return DateTime(iso.year, iso.month, iso.day);
 
-    final match = RegExp(r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?').firstMatch(value);
+    final match = RegExp(
+      r'(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?',
+    ).firstMatch(value);
     if (match == null) return null;
 
     final day = int.tryParse(match.group(1)!);
@@ -329,7 +389,13 @@ class AiRosterAnalyzer {
       final cleaned = _clean(value);
       if (cleaned == null) continue;
       if (RegExp(r'^[ก-๙a-zA-Z .]{2,60}$').hasMatch(cleaned) &&
-          !_containsAny(_normalize(cleaned), const ['เวร', 'เช้า', 'บ่าย', 'ดึก', 'off'])) {
+          !_containsAny(_normalize(cleaned), const [
+            'เวร',
+            'เช้า',
+            'บ่าย',
+            'ดึก',
+            'off',
+          ])) {
         return cleaned;
       }
     }
@@ -337,14 +403,18 @@ class AiRosterAnalyzer {
   }
 
   String? _guessRole(String rawText) {
-    final match = RegExp(r'(ER|CT|IPD|P\d|U\d+|เช้า|บ่าย|ดึก|เวร[^ ]*)', caseSensitive: false)
-        .firstMatch(rawText);
+    final match = RegExp(
+      r'(ER|CT|IPD|P\d|U\d+|เช้า|บ่าย|ดึก|เวร[^ ]*)',
+      caseSensitive: false,
+    ).firstMatch(rawText);
     return match?.group(0);
   }
 
   String? _guessSite(String rawText) {
-    final match = RegExp(r'(ER|CT|IPD|U\d+|ชั้น\s*\d+|ไซต์[^ ]*)', caseSensitive: false)
-        .firstMatch(rawText);
+    final match = RegExp(
+      r'(ER|CT|IPD|U\d+|ชั้น\s*\d+|ไซต์[^ ]*)',
+      caseSensitive: false,
+    ).firstMatch(rawText);
     return match?.group(0);
   }
 

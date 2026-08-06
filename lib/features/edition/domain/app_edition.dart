@@ -24,10 +24,8 @@ class AppEditionRepository {
   static const _storageTimeout = Duration(seconds: 6);
   SharedPreferences? _preferences;
 
-  Future<SharedPreferences> get _store async =>
-      _preferences ??= await SharedPreferences.getInstance().timeout(
-        _storageTimeout,
-      );
+  Future<SharedPreferences> get _store async => _preferences ??=
+      await SharedPreferences.getInstance().timeout(_storageTimeout);
 
   Future<AppEdition?> load() async {
     try {

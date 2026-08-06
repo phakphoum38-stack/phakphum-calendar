@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 
 /// Shared loading page used while an application or feature is initializing.
 class AppLoadingPage extends StatelessWidget {
-  const AppLoadingPage({
-    super.key,
-    this.message = 'กำลังเตรียมระบบ...',
-  });
+  const AppLoadingPage({super.key, this.message = 'กำลังเตรียมระบบ...'});
 
   final String message;
 
@@ -34,11 +31,7 @@ class AppLoadingPage extends StatelessWidget {
 
 /// Shared recoverable error page with an optional retry action.
 class AppErrorPage extends StatelessWidget {
-  const AppErrorPage({
-    super.key,
-    required this.message,
-    this.onRetry,
-  });
+  const AppErrorPage({super.key, required this.message, this.onRetry});
 
   final String message;
   final VoidCallback? onRetry;

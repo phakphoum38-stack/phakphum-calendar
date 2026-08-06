@@ -5,11 +5,7 @@ enum AppStartupStatus { ready, degraded, failed }
 
 /// Immutable result returned by [AppStartupCoordinator].
 class AppStartupResult {
-  const AppStartupResult({
-    required this.status,
-    this.message,
-    this.error,
-  });
+  const AppStartupResult({required this.status, this.message, this.error});
 
   final AppStartupStatus status;
   final String? message;
@@ -23,9 +19,7 @@ class AppStartupResult {
 /// Features should provide their initialization callback instead of putting
 /// provider-specific startup logic in widgets or `main.dart`.
 class AppStartupCoordinator {
-  const AppStartupCoordinator({
-    this.timeout = const Duration(seconds: 12),
-  });
+  const AppStartupCoordinator({this.timeout = const Duration(seconds: 12)});
 
   final Duration timeout;
 

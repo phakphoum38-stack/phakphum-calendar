@@ -174,6 +174,6 @@ class RosterAnalysisResult {
   final List<DailyRosterPlan> dailyPlans;
   final List<String> warnings;
 
-  bool get hasWarnings => warnings.isNotEmpty ||
-      dailyPlans.any((plan) => plan.warnings.isNotEmpty);
+  bool get hasWarnings =>
+      warnings.isNotEmpty || dailyPlans.any((plan) => plan.warnings.isNotEmpty);
 }
