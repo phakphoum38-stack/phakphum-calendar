@@ -25,6 +25,18 @@ void main() {
                 },
               },
               {
+                'id': 'legacy-managed-event',
+                'summary': 'IPD บ่าย',
+                'start': {'dateTime': '2026-08-18T16:00:00+07:00'},
+                'end': {'dateTime': '2026-08-19T08:00:00+07:00'},
+                'extendedProperties': {
+                  'private': {
+                    'syncId': 'sce-legacy-managed',
+                    'managedBy': 'phakphum-calendar',
+                  },
+                },
+              },
+              {
                 'id': 'legacy-event',
                 'summary': 'ER ดึก',
                 'start': {'dateTime': '2026-08-16T00:00:00+07:00'},
@@ -47,10 +59,17 @@ void main() {
         timeMax: DateTime(2026, 9),
       );
 
-      expect(managed.map((event) => event.eventId), ['managed-event']);
+      expect(managed.map((event) => event.eventId), [
+        'managed-event',
+        'legacy-managed-event',
+      ]);
+      expect(managed.map((event) => event.syncId), [
+        'sce-managed',
+        'sce-legacy-managed',
+      ]);
       expect(legacy.map((event) => event.eventId), ['legacy-event']);
-      expect(managed.single.start, DateTime(2026, 8, 1, 7, 30));
-      expect(managed.single.end, DateTime(2026, 8, 1, 12));
+      expect(managed.first.start, DateTime(2026, 8, 1, 7, 30));
+      expect(managed.first.end, DateTime(2026, 8, 1, 12));
       expect(legacy.single.start, DateTime(2026, 8, 16));
       expect(legacy.single.end, DateTime(2026, 8, 16, 8));
       expect(
