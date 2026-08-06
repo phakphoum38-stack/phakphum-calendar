@@ -10,6 +10,9 @@ class GoogleCalendarSyncGateway
   GoogleCalendarSyncGateway(this._client);
 
   static const String syncIdKey = 'sceSyncId';
+  static const String legacySyncIdKey = 'syncId';
+  static const String legacyManagedByKey = 'managedBy';
+  static const String legacyManagedByValue = 'phakphum-calendar';
   static const String timeZone = 'Asia/Bangkok';
   static const Duration _bangkokOffset = Duration(hours: 7);
 
@@ -66,22 +69,17 @@ class GoogleCalendarSyncGateway
     } while (pageToken != null && pageToken.isNotEmpty);
 
     return items
-        .where(
-          (event) =>
-              event.id != null &&
-              (!managedOnly ||
-                  event.extendedProperties?.private?[syncIdKey] != null) &&
+        .where((event) {
+          final managedSyncId = _managedSyncId(event);
+          return event.id != null &&
+              (managedOnly ? managedSyncId != null : managedSyncId == null) &&
               event.start?.dateTime != null &&
-              event.end?.dateTime != null &&
-              (managedOnly ||
-                  event.extendedProperties?.private?[syncIdKey] == null),
-        )
+              event.end?.dateTime != null;
+        })
         .map(
           (event) => ManagedCalendarEvent(
             eventId: event.id!,
-            syncId:
-                event.extendedProperties?.private?[syncIdKey] ??
-                'legacy:${event.id!}',
+            syncId: _managedSyncId(event) ?? 'legacy:${event.id!}',
             title: event.summary ?? '',
             start: _bangkokWallTime(event.start!.dateTime!),
             end: _bangkokWallTime(event.end!.dateTime!),
@@ -90,6 +88,19 @@ class GoogleCalendarSyncGateway
           ),
         )
         .toList(growable: false);
+  }
+
+  String? _managedSyncId(calendar.Event event) {
+    final privateProperties = event.extendedProperties?.private;
+    final currentSyncId = privateProperties?[syncIdKey]?.trim() ?? '';
+    if (currentSyncId.isNotEmpty) return currentSyncId;
+
+    if (privateProperties?[legacyManagedByKey]?.trim() !=
+        legacyManagedByValue) {
+      return null;
+    }
+    final legacySyncId = privateProperties?[legacySyncIdKey]?.trim() ?? '';
+    return legacySyncId.isEmpty ? null : legacySyncId;
   }
 
   @override
