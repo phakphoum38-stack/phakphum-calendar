@@ -1,8 +1,3 @@
-import 'package:flutter/material.dart';
+import 'bootstrap/app_bootstrap.dart';
 
-import 'app.dart';
-
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ShiftToolsApp());
-}
+void main() => runShiftToolsApp();
