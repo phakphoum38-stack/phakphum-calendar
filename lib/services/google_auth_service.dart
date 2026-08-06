@@ -42,6 +42,7 @@ class GoogleAuthService extends ChangeNotifier implements GoogleAuthGateway {
     spreadsheetsReadOnlyScope,
     'https://www.googleapis.com/auth/calendar.events.readonly',
     drive.DriveApi.driveMetadataReadonlyScope,
+    drive.DriveApi.driveReadonlyScope,
   ];
 
   static const _webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');

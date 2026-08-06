@@ -38,6 +38,7 @@ void main() {
         'https://www.googleapis.com/auth/spreadsheets.readonly',
         'https://www.googleapis.com/auth/calendar.events.readonly',
         drive.DriveApi.driveMetadataReadonlyScope,
+        drive.DriveApi.driveReadonlyScope,
       ]),
     );
     expect(

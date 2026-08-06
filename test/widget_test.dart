@@ -146,7 +146,7 @@ void main() {
         controller.shifts
             .where((shift) => !shift.generated)
             .map((shift) => shift.start.day),
-        [3, 8, 10],
+        [3, 8, 10, 10],
       );
     },
   );
