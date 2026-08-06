@@ -10,6 +10,8 @@
 	<string>Shift Tools</string>
 	<key>GIDClientID</key>
 	<string>REPLACE_WITH_IOS_CLIENT_ID</string>
+	<key>GIDServerClientID</key>
+	<string>REPLACE_WITH_WEB_CLIENT_ID</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
