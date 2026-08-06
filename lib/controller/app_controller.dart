@@ -11,6 +11,7 @@ import '../models/audit_entry.dart';
 import '../models/calendar_busy_period.dart';
 import '../models/roster_period.dart';
 import '../models/roster_reference_comparison.dart';
+import '../models/roster_assignment_timeline.dart';
 import '../models/saved_sheet.dart';
 import '../models/shift.dart';
 import '../models/shift_alert.dart';
@@ -32,6 +33,7 @@ import '../services/drive_ownership_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/google_api_client.dart';
 import '../services/local_roster_file_service.dart';
+import '../services/roster_revision_service.dart';
 import '../services/settings_service.dart';
 import '../services/sheets_service.dart';
 import '../services/shift_alert_service.dart';
@@ -53,6 +55,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     required LegacyScheduleAdapter legacyScheduleAdapter,
     required Future<ShiftCalendarWorkflowController> Function()
     calendarWorkflowControllerFactory,
+    RosterRevisionGateway revisionService = const RosterRevisionService(),
   }) {
     return AppController._(
       auth: auth,
@@ -67,6 +70,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       scheduleRepository: scheduleRepository,
       legacyScheduleAdapter: legacyScheduleAdapter,
       calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
+      revisionService: revisionService,
     );
   }
 
@@ -84,6 +88,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     required LegacyScheduleAdapter legacyScheduleAdapter,
     required Future<ShiftCalendarWorkflowController> Function()
     calendarWorkflowControllerFactory,
+    RosterRevisionGateway revisionService = const RosterRevisionService(),
   }) {
     final controller = AppController(
       auth: auth,
@@ -98,6 +103,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       scheduleRepository: scheduleRepository,
       legacyScheduleAdapter: legacyScheduleAdapter,
       calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
+      revisionService: revisionService,
     );
     controller._initializeDemo();
     return controller;
@@ -116,6 +122,7 @@ class AppController extends ChangeNotifier implements ControllerState {
     required this._scheduleRepository,
     required this._legacyScheduleAdapter,
     required this._calendarWorkflowControllerFactory,
+    required this._revisionService,
   });
 
   void _initializeDemo() {
@@ -184,6 +191,7 @@ class AppController extends ChangeNotifier implements ControllerState {
   final LegacyScheduleAdapter _legacyScheduleAdapter;
   final Future<ShiftCalendarWorkflowController> Function()
   _calendarWorkflowControllerFactory;
+  final RosterRevisionGateway _revisionService;
 
   AppSettings settings = AppSettings.defaults();
   late LegacyScheduleConversion _legacySchedule = _legacyScheduleAdapter
@@ -207,6 +215,8 @@ class AppController extends ChangeNotifier implements ControllerState {
   List<SavedSheet> savedSheets = [];
   List<RecentOwnedSheet> recentOwnedSheets = [];
   Set<String> existingKeys = {};
+  Map<String, RosterAssignmentTimeline> _revisionTimelines = const {};
+  int _loadedRevisionCount = 0;
   List<String> sheetTitles = [];
   Set<String> pinnedToolIds = {...defaultPinnedToolIds};
   bool initialized = false;
@@ -657,6 +667,7 @@ class AppController extends ChangeNotifier implements ControllerState {
       final client = await auth.clientFor([
         sheets.SheetsApi.spreadsheetsReadonlyScope,
         drive.DriveApi.driveMetadataReadonlyScope,
+        drive.DriveApi.driveReadonlyScope,
       ], promptIfNecessary: !background);
       try {
         final spreadsheetId = _sheetsService.parseSpreadsheetId(sourceUrl);
@@ -683,6 +694,11 @@ class AppController extends ChangeNotifier implements ControllerState {
         _currentAllRosterShifts = _filterToSyncDateRange(
           _currentAllRosterShifts,
         );
+        await _loadRevisionTimelines(
+          client,
+          spreadsheetId: spreadsheetId,
+          currentShifts: _currentAllRosterShifts,
+        );
         final periods = _periodsForShifts(rangedParsed);
         _replaceLegacyShifts(
           _alertService.addOffDutyPeriods(
@@ -704,11 +720,13 @@ class AppController extends ChangeNotifier implements ControllerState {
             'จาก ${periods.length} เดือน • '
             '${syncRangeStart == null || syncRangeEnd == null ? '' : 'ช่วง ${_dateLabel(syncRangeStart!)}–${_dateLabel(syncRangeEnd!)} • '}'
             'อ่านสีจากไฟล์หลัก $colorCount รายการ • '
+            'Timeline $_loadedRevisionCount revision • '
             'สร้าง OFF $offCount รายการ • รอตัดสินใจ $pendingAlertCount รายการ';
         await _addAudit(
           'sheet.read',
           'อ่าน ${snapshots.length} แท็บ ${periods.length} เดือน '
               'พบ ${rangedParsed.length} เวรในช่วงที่กำหนด '
+              'อ่าน Timeline $_loadedRevisionCount revision '
               'อ่านสีจากไฟล์หลัก $colorCount รายการ และสร้าง OFF '
               '$offCount รายการ; ไม่มีการแก้ไขชีต',
           true,
@@ -753,6 +771,8 @@ class AppController extends ChangeNotifier implements ControllerState {
         fallback: rangedParsed,
       );
       _currentAllRosterShifts = _filterToSyncDateRange(_currentAllRosterShifts);
+      _revisionTimelines = const {};
+      _loadedRevisionCount = 0;
       _replaceLegacyShifts(
         _alertService.addOffDutyPeriods(
           _applyReferenceRelationships(rangedParsed),
@@ -1560,6 +1580,8 @@ class AppController extends ChangeNotifier implements ControllerState {
       localReferenceShifts = [];
       _currentAllRosterShifts = [];
       _referenceAllRosterShifts = [];
+      _revisionTimelines = const {};
+      _loadedRevisionCount = 0;
       _loadedRosterShifts = [];
       syncRangeStart = null;
       syncRangeEnd = null;
@@ -1637,10 +1659,53 @@ class AppController extends ChangeNotifier implements ControllerState {
         : fallback;
   }
 
+  Future<void> _loadRevisionTimelines(
+    GoogleApiClient client, {
+    required String spreadsheetId,
+    required List<Shift> currentShifts,
+  }) async {
+    _revisionTimelines = const {};
+    _loadedRevisionCount = 0;
+    try {
+      final documents = await _revisionService.readHistory(
+        client,
+        spreadsheetId,
+      );
+      final revisions = <RosterRevisionShifts>[];
+      for (final document in documents) {
+        final historical = _filterToSyncDateRange(
+          _parseAllRosterSnapshots(document.snapshots, fallback: const []),
+        );
+        revisions.add(
+          RosterRevisionShifts(
+            revisionId: document.revisionId,
+            modifiedAt: document.modifiedAt,
+            shifts: historical,
+          ),
+        );
+      }
+      _loadedRevisionCount = documents.length;
+      revisions.add(
+        RosterRevisionShifts(
+          revisionId: 'current',
+          modifiedAt: DateTime.now(),
+          shifts: currentShifts,
+        ),
+      );
+      _revisionTimelines = buildRosterAssignmentTimelines(revisions);
+    } catch (_) {
+      // Revision history is an optional read-only enhancement. A temporary
+      // Drive history/export failure must never hide the current live roster.
+      _revisionTimelines = const {};
+      _loadedRevisionCount = 0;
+    }
+  }
+
   List<Shift> _applyReferenceRelationships(List<Shift> primary) {
-    if (localReferenceLabel == null ||
-        _referenceAllRosterShifts.isEmpty ||
-        _currentAllRosterShifts.isEmpty) {
+    if (_revisionTimelines.isEmpty &&
+        (localReferenceLabel == null ||
+            _referenceAllRosterShifts.isEmpty ||
+            _currentAllRosterShifts.isEmpty)) {
       return primary;
     }
     final originalByPosition = {
@@ -1653,12 +1718,71 @@ class AppController extends ChangeNotifier implements ControllerState {
     };
     return [
       for (final shift in primary)
-        _annotateRelationship(
+        _annotateKnownRelationship(
           shift,
-          originalByPosition[_rosterPositionKey(shift)],
-          currentByPosition[_rosterPositionKey(shift)] ?? shift,
+          originalByPosition,
+          currentByPosition,
         ),
     ];
+  }
+
+  Shift _annotateKnownRelationship(
+    Shift shift,
+    Map<String, Shift> originalByPosition,
+    Map<String, Shift> currentByPosition,
+  ) {
+    final position = _rosterPositionKey(shift);
+    final timeline = _revisionTimelines[position];
+    if (timeline != null && timeline.versions.length > 1) {
+      return _annotateTimelineRelationship(shift, timeline);
+    }
+    if (localReferenceLabel == null) {
+      return shift.copyWith(clearRelationshipComment: true);
+    }
+    return _annotateRelationship(
+      shift,
+      originalByPosition[position],
+      currentByPosition[position] ?? shift,
+    );
+  }
+
+  Shift _annotateTimelineRelationship(
+    Shift shift,
+    RosterAssignmentTimeline timeline,
+  ) {
+    final versions = timeline.versions;
+    final workers = timeline.workerChain;
+    final first = _normalizeWorker(workers.first);
+    final last = _normalizeWorker(workers.last);
+    final changedBack = versions.length >= 3 && first == last;
+    final receivedOnward =
+        versions.length >= 3 &&
+        !changedBack &&
+        _matchesRosterUser(workers.last);
+    final status = changedBack
+        ? 'สถานะ: เปลี่ยนเวรแล้วเปลี่ยนกลับ'
+        : receivedOnward
+        ? 'สถานะ: รับต่อ/แลกมา'
+        : 'สถานะ: รับเวร/แลกมา';
+    return shift.copyWith(
+      relationshipComment: <String>[
+        status,
+        'Timeline: ${workers.join(' → ')}',
+        'ประวัติจาก Google Sheets (อ่านอย่างเดียว):',
+        for (final version in versions)
+          '- ${_revisionTimeLabel(version.modifiedAt)}: ${version.assignedName}',
+      ].join('\n'),
+    );
+  }
+
+  String _revisionTimeLabel(DateTime value) {
+    final local = value.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year + 543;
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$minute';
   }
 
   Shift _annotateRelationship(Shift shift, Shift? original, Shift current) {
@@ -1714,9 +1838,7 @@ class AppController extends ChangeNotifier implements ControllerState {
         rosterSearchNames.map(_normalizeWorker).any(normalized.contains);
   }
 
-  String _rosterPositionKey(Shift shift) =>
-      '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
-      '${shift.code.trim().toLowerCase()}';
+  String _rosterPositionKey(Shift shift) => rosterPositionKey(shift);
 
   String _normalizeWorker(String value) =>
       value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
