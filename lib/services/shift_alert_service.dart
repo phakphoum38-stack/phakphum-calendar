@@ -20,7 +20,7 @@ class ShiftAlertService implements ShiftAlertPolicy {
     this.defaultOffDutyDuration = const Duration(hours: 8),
   });
 
-  /// Preferred OFF start time on the calendar day when the night shift ends.
+  /// Preferred OFF start time on the calendar day after the night duty date.
   final Duration defaultOffDutyStartTime;
 
   /// Initial OFF length. Users can convert each generated OFF into an
@@ -42,8 +42,14 @@ class ShiftAlertService implements ShiftAlertPolicy {
       (shift) => shift.isNightShift && !shift.excluded,
     )) {
       if (offByLinkedShift.contains(night.sourceKey)) continue;
-      final endDay = DateTime(night.end.year, night.end.month, night.end.day);
-      final configuredStart = endDay.add(defaultOffDutyStartTime);
+      final nightDutyDay = DateTime(
+        night.start.year,
+        night.start.month,
+        night.start.day,
+      );
+      final configuredStart = nightDutyDay
+          .add(const Duration(days: 1))
+          .add(defaultOffDutyStartTime);
       final start = configuredStart.isBefore(night.end)
           ? night.end
           : configuredStart;
