@@ -43,4 +43,32 @@ void main() {
     expect(description, isNot(contains('สถานะ:')));
     expect(description, contains('ประเภท: เวรของตัวเอง'));
   });
+
+  test('same time with a different shift title is not treated as existing', () {
+    final p2 = Shift(
+      code: 'AP2',
+      rowLabel: 'P2 บ่าย',
+      assignedName: 'ภาคภูมิ',
+      start: DateTime(2026, 8, 8, 16),
+      end: DateTime(2026, 8, 9),
+      sheetTitle: '16 กค69-15 สค.69',
+      cell: 'Y10',
+      category: ShiftCategory.own,
+    );
+    final ctEr = Shift(
+      code: 'ACTER',
+      rowLabel: 'CT ER บ่าย',
+      assignedName: 'ภาคภูมิ',
+      start: DateTime(2026, 8, 8, 16),
+      end: DateTime(2026, 8, 9),
+      sheetTitle: '16 กค69-15 สค.69',
+      cell: 'Y25',
+      category: ShiftCategory.own,
+    );
+
+    final existingKeys = <String>{CalendarService.managedTimeKeyFor(p2)};
+
+    expect(CalendarService.matchesExisting(p2, existingKeys), isTrue);
+    expect(CalendarService.matchesExisting(ctEr, existingKeys), isFalse);
+  });
 }

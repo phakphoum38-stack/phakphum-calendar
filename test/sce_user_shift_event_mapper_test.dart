@@ -34,6 +34,14 @@ void main() {
     expect(result.blockedCount, 0);
     expect(result.candidates.single.shouldExist, isTrue);
     expect(result.candidates.single.title, contains('ER เช้า'));
+    expect(
+      result.candidates.single.description,
+      contains('เจ้าของเวรเดิม: สมชาย'),
+    );
+    expect(
+      result.candidates.single.description,
+      contains('ผู้ปฏิบัติงานปัจจุบัน: ภาคภูมิ'),
+    );
   });
 
   test('given-away shift becomes a deletion candidate', () {
