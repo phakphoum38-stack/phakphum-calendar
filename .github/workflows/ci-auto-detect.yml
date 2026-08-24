@@ -80,7 +80,16 @@ jobs:
       - name: Format check
         shell: bash
         run: |
-          dart format --output=none --set-exit-if-changed lib test
+          paths=()
+          [[ -d lib ]] && paths+=(lib)
+          [[ -d src ]] && paths+=(src)
+          [[ -d test ]] && paths+=(test)
+          [[ -d integration_test ]] && paths+=(integration_test)
+          if ((${#paths[@]} == 0)); then
+            echo 'No conventional Dart source/test directories found; skipping format check.'
+            exit 0
+          fi
+          dart format --output=none --set-exit-if-changed "${paths[@]}"
 
       - name: Static analysis
         shell: bash
