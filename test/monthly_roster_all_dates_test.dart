@@ -111,11 +111,9 @@ void main() {
 
         final report = parser.parse(input);
 
-        expect(
-          report.assignments.map((item) => item.date),
-          [DateTime(year, month, lastDay)],
-          reason: 'ต้องเก็บเฉพาะวันจริงของ $monthName $buddhistYear',
-        );
+        expect(report.assignments.map((item) => item.date), [
+          DateTime(year, month, lastDay),
+        ], reason: 'ต้องเก็บเฉพาะวันจริงของ $monthName $buddhistYear');
         expect(
           report.warnings,
           isNotEmpty,
