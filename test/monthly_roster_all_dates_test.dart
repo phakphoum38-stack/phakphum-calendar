@@ -141,3 +141,6 @@ List<NormalizedCell> _row(int rowIndex, List<Object?> values) {
         ),
   ];
 }
+
+// Keep this regression suite intentionally broad: it validates every month
+// across leap-year and non-leap-year boundaries.
