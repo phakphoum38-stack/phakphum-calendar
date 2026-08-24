@@ -116,11 +116,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -nE 'git (add|commit|push).*format|dart format.*--set-exit-if-changed' .github/workflows/windows.yml .github/workflows/web.yml .github/workflows/owner-generated-v6x6.yml; then
-            echo "ERROR: release/capability workflow contains formatter mutation or format gate."
-            exit 1
-          fi
-          echo "No formatter mutation is present in active release/capability workflows."
+          workflows=(.github/workflows/windows.yml .github/workflows/web.yml)
+          for workflow in "${workflows[@]}"; do
+            test -f "$workflow"
+            if grep -nE 'git (add|commit|push).*format|dart format.*--set-exit-if-changed' "$workflow"; then
+              echo "ERROR: active release workflow contains formatter mutation or format gate: $workflow"
+              exit 1
+            fi
+          done
+          echo "PASS: active release workflows contain no formatter mutation or format gate."
 
       - name: Upload generated capability manifest
         uses: actions/upload-artifact@v7
