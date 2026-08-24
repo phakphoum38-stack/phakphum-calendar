@@ -19,9 +19,9 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install dependencies
-        run: flutter pub get
-
+      # Formatting does not require pub dependencies. Avoid `flutter pub get`
+      # here because it can rewrite pubspec.lock / analysis_options.yaml and
+      # make the formatter commit unrelated files.
       - name: Format existing Dart directories
         shell: bash
         run: |
@@ -40,14 +40,25 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet; then
-            echo 'No formatting changes.'
+
+          if git diff --quiet -- lib test; then
+            if [[ -d integration_test ]] && ! git diff --quiet -- integration_test; then
+              :
+            else
+              echo 'No Dart formatting changes.'
+              exit 0
+            fi
+          fi
+
+          git add -u -- lib test
+          if [[ -d integration_test ]]; then
+            git add -u -- integration_test
+          fi
+
+          if git diff --cached --quiet; then
+            echo 'No formatter-owned changes to commit.'
             exit 0
           fi
 
-          git add lib test
-          if [[ -d integration_test ]]; then
-            git add integration_test
-          fi
           git commit -m 'style: apply Dart formatter to PR #60'
-          git push
+          git push origin HEAD:fix/strict-roster-data-range
