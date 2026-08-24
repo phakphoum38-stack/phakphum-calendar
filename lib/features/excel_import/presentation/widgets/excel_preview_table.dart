@@ -57,9 +57,8 @@ class _ExcelPreviewTableState extends State<ExcelPreviewTable> {
           children: [
             Text(
               widget.worksheet.name,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
             Text(

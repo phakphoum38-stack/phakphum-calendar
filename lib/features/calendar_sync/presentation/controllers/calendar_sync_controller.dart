@@ -13,15 +13,14 @@ enum CalendarSyncStatus {
   failure,
 }
 
-typedef CalendarSyncRunOperation =
-    Future<CalendarSyncRunResult> Function({
-      required List<CalendarEventCandidate> desiredEvents,
-      required DateTime timeMin,
-      required DateTime timeMax,
-      bool dryRun,
-      bool continueOnError,
-      CalendarSyncProgressCallback? onProgress,
-    });
+typedef CalendarSyncRunOperation = Future<CalendarSyncRunResult> Function({
+  required List<CalendarEventCandidate> desiredEvents,
+  required DateTime timeMin,
+  required DateTime timeMax,
+  bool dryRun,
+  bool continueOnError,
+  CalendarSyncProgressCallback? onProgress,
+});
 
 class CalendarSyncController extends ChangeNotifier {
   // ignore: prefer_initializing_formals

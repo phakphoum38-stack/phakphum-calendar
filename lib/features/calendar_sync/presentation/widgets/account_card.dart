@@ -42,9 +42,8 @@ class AccountCard extends StatelessWidget {
                     connected ? email! : 'ยังไม่ได้เชื่อมต่อ',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: colors.onSurfaceVariant),
                   ),
                 ],
               ),

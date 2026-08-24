@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../domain/failed_sync_operation.dart';
 import '../domain/failed_sync_repository.dart';
 import 'failed_sync_json_codec.dart';

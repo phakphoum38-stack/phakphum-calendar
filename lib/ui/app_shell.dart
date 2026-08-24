@@ -459,9 +459,8 @@ class _AppShellState extends State<AppShell> {
       if (!mounted) return false;
       final status = widget.controller.status;
       if (status != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(status)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(status)));
       }
       return true;
     } catch (error) {
@@ -1422,9 +1421,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                       const SizedBox(height: 16),
                       DecoratedBox(
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLow,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerLow,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: Theme.of(context).colorScheme.outlineVariant,
@@ -1446,9 +1445,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                                       controller.selectedSourceSheetTitle,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleSmall,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
@@ -1457,9 +1456,9 @@ class _DashboardPageState extends State<_DashboardPage> {
                                           : controller.hasRosterSource
                                           ? 'ไฟล์หลักสำหรับอ่านตารางเวร • บันทึกไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
                                           : 'เลือกไฟล์จาก Google Sheets ของบัญชีที่ล็อกอิน',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
                                     ),
                                   ],
                                 ),
@@ -1528,8 +1527,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                         decoration: const InputDecoration(
                           labelText: 'ชื่อที่ต้องค้นหา',
                           hintText: 'กรอกชื่อให้ตรงกับชื่อในตารางเวร',
-                          helperText:
-                              'เริ่มต้นว่าง ใช้เฉพาะรอบนี้; ถ้าไม่กรอกจะใช้ชื่อโปรไฟล์ Google',
+                          helperText: 'เริ่มต้นว่าง ใช้เฉพาะรอบนี้; ถ้าไม่กรอกจะใช้ชื่อโปรไฟล์ Google',
                           prefixIcon: Icon(Icons.person_search_outlined),
                         ),
                       ),
@@ -2089,9 +2087,8 @@ class _SceDashboardHero extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 'จัดการตารางเวรในที่เดียว',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
@@ -3675,9 +3672,8 @@ class _PreviewPage extends StatelessWidget {
                 controller.existingKeys,
               );
               final color = Color(
-                CalendarColorService.byId(
-                      shift.effectiveCalendarColorId,
-                    )?.colorValue ??
+                CalendarColorService.byId(shift.effectiveCalendarColorId)
+                        ?.colorValue ??
                     shift.category.colorValue,
               );
               final sourceColor = ShiftColorService.classify(
@@ -4112,8 +4108,7 @@ class _NotificationsPage extends StatelessWidget {
       return const _EmptyState(
         icon: Icons.notifications_none,
         title: 'ยังไม่มีการแจ้งเตือน',
-        message:
-            'เมื่ออ่านเวรและเปรียบเทียบ Calendar แอปจะตรวจเวรซ้อนและช่วง OFF ให้อัตโนมัติ',
+        message: 'เมื่ออ่านเวรและเปรียบเทียบ Calendar แอปจะตรวจเวรซ้อนและช่วง OFF ให้อัตโนมัติ',
       );
     }
     return ListView(

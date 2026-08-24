@@ -34,9 +34,8 @@ class SummaryCard extends StatelessWidget {
                   Text(label, style: Theme.of(context).textTheme.bodyMedium),
                   Text(
                     value,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: Theme.of(context).textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ],
               ),

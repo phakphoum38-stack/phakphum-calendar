@@ -106,9 +106,8 @@ class GoogleAuthService extends ChangeNotifier implements GoogleAuthGateway {
   static bool isValidWebClientId(String value) {
     final clientId = value.trim();
     return clientId.length >= 30 &&
-        RegExp(
-          r'^[0-9]+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$',
-        ).hasMatch(clientId);
+        RegExp(r'^[0-9]+-[a-zA-Z0-9_-]+\.apps\.googleusercontent\.com$')
+            .hasMatch(clientId);
   }
 
   @override

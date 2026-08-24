@@ -86,9 +86,10 @@ class RadiologyStaffDirectoryParser {
   String _cleanName(String value) =>
       value.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-  String _normalize(String value) => _cleanName(
-    value,
-  ).replaceAll(RegExp(r'\s*\([^)]*\)\s*$'), '').toLowerCase();
+  String _normalize(String value) =>
+      _cleanName(value)
+          .replaceAll(RegExp(r'\s*\([^)]*\)\s*$'), '')
+          .toLowerCase();
 
   String _identifier(String value) => _normalize(value).replaceAll(' ', '-');
 

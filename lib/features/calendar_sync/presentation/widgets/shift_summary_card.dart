@@ -22,9 +22,8 @@ class ShiftSummaryCard extends StatelessWidget {
             ),
             Text(
               '$shiftCount',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
           ],
         ),

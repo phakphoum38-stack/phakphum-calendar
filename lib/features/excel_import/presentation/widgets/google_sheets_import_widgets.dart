@@ -38,11 +38,10 @@ class OwnedGoogleSheetPickerDialog extends StatelessWidget {
                           subtitle: sheet.modifiedAt == null
                               ? null
                               : Text(
-                                  MaterialLocalizations.of(
-                                    context,
-                                  ).formatShortDate(
-                                    sheet.modifiedAt!.toLocal(),
-                                  ),
+                                  MaterialLocalizations.of(context)
+                                      .formatShortDate(
+                                        sheet.modifiedAt!.toLocal(),
+                                      ),
                                 ),
                           onTap: () => Navigator.pop(context, sheet),
                         );
@@ -85,9 +84,8 @@ class GoogleSheetsStatusCard extends StatelessWidget {
           children: [
             Text(
               info.title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text('${info.worksheetCount} worksheets'),

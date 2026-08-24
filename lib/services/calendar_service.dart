@@ -249,9 +249,8 @@ class CalendarService implements LegacyCalendarGateway {
     http.Client client, {
     required String eventId,
   }) async {
-    await calendar.CalendarApi(
-      client,
-    ).events.delete('primary', eventId, sendUpdates: 'none');
+    await calendar.CalendarApi(client).events
+        .delete('primary', eventId, sendUpdates: 'none');
   }
 
   static String keyFor(Shift shift) =>

@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import '../domain/sync_history_entry.dart';
 
 class SyncHistoryJsonCodec {

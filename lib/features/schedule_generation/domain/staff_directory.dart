@@ -25,9 +25,8 @@ class StaffDirectory {
   ]);
 
   List<Employee> get inChargeEligible => List.unmodifiable(
-    employeesFor(
-      StaffGroup.radiologicTechnologist,
-    ).where((employee) => inChargeEligibleEmployeeIds.contains(employee.id)),
+    employeesFor(StaffGroup.radiologicTechnologist)
+        .where((employee) => inChargeEligibleEmployeeIds.contains(employee.id)),
   );
 
   static Department departmentFor(StaffGroup group) =>

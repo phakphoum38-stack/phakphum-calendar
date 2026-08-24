@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../domain/sync_history_entry.dart';
 import '../domain/sync_history_repository.dart';
 import 'sync_history_json_codec.dart';

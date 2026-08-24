@@ -40,9 +40,8 @@ class SheetsService implements RosterSheetsGateway {
 
   static String spreadsheetIdFromUrl(String input) {
     final normalized = input.replaceAll(RegExp(r'\s+'), '');
-    final match = RegExp(
-      r'/spreadsheets/d/([a-zA-Z0-9_-]+)',
-    ).firstMatch(normalized);
+    final match = RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)')
+        .firstMatch(normalized);
     if (match != null) return match.group(1)!;
     if (RegExp(r'^[a-zA-Z0-9_-]{20,}$').hasMatch(normalized)) {
       return normalized;

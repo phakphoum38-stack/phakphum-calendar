@@ -22,9 +22,8 @@ class EmptyImportView extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'ยังไม่ได้เลือกไฟล์ Excel',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(

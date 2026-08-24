@@ -26,9 +26,8 @@ class MonthHeader extends StatelessWidget {
         ),
         Expanded(
           child: Text(
-            DateFormat.yMMMM(
-              Localizations.localeOf(context).toLanguageTag(),
-            ).format(month),
+            DateFormat.yMMMM(Localizations.localeOf(context).toLanguageTag())
+                .format(month),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge,
           ),

@@ -66,8 +66,9 @@ void main() {
         isEmpty,
       );
       expect(
-        (await repository.findAll(activeOnly: false) as Success<List<Employee>>)
-            .value,
+        (await repository.findAll(
+          activeOnly: false,
+        ) as Success<List<Employee>>).value,
         [inactive],
       );
     },

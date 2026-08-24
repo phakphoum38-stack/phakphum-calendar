@@ -28,5 +28,6 @@ class CalendarSyncProgress {
   bool get isCompleted => stage == CalendarSyncStage.completed;
 }
 
-typedef CalendarSyncProgressCallback =
-    void Function(CalendarSyncProgress progress);
+typedef CalendarSyncProgressCallback = void Function(
+  CalendarSyncProgress progress,
+);

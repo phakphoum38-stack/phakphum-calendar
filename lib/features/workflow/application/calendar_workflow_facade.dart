@@ -1,6 +1,8 @@
 import '../../calendar_engine/application/resilient_calendar_sync_executor.dart';
 import '../../diff_engine/domain/calendar_event_candidate.dart';
+
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
+
 import '../../../models/calendar_busy_period.dart';
 import '../../../models/roster_period.dart';
 import '../../../models/shift.dart';

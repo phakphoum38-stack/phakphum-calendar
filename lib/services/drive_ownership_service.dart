@@ -170,13 +170,11 @@ class DriveOwnershipService implements DriveOwnershipGateway {
     }
 
     try {
-      final file =
-          await drive.DriveApi(client).files.get(
-                normalizedFileId,
-                supportsAllDrives: true,
-                $fields: 'id,name,mimeType,ownedByMe,trashed,webViewLink',
-              )
-              as drive.File;
+      final file = await drive.DriveApi(client).files.get(
+        normalizedFileId,
+        supportsAllDrives: true,
+        $fields: 'id,name,mimeType,ownedByMe,trashed,webViewLink',
+      ) as drive.File;
       validateOwnedSpreadsheet(file);
       return file;
     } on drive.DetailedApiRequestError catch (error) {

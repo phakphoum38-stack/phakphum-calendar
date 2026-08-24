@@ -42,9 +42,8 @@ class ImportSummaryPage extends StatelessWidget {
                 children: [
                   Text(
                     context.l10n.importCompleted,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: Theme.of(context).textTheme.headlineMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -77,9 +76,8 @@ class ImportSummaryPage extends StatelessWidget {
                   const SizedBox(height: 24),
                   Text(
                     context.l10n.issues,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
                   IssueList(issues: summary.issues),

@@ -86,16 +86,14 @@ void main() {
         spreadsheetTitle: 'Roster',
         sheetId: 123,
         sheetTitle: 'August',
-        url:
-            'https://docs.google.com/spreadsheets/d/SpreadsheetId_0123456789/edit#gid=123',
+        url: 'https://docs.google.com/spreadsheets/d/SpreadsheetId_0123456789/edit#gid=123',
         savedAt: savedAt,
       ),
       SavedSheet(
         ownerAccountId: 'account-b',
         spreadsheetId: 'AnotherSpreadsheetId_1234',
         spreadsheetTitle: 'Team roster',
-        url:
-            'https://docs.google.com/spreadsheets/d/AnotherSpreadsheetId_1234/edit',
+        url: 'https://docs.google.com/spreadsheets/d/AnotherSpreadsheetId_1234/edit',
         savedAt: savedAt.subtract(const Duration(minutes: 1)),
       ),
     ];

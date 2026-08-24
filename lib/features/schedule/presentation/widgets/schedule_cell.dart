@@ -99,9 +99,8 @@ class ScheduleCell extends StatelessWidget {
                     day.holidayName ?? 'Holiday',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: colorScheme.error),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: colorScheme.error),
                   ),
                 const SizedBox(height: 6),
                 for (final assignment in assignments.take(3))

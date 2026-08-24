@@ -270,13 +270,11 @@ class _ManualAssignmentPanel extends StatelessWidget {
     if (result case Success<Schedule>(value: final schedule)) {
       await onCommitted?.call(schedule);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.scheduleSaved)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.scheduleSaved)));
     } else if (result case Failure<Schedule>()) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(result.message)));
     }
   }
 }

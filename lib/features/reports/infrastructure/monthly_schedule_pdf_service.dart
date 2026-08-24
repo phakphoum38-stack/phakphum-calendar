@@ -137,9 +137,8 @@ class MonthlySchedulePdfService implements MonthlyScheduleReportService {
 
   pw.Widget _header(MonthlyScheduleReport report) {
     final month = DateFormat('MM/yyyy').format(report.metadata.month);
-    final generated = DateFormat(
-      'dd/MM/yyyy HH:mm',
-    ).format(report.metadata.generatedAt);
+    final generated = DateFormat('dd/MM/yyyy HH:mm')
+        .format(report.metadata.generatedAt);
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [

@@ -53,9 +53,9 @@ void main() {
   });
 
   test('unsupported schema versions fail explicitly', () {
-    final json =
-        jsonDecode(codec.encode(canonicalScheduleFixture()))
-            as Map<String, Object?>;
+    final json = jsonDecode(
+      codec.encode(canonicalScheduleFixture()),
+    ) as Map<String, Object?>;
     json['version'] = 99;
 
     expect(
@@ -65,9 +65,9 @@ void main() {
   });
 
   test('missing required fields fail with useful context', () {
-    final json =
-        jsonDecode(codec.encode(canonicalScheduleFixture()))
-            as Map<String, Object?>;
+    final json = jsonDecode(
+      codec.encode(canonicalScheduleFixture()),
+    ) as Map<String, Object?>;
     final schedule = json['schedule']! as Map<String, Object?>;
     schedule.remove('id');
 
