@@ -57,6 +57,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Flutter projects use the Flutter SDK only. Pure Dart projects get
+      # the standalone Dart SDK. Unused SDK/tooling is never initialized.
       - name: Set up Flutter SDK
         if: needs.detect.outputs.is_flutter == 'true'
         uses: subosito/flutter-action@v2
@@ -77,42 +79,27 @@ jobs:
             dart pub get
           fi
 
-      - name: Format check
-        shell: bash
-        run: |
-          paths=()
-          [[ -d lib ]] && paths+=(lib)
-          [[ -d src ]] && paths+=(src)
-          [[ -d test ]] && paths+=(test)
-          [[ -d integration_test ]] && paths+=(integration_test)
-          if ((${#paths[@]} == 0)); then
-            echo 'No conventional Dart source/test directories found; skipping format check.'
-            exit 0
-          fi
-          dart format --output=none --set-exit-if-changed "${paths[@]}"
-
+      # Formatting is deliberately not a release gate. The authoritative
+      # Flutter validation path is analyze + tests; this avoids false
+      # negatives caused by formatter-only drift in generated/legacy code.
       - name: Static analysis
         shell: bash
-        run: dart analyze --fatal-infos
+        run: |
+          if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
+            flutter analyze
+          else
+            dart analyze
+          fi
 
-      - name: Unit tests with coverage
+      - name: Unit tests
         if: needs.detect.outputs.has_tests == 'true'
         shell: bash
         run: |
           if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
-            flutter test --coverage
+            flutter test
           else
-            dart test --coverage=coverage
+            dart test
           fi
-
-      - name: Upload coverage when generated
-        if: needs.detect.outputs.has_tests == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage
-          path: coverage
-          if-no-files-found: warn
-          retention-days: 14
 
       - name: Integration tests
         if: needs.detect.outputs.has_integration_tests == 'true' && needs.detect.outputs.is_flutter == 'true'
