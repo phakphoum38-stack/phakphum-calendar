@@ -36,7 +36,36 @@ configured minimum. The default minimum is 60%. Set the repository Actions
 variable `MIN_COVERAGE_PERCENT` to raise or lower the threshold without editing
 the workflow.
 
+The formatter validates `lib/` and `test/`. The `integration_test/` directory
+is optional: when it exists it is formatted and validated; when it does not
+exist the workflow skips that target instead of failing on a missing path.
+This keeps the validation workflow compatible with repository layouts that do
+not use Flutter integration tests.
+
 OSV-Scanner checks the resolved Dart packages in `pubspec.lock` and fails for
 known vulnerabilities. Trivy scans the checked-out repository for high- or
 critical-severity secret and configuration findings. These checks use the
 read-only workflow token and do not require committed credentials.
+
+## Local preflight before push or PR
+
+Run the same checks locally before opening or updating a PR:
+
+```bash
+flutter pub get
+dart format lib test
+if [ -d integration_test ]; then dart format integration_test; fi
+flutter analyze --fatal-infos
+flutter test --coverage --reporter expanded
+```
+
+If CI reports `Changed ...` from `dart format --set-exit-if-changed`, the code
+is not formatted in the checked-out commit. Run the formatter locally, review
+the diff, commit the formatting changes, and push again. Do not make the CI
+formatter silently rewrite the PR, because the validation gate should remain a
+strict check of what is actually committed.
+
+If CI reports that `coverage/lcov.info` is missing, investigate the test step
+first. The artifact upload is intentionally conditional on the coverage file
+existing, so a test failure produces one primary failure instead of a second
+misleading artifact-upload failure.
