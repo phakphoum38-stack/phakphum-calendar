@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: final-gate-main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   final-gate:
@@ -25,7 +25,7 @@ jobs:
       (github.event.workflow_run.head_branch == 'main' &&
        github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout main
@@ -34,7 +34,7 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Verify required workflows succeeded for the same commit
+      - name: Wait for required workflows on the same commit
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -59,18 +59,32 @@ jobs:
               | head -n 1
           }
 
-          WINDOWS_RUN="$(get_successful_run windows.yml || true)"
-          WEB_RUN="$(get_successful_run web.yml || true)"
-          CAPABILITY_RUN="$(get_successful_run owner-generated-v6x6.yml || true)"
+          for attempt in {1..20}; do
+            WINDOWS_RUN="$(get_successful_run windows.yml || true)"
+            WEB_RUN="$(get_successful_run web.yml || true)"
+            CAPABILITY_RUN="$(get_successful_run owner-generated-v6x6.yml || true)"
 
-          test -n "$WINDOWS_RUN" || { echo 'Windows PASS not found for this commit.'; exit 1; }
-          test -n "$WEB_RUN" || { echo 'Website PASS not found for this commit.'; exit 1; }
-          test -n "$CAPABILITY_RUN" || { echo 'Owner-generated capability PASS not found for this commit.'; exit 1; }
+            echo "Evidence check ${attempt}/20"
+            echo "Windows: ${WINDOWS_RUN:-PENDING}"
+            echo "Website: ${WEB_RUN:-PENDING}"
+            echo "Capability: ${CAPABILITY_RUN:-PENDING}"
 
-          echo "Windows PASS: $WINDOWS_RUN"
-          echo "Website PASS: $WEB_RUN"
-          echo "Capability PASS: $CAPABILITY_RUN"
-          echo "FINAL PASS"
+            if [[ -n "$WINDOWS_RUN" && -n "$WEB_RUN" && -n "$CAPABILITY_RUN" ]]; then
+              echo "Windows PASS: $WINDOWS_RUN"
+              echo "Website PASS: $WEB_RUN"
+              echo "Capability PASS: $CAPABILITY_RUN"
+              echo "FINAL PASS"
+              exit 0
+            fi
+
+            if [[ "$attempt" -lt 20 ]]; then
+              sleep 30
+            fi
+          done
+
+          echo "ERROR: required PASS evidence was not available for commit $SHA within the Final Gate wait window."
+          echo "Required: Windows + Website + Owner-generated v6^6 on the same commit."
+          exit 1
 
       - name: Verify supported delivery structure
         shell: bash
