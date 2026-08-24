@@ -1,0 +1,91 @@
+name: Owner Generated v6^6 Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "web/**"
+      - "windows/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-generated-v6x6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capability-gate:
+    name: Detect supported capabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate capability manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci
+
+          dart_required=false
+          flutter_required=false
+          windows_active=false
+          web_active=false
+
+          if [[ -f pubspec.yaml ]]; then
+            dart_required=true
+            flutter_required=true
+          fi
+          [[ -d windows ]] && windows_active=true
+          [[ -d web ]] && web_active=true
+
+          cat > .ci/capabilities.env <<EOF
+          DART_REQUIRED=$dart_required
+          FLUTTER_REQUIRED=$flutter_required
+          WINDOWS_ACTIVE=$windows_active
+          WEB_ACTIVE=$web_active
+          ANDROID_ACTIVE=false
+          IOS_ACTIVE=false
+          MACOS_ACTIVE=false
+          LINUX_ACTIVE=false
+          EOF
+
+          cat .ci/capabilities.env
+
+      - name: Validate active delivery surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/workflows/windows.yml
+          test -f .github/workflows/web.yml
+          test -d windows
+          test -d web
+          test -f pubspec.yaml
+          echo "ACTIVE: Windows + Web"
+          echo "PAUSED: Android + iOS + macOS + Linux"
+
+      - name: Validate optional test directories without requiring them
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -d integration_test ]]; then
+            echo "integration_test detected; supported release gates may inspect it."
+          else
+            echo "integration_test absent; no failure because it is optional."
+          fi
+
+      - name: Upload generated capability manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: owner-generated-v6x6-capabilities
+          path: .ci/capabilities.env
+          if-no-files-found: error
+          retention-days: 14
