@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppEdition { personal, organization }
@@ -19,19 +21,28 @@ class AppEditionRepository {
   AppEditionRepository([this._preferences]);
 
   static const storageKey = 'shift_tools.app_edition.v1';
+  static const _storageTimeout = Duration(seconds: 6);
   SharedPreferences? _preferences;
 
-  Future<SharedPreferences> get _store async =>
-      _preferences ??= await SharedPreferences.getInstance();
+  Future<SharedPreferences> get _store async => _preferences ??=
+      await SharedPreferences.getInstance().timeout(_storageTimeout);
 
   Future<AppEdition?> load() async {
-    final value = (await _store).getString(storageKey);
-    if (value == null) return null;
-    return AppEdition.values
-        .where((edition) => edition.name == value)
-        .firstOrNull;
+    try {
+      final value = (await _store).getString(storageKey);
+      if (value == null) return null;
+      return AppEdition.values
+          .where((edition) => edition.name == value)
+          .firstOrNull;
+    } on TimeoutException {
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> save(AppEdition edition) =>
-      _store.then((store) => store.setString(storageKey, edition.name));
+  Future<void> save(AppEdition edition) async {
+    final store = await _store;
+    await store.setString(storageKey, edition.name).timeout(_storageTimeout);
+  }
 }

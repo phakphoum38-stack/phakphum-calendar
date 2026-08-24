@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'controller/app_controller.dart';
@@ -23,6 +25,8 @@ class ShiftToolsApp extends StatefulWidget {
 }
 
 class _ShiftToolsAppState extends State<ShiftToolsApp> {
+  static const _startupTimeout = Duration(seconds: 12);
+
   late final AppDependencies dependencies =
       widget.dependencies ?? AppDependencies.production();
   late final AppController controller =
@@ -33,7 +37,24 @@ class _ShiftToolsAppState extends State<ShiftToolsApp> {
   @override
   void initState() {
     super.initState();
-    controller.initialize();
+    unawaited(_initializeControllerSafely());
+  }
+
+  Future<void> _initializeControllerSafely() async {
+    try {
+      await controller.initialize().timeout(_startupTimeout);
+    } on TimeoutException {
+      if (!mounted || controller.initialized) return;
+      controller.error ??=
+          'เริ่มต้นระบบช้าเกินไป กรุณาตรวจการตั้งค่า Google OAuth หรือรีโหลดหน้าเว็บ';
+      controller.initialized = true;
+      controller.notifyListeners();
+    } catch (caught) {
+      if (!mounted || controller.initialized) return;
+      controller.error ??= 'เริ่มต้นระบบไม่สำเร็จ: $caught';
+      controller.initialized = true;
+      controller.notifyListeners();
+    }
   }
 
   @override
