@@ -4,6 +4,7 @@ The active delivery surface is intentionally reduced to **two targets only**:
 
 - `windows.yml` — Windows x64 release ZIP + SHA-256 checksum.
 - `web.yml` — Flutter Web release + GitHub Pages deployment.
+- `owner-generated-v6x6.yml` — owner-generated capability detection and release-surface guard.
 
 Android, iOS, macOS, Linux, Laravel/backend validation, broad repository
 validation, coverage gates, integration-test gates, and platform-specific
@@ -27,6 +28,18 @@ For the current stabilization phase:
 
 **Do not add a new platform workflow automatically.** A paused platform can
 return only through an explicit decision and a separately verified workflow.
+
+## Owner-generated v6^6 capability policy
+
+`owner-generated-v6x6.yml` is the lightweight source-of-truth guard for the
+current delivery surface. It detects whether the repository contains the
+Flutter/Dart project and whether the supported Windows/Web surfaces exist.
+It records paused platforms explicitly and treats `integration_test/` as
+optional.
+
+The capability gate is intentionally independent of Dart formatting, static
+analysis, coverage generation, and platform release builds. It must not mutate
+source files and must not auto-format code.
 
 ## Repository secrets
 
@@ -64,6 +77,8 @@ The supported delivery workflows must remain independent:
 5. A workflow must not auto-commit generated formatting changes during a
    release gate. Formatting changes must be committed explicitly by the
    developer or a dedicated maintenance job.
+6. Capability detection must not mutate the source tree or introduce a new
+   platform automatically.
 
 ## Simplification policy
 
