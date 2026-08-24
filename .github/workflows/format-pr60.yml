@@ -6,6 +6,8 @@ on:
       - fix/strict-roster-data-range
     paths:
       - test/off_after_cross_month_roster_boundary_test.dart
+      - test/monthly_roster_all_dates_test.dart
+      - test/monthly_schedule_pdf_service_test.dart
       - .github/workflows/format-pr60.yml
 
 permissions:
@@ -20,8 +22,12 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Format target test
-        run: dart format test/off_after_cross_month_roster_boundary_test.dart
+      - name: Format PR60 affected tests
+        run: |
+          dart format \
+            test/off_after_cross_month_roster_boundary_test.dart \
+            test/monthly_roster_all_dates_test.dart \
+            test/monthly_schedule_pdf_service_test.dart
       - name: Commit formatting
         run: |
           if git diff --quiet; then
@@ -30,6 +36,9 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test/off_after_cross_month_roster_boundary_test.dart
-          git commit -m "style: format PR60 regression test"
+          git add \
+            test/off_after_cross_month_roster_boundary_test.dart \
+            test/monthly_roster_all_dates_test.dart \
+            test/monthly_schedule_pdf_service_test.dart
+          git commit -m "style: format PR60 affected tests"
           git push origin HEAD:fix/strict-roster-data-range
