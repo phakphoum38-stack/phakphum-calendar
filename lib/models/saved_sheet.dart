@@ -72,7 +72,10 @@ class SavedSheet {
       savedAt:
           DateTime.tryParse(json['savedAt']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      isActive: json['isActive'] == true,
+      // Older records predate the explicit active flag. Treat those as
+      // active candidates so the migration can preserve the legacy default;
+      // an explicitly persisted false remains intentionally inactive.
+      isActive: json.containsKey('isActive') ? json['isActive'] == true : true,
     );
   }
 
