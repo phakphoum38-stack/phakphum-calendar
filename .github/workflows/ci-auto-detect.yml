@@ -1,0 +1,136 @@
+name: Auto Detect CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Detect project capabilities
+    runs-on: ubuntu-latest
+    outputs:
+      is_dart: ${{ steps.detect.outputs.is_dart }}
+      is_flutter: ${{ steps.detect.outputs.is_flutter }}
+      has_tests: ${{ steps.detect.outputs.has_tests }}
+      has_integration_tests: ${{ steps.detect.outputs.has_integration_tests }}
+      has_web: ${{ steps.detect.outputs.has_web }}
+      has_windows: ${{ steps.detect.outputs.has_windows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Detect targets
+        id: detect
+        shell: bash
+        run: |
+          chmod +x scripts/detect-ci-targets.sh
+          scripts/detect-ci-targets.sh | tee ci-targets.env
+          cat ci-targets.env >> "$GITHUB_OUTPUT"
+
+      - name: Publish detection summary
+        shell: bash
+        run: |
+          {
+            echo '## CI capability detection'
+            echo ''
+            echo '```text'
+            cat ci-targets.env
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  dart-quality:
+    name: Dart / Flutter quality
+    needs: detect
+    if: needs.detect.outputs.is_dart == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter SDK
+        if: needs.detect.outputs.is_flutter == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Dart SDK
+        if: needs.detect.outputs.is_flutter != 'true'
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
+            flutter pub get
+          else
+            dart pub get
+          fi
+
+      - name: Format check
+        shell: bash
+        run: |
+          paths=()
+          [[ -d lib ]] && paths+=(lib)
+          [[ -d src ]] && paths+=(src)
+          [[ -d test ]] && paths+=(test)
+          [[ -d integration_test ]] && paths+=(integration_test)
+          if ((${#paths[@]} == 0)); then
+            echo 'No conventional Dart source/test directories found; skipping format check.'
+            exit 0
+          fi
+          dart format --output=none --set-exit-if-changed "${paths[@]}"
+
+      - name: Static analysis
+        shell: bash
+        run: dart analyze --fatal-infos
+
+      - name: Unit tests with coverage
+        if: needs.detect.outputs.has_tests == 'true'
+        shell: bash
+        run: |
+          if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
+            flutter test --coverage
+          else
+            dart test --coverage=coverage
+          fi
+
+      - name: Upload coverage when generated
+        if: needs.detect.outputs.has_tests == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Integration tests
+        if: needs.detect.outputs.has_integration_tests == 'true' && needs.detect.outputs.is_flutter == 'true'
+        shell: bash
+        run: flutter test integration_test
+
+  platform-summary:
+    name: Platform activation summary
+    needs: detect
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Report active targets
+        shell: bash
+        run: |
+          echo "Dart: ${{ needs.detect.outputs.is_dart }}"
+          echo "Flutter: ${{ needs.detect.outputs.is_flutter }}"
+          echo "Tests: ${{ needs.detect.outputs.has_tests }}"
+          echo "Integration tests: ${{ needs.detect.outputs.has_integration_tests }}"
+          echo "Web: ${{ needs.detect.outputs.has_web }}"
+          echo "Windows: ${{ needs.detect.outputs.has_windows }}"
