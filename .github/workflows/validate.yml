@@ -9,6 +9,7 @@ on:
     paths:
       - "lib/**"
       - "test/**"
+      - "integration_test/**"
       - "assets/**"
       - "pubspec.yaml"
       - "pubspec.lock"
@@ -50,7 +51,16 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+        shell: bash
+        run: |
+          set -euo pipefail
+          targets=(lib test)
+          if [[ -d integration_test ]]; then
+            targets+=(integration_test)
+          else
+            echo 'integration_test/ not present; skipping formatter target.'
+          fi
+          dart format --output=none --set-exit-if-changed "${targets[@]}"
 
       - name: Analyze
         run: flutter analyze --fatal-infos
