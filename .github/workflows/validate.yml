@@ -58,6 +58,17 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage --reporter expanded
 
+      - name: Verify coverage file exists
+        shell: bash
+        run: |
+          if [[ ! -s coverage/lcov.info ]]; then
+            echo "ERROR: flutter test completed without generating coverage/lcov.info."
+            echo "Contents of coverage/:"
+            ls -la coverage 2>/dev/null || true
+            exit 1
+          fi
+          echo "Coverage file generated: $(wc -c < coverage/lcov.info) bytes"
+
       - name: Enforce minimum line coverage
         shell: bash
         run: |
@@ -81,7 +92,7 @@ jobs:
           ' coverage/lcov.info
 
       - name: Upload coverage report
-        if: always()
+        if: ${{ always() && hashFiles('coverage/lcov.info') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: flutter-coverage
