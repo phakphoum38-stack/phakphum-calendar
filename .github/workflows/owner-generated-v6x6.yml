@@ -35,21 +35,28 @@ jobs:
           set -euo pipefail
           mkdir -p .ci
 
-          dart_required=false
           flutter_required=false
+          dart_required=false
           windows_active=false
           web_active=false
 
           if [[ -f pubspec.yaml ]]; then
-            dart_required=true
             flutter_required=true
+            dart_required=true
           fi
           [[ -d windows ]] && windows_active=true
           [[ -d web ]] && web_active=true
 
+          dart_constraint="unknown"
+          if [[ -f pubspec.yaml ]]; then
+            dart_constraint="$(awk '/^environment:/,/^[^ ]/{if ($1=="sdk:") print $2}' pubspec.yaml | head -n1 || true)"
+            [[ -n "$dart_constraint" ]] || dart_constraint="declared-in-pubspec"
+          fi
+
           cat > .ci/capabilities.env <<EOF
-          DART_REQUIRED=$dart_required
           FLUTTER_REQUIRED=$flutter_required
+          DART_REQUIRED=$dart_required
+          DART_SDK_CONSTRAINT=$dart_constraint
           WINDOWS_ACTIVE=$windows_active
           WEB_ACTIVE=$web_active
           ANDROID_ACTIVE=false
@@ -72,15 +79,48 @@ jobs:
           echo "ACTIVE: Windows + Web"
           echo "PAUSED: Android + iOS + macOS + Linux"
 
-      - name: Validate optional test directories without requiring them
+      - name: Validate paused platforms stay paused
+        shell: bash
+        run: |
+          set -euo pipefail
+          for workflow in android ios macos linux; do
+            if [[ -f ".github/workflows/${workflow}.yml" || -f ".github/workflows/${workflow}.yaml" ]]; then
+              echo "ERROR: paused platform workflow detected: ${workflow}"
+              exit 1
+            fi
+          done
+          echo "No paused-platform workflow is active."
+
+      - name: Validate release gates are capability-aware
+        shell: bash
+        run: |
+          set -euo pipefail
+          for workflow in .github/workflows/windows.yml .github/workflows/web.yml; do
+            test -f "$workflow"
+            grep -q 'flutter pub get' "$workflow"
+            grep -q 'subosito/flutter-action@v2' "$workflow"
+          done
+          echo "Windows/Web workflows explicitly provision Flutter and dependencies."
+
+      - name: Validate optional test directory policy
         shell: bash
         run: |
           set -euo pipefail
           if [[ -d integration_test ]]; then
-            echo "integration_test detected; supported release gates may inspect it."
+            echo "integration_test detected; it may be used by an explicitly restored validation gate."
           else
-            echo "integration_test absent; no failure because it is optional."
+            echo "integration_test absent; supported delivery remains valid because it is optional."
           fi
+
+      - name: Validate no release formatter mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -nE 'git (add|commit|push).*format|dart format.*--set-exit-if-changed' .github/workflows/windows.yml .github/workflows/web.yml .github/workflows/owner-generated-v6x6.yml; then
+            echo "ERROR: release/capability workflow contains formatter mutation or format gate."
+            exit 1
+          fi
+          echo "No formatter mutation is present in active release/capability workflows."
 
       - name: Upload generated capability manifest
         uses: actions/upload-artifact@v7
