@@ -407,9 +407,11 @@ class AppController extends ChangeNotifier implements ControllerState {
     calendarPeriods = [];
     existingKeys = {};
     _replaceLegacyShifts(
-      _alertService.addOffDutyPeriods(
-        _applyReferenceRelationships(
-          _filterToSyncDateRange(_loadedRosterShifts),
+      _filterToSyncDateRange(
+        _alertService.addOffDutyPeriods(
+          _applyReferenceRelationships(
+            _filterToSyncDateRange(_loadedRosterShifts),
+          ),
         ),
       ),
     );

@@ -9,7 +9,6 @@ on:
     paths:
       - "lib/**"
       - "test/**"
-      - "integration_test/**"
       - "assets/**"
       - "pubspec.yaml"
       - "pubspec.lock"
@@ -51,13 +50,24 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test integration_test 2>/dev/null || dart format --output=none --set-exit-if-changed lib test
+        run: dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze
         run: flutter analyze --fatal-infos
 
       - name: Run tests with coverage
         run: flutter test --coverage --reporter expanded
+
+      - name: Verify coverage file exists
+        shell: bash
+        run: |
+          if [[ ! -s coverage/lcov.info ]]; then
+            echo "ERROR: flutter test completed without generating coverage/lcov.info."
+            echo "Contents of coverage/:"
+            ls -la coverage 2>/dev/null || true
+            exit 1
+          fi
+          echo "Coverage file generated: $(wc -c < coverage/lcov.info) bytes"
 
       - name: Enforce minimum line coverage
         shell: bash
@@ -82,7 +92,7 @@ jobs:
           ' coverage/lcov.info
 
       - name: Upload coverage report
-        if: always()
+        if: ${{ always() && hashFiles('coverage/lcov.info') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: flutter-coverage

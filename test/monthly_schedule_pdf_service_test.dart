@@ -42,16 +42,12 @@ void main() {
     expect((result as Success<Uint8List>).value, isNotEmpty);
   });
 
-  test(
-    'large and long-name fixture generates a multi-page-safe PDF',
-    () async {
-      final result = await service.generate(_largeSchedule(), options);
+  test('large and long-name fixture generates a multi-page-safe PDF', () async {
+    final result = await service.generate(_largeSchedule(), options);
 
-      expect(result, isA<Success<Uint8List>>());
-      expect((result as Success<Uint8List>).value.length, greaterThan(5000));
-    },
-    timeout: const Timeout(Duration(minutes: 2)),
-  );
+    expect(result, isA<Success<Uint8List>>());
+    expect((result as Success<Uint8List>).value.length, greaterThan(5000));
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }
 
 Schedule _thaiSchedule() {

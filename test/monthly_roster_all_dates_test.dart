@@ -111,11 +111,9 @@ void main() {
 
         final report = parser.parse(input);
 
-        expect(
-          report.assignments.map((item) => item.date),
-          [DateTime(year, month, lastDay)],
-          reason: 'ต้องเก็บเฉพาะวันจริงของ $monthName $buddhistYear',
-        );
+        expect(report.assignments.map((item) => item.date), [
+          DateTime(year, month, lastDay),
+        ], reason: 'ต้องเก็บเฉพาะวันจริงของ $monthName $buddhistYear');
         expect(
           report.warnings,
           isNotEmpty,
@@ -143,3 +141,6 @@ List<NormalizedCell> _row(int rowIndex, List<Object?> values) {
         ),
   ];
 }
+
+// Keep this regression suite intentionally broad: it validates every month
+// across leap-year and non-leap-year boundaries.
