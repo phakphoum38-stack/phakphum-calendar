@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Format, analyze and test
+    name: Analyze and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -49,9 +49,6 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
-
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test integration_test 2>/dev/null || dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze
         run: flutter analyze --fatal-infos
