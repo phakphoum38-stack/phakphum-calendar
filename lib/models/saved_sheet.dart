@@ -8,6 +8,7 @@ class SavedSheet {
     this.sheetId,
     this.sheetTitle,
     this.isActive = false,
+    this.hasExplicitActiveState = true,
   });
 
   final String ownerAccountId;
@@ -18,6 +19,7 @@ class SavedSheet {
   final String url;
   final DateTime savedAt;
   final bool isActive;
+  final bool hasExplicitActiveState;
 
   String get key => '$ownerAccountId:$spreadsheetId:${sheetId ?? 'all'}';
 
@@ -58,6 +60,7 @@ class SavedSheet {
     if (ownerAccountId.isEmpty || spreadsheetId.isEmpty || url.isEmpty) {
       throw const FormatException('ข้อมูลชีตที่บันทึกไม่ครบถ้วน');
     }
+    final hasExplicitActiveState = json.containsKey('isActive');
     return SavedSheet(
       ownerAccountId: ownerAccountId,
       spreadsheetId: spreadsheetId,
@@ -72,10 +75,10 @@ class SavedSheet {
       savedAt:
           DateTime.tryParse(json['savedAt']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      // Older records did not have an explicit active flag. They must enter
-      // migration as inactive so the controller can deterministically choose
-      // exactly one current source per account from the saved history.
+      // Legacy records had no active flag. New records persist an explicit
+      // false value when the user intentionally deactivates a source.
       isActive: json['isActive'] == true,
+      hasExplicitActiveState: hasExplicitActiveState,
     );
   }
 
@@ -88,5 +91,7 @@ class SavedSheet {
     url: url,
     savedAt: savedAt ?? this.savedAt,
     isActive: isActive ?? this.isActive,
+    hasExplicitActiveState:
+        isActive == null ? hasExplicitActiveState : true,
   );
 }
