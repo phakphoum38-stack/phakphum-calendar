@@ -15,7 +15,17 @@ abstract interface class ShiftAlertPolicy {
 }
 
 class ShiftAlertService implements ShiftAlertPolicy {
-  const ShiftAlertService();
+  const ShiftAlertService({
+    this.defaultOffDutyStartTime = const Duration(hours: 8),
+    this.defaultOffDutyDuration = const Duration(hours: 8),
+  });
+
+  /// Preferred OFF start time on the calendar day after the night duty date.
+  final Duration defaultOffDutyStartTime;
+
+  /// Initial OFF length. Users can convert each generated OFF into an
+  /// explicitly configured item from the preview editor.
+  final Duration defaultOffDutyDuration;
 
   @override
   List<Shift> addOffDutyPeriods(List<Shift> sourceShifts) {
@@ -24,10 +34,25 @@ class ShiftAlertService implements ShiftAlertPolicy {
       for (final shift in sourceShifts.where((shift) => shift.isOffDuty))
         _dateKey(shift.start),
     };
+    final offByLinkedShift = <String>{
+      for (final shift in sourceShifts.where((shift) => shift.isOffDuty))
+        ?shift.linkedShiftKey,
+    };
     for (final night in sourceShifts.where(
       (shift) => shift.isNightShift && !shift.excluded,
     )) {
-      final start = night.end;
+      if (offByLinkedShift.contains(night.sourceKey)) continue;
+      final nightDutyDay = DateTime(
+        night.start.year,
+        night.start.month,
+        night.start.day,
+      );
+      final configuredStart = nightDutyDay
+          .add(const Duration(days: 1))
+          .add(defaultOffDutyStartTime);
+      final start = configuredStart.isBefore(night.end)
+          ? night.end
+          : configuredStart;
       if (!offByDate.add(_dateKey(start))) continue;
       result.add(
         Shift(
@@ -35,7 +60,7 @@ class ShiftAlertService implements ShiftAlertPolicy {
           rowLabel: 'เวรออฟหลังเวรดึก',
           assignedName: night.assignedName,
           start: start,
-          end: DateTime(start.year, start.month, start.day, 16),
+          end: start.add(defaultOffDutyDuration),
           sheetTitle: night.sheetTitle,
           cell: night.cell,
           category: ShiftCategory.off,
@@ -70,8 +95,9 @@ class ShiftAlertService implements ShiftAlertPolicy {
           type: ShiftAlertType.offAfterNight,
           title: 'สร้างเวรออฟหลังเวรดึกแล้ว',
           message:
-              '${night?.displayName ?? 'เวรดึก'} สิ้นสุดเวลา 08:00 '
-              'ระบบกำหนดช่วง 08:00–16:00 เป็น OFF อัตโนมัติ',
+              '${night?.displayName ?? 'เวรดึก'} สิ้นสุดแล้ว '
+              'ระบบสร้าง OFF เริ่มต้น ${_range(off.start, off.end)} '
+              'ซึ่งผู้ใช้แก้ไขได้',
           start: off.start,
           end: off.end,
           decision: decisions[id] ?? ShiftAlertDecision.acknowledged,
@@ -101,7 +127,7 @@ class ShiftAlertService implements ShiftAlertPolicy {
             ShiftAlert(
               id: id,
               type: ShiftAlertType.offConflict,
-              title: 'เวรชนช่วง OFF 08:00–16:00',
+              title: 'เวรชนช่วง OFF ที่กำหนดไว้',
               message:
                   '${duty.displayName} ${_range(duty.start, duty.end)} ชนกับช่วง '
                   'OFF หลังเวรดึก ${_range(off.start, off.end)}',
@@ -153,7 +179,7 @@ class ShiftAlertService implements ShiftAlertPolicy {
             id: id,
             type: ShiftAlertType.calendarOverlap,
             title: offConflict
-                ? 'กิจกรรมใน Calendar ชนช่วง OFF 08:00–16:00'
+                ? 'กิจกรรมใน Calendar ชนช่วง OFF ที่กำหนดไว้'
                 : 'เวรชนกิจกรรมเดิมใน Calendar',
             message: offConflict
                 ? 'ช่วง OFF หลังเวรดึก ${_range(shift.start, shift.end)} ชนกับ '

@@ -10,6 +10,8 @@
 	<string>Shift Tools</string>
 	<key>GIDClientID</key>
 	<string>REPLACE_WITH_IOS_CLIENT_ID</string>
+	<key>GIDServerClientID</key>
+	<string>REPLACE_WITH_WEB_CLIENT_ID</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -66,6 +68,8 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ใช้กล้องเพื่อถ่ายภาพตารางเวรสำหรับบันทึกและนำเข้าในแอป</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

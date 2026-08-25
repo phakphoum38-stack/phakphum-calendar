@@ -21,6 +21,12 @@ abstract interface class LegacyCalendarGateway {
     List<Shift> shifts,
     Set<String> existingKeys,
   );
+  Future<List<String>> findManagedDuplicateEventIds(
+    http.Client client, {
+    required int year,
+    required int month,
+    required List<Shift> desiredShifts,
+  });
   Future<void> deleteEvent(http.Client client, {required String eventId});
 }
 
@@ -82,7 +88,9 @@ class CalendarService implements LegacyCalendarGateway {
             wallStart != null &&
             wallEnd != null &&
             wallEnd.isAfter(wallStart)) {
-          sourceKeys.add(_managedTimeKey(wallStart, wallEnd));
+          sourceKeys.add(
+            _managedTimeKey(event.summary ?? '', wallStart, wallEnd),
+          );
         }
         final startTime = event.start?.dateTime;
         final summary = event.summary;
@@ -152,6 +160,93 @@ class CalendarService implements LegacyCalendarGateway {
   }
 
   @override
+  Future<List<String>> findManagedDuplicateEventIds(
+    http.Client client, {
+    required int year,
+    required int month,
+    required List<Shift> desiredShifts,
+  }) async {
+    final api = calendar.CalendarApi(client);
+    final start = DateTime.utc(
+      year,
+      month,
+      1,
+    ).subtract(const Duration(hours: 7));
+    final end = DateTime.utc(
+      year,
+      month + 1,
+      1,
+    ).subtract(const Duration(hours: 7));
+    final byManagedKey = <String, Map<String, calendar.Event>>{};
+    String? pageToken;
+    do {
+      final page = await api.events.list(
+        'primary',
+        timeMin: start,
+        timeMax: end,
+        singleEvents: true,
+        showDeleted: false,
+        maxResults: 2500,
+        pageToken: pageToken,
+      );
+      for (final event in page.items ?? const <calendar.Event>[]) {
+        final eventId = event.id?.trim() ?? '';
+        final properties = event.extendedProperties?.private;
+        final sourceApp = properties?['sourceApp']?.trim() ?? '';
+        final syncId = properties?['sceSyncId']?.trim() ?? '';
+        final sourceKey = properties?['sourceKey']?.trim() ?? '';
+        final managed =
+            sourceApp == CalendarService.sourceApp || syncId.isNotEmpty;
+        if (!managed || eventId.isEmpty) continue;
+        final key = syncId.isNotEmpty
+            ? 'sync:$syncId'
+            : sourceKey.isNotEmpty
+            ? 'source:$sourceKey'
+            : '';
+        if (key.isEmpty) continue;
+        byManagedKey.putIfAbsent(
+          key,
+          () => <String, calendar.Event>{},
+        )[eventId] = event;
+      }
+      pageToken = page.nextPageToken;
+    } while (pageToken != null && pageToken.isNotEmpty);
+
+    final duplicates = <String>[];
+    for (final eventsById in byManagedKey.values) {
+      if (eventsById.length < 2) continue;
+      final events = eventsById.values.toList()
+        ..sort((left, right) => left.id!.compareTo(right.id!));
+      final exactIndex = events.indexWhere(
+        (event) => _matchesDesiredShift(event, desiredShifts),
+      );
+      final retainedIndex = exactIndex < 0 ? 0 : exactIndex;
+      for (var index = 0; index < events.length; index++) {
+        if (index != retainedIndex) duplicates.add(events[index].id!);
+      }
+    }
+    duplicates.sort();
+    return List.unmodifiable(duplicates);
+  }
+
+  bool _matchesDesiredShift(calendar.Event event, List<Shift> desiredShifts) {
+    final start = _wallTime(event.start);
+    final end = _wallTime(event.end);
+    if (start == null || end == null) return false;
+    final title = event.summary ?? '';
+    return desiredShifts.any(
+      (shift) => CalendarEventMatcher.isExactEquivalent(
+        rosterTitle: summaryFor(shift),
+        rosterStart: shift.start,
+        rosterEnd: shift.end,
+        calendarTitle: title,
+        calendarStart: start,
+        calendarEnd: end,
+      ),
+    );
+  }
+
+  @override
   Future<void> deleteEvent(
     http.Client client, {
     required String eventId,
@@ -170,13 +265,21 @@ class CalendarService implements LegacyCalendarGateway {
   static String summaryFor(Shift shift) =>
       CalendarEventMatcher.calendarTitle(shift.displayName);
 
-  static String descriptionFor(Shift shift) =>
-      '${shift.generated ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก\n' : 'สร้างจากตารางเวร (อ่านอย่างเดียว)\n'}'
-      'ชื่อเวรจากชีต: ${shift.rowLabel}\n'
-      'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}\n'
-      '${shift.sourceColorHex == null ? '' : 'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}\n'}'
-      'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}\n'
-      'ประเภท: ${shift.category.label}';
+  static String descriptionFor(Shift shift) {
+    final relationship = shift.relationshipComment?.trim() ?? '';
+    return <String>[
+      shift.generated
+          ? 'สร้างอัตโนมัติเป็นเวรออฟหลังเวรดึก'
+          : 'สร้างจากตารางเวร (อ่านอย่างเดียว)',
+      'ชื่อเวรจากชีต: ${shift.rowLabel}',
+      'ผู้ปฏิบัติงานในตาราง: ${shift.assignedName}',
+      if (relationship.isNotEmpty) relationship,
+      if (shift.sourceColorHex != null)
+        'สีเซลล์ต้นฉบับ: ${shift.sourceColorHex}',
+      'ชีต: ${shift.sheetTitle} เซลล์ ${shift.cell}',
+      'ประเภท: ${shift.category.label}',
+    ].join('\n');
+  }
 
   static String displayLegacyKeyFor(Shift shift) =>
       _legacyKey(summaryFor(shift), shift.start);
@@ -203,7 +306,7 @@ class CalendarService implements LegacyCalendarGateway {
       keys.contains(managedTimeKeyFor(shift));
 
   static String managedTimeKeyFor(Shift shift) =>
-      _managedTimeKey(shift.start, shift.end);
+      _managedTimeKey(summaryFor(shift), shift.start, shift.end);
 
   @override
   bool matchesExistingShift(Shift shift, Set<String> keys) =>
@@ -216,8 +319,12 @@ class CalendarService implements LegacyCalendarGateway {
       '${wallTime.hour.toString().padLeft(2, '0')}:'
       '${wallTime.minute.toString().padLeft(2, '0')}';
 
-  static String _managedTimeKey(DateTime start, DateTime end) =>
-      'managed-time|${_wallIdentity(start)}|${_wallIdentity(end)}';
+  static String _managedTimeKey(String title, DateTime start, DateTime end) =>
+      'managed-time|${_managedTitleIdentity(title)}|'
+      '${_wallIdentity(start)}|${_wallIdentity(end)}';
+
+  static String _managedTitleIdentity(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
   static String _wallIdentity(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'

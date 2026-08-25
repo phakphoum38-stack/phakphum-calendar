@@ -248,6 +248,60 @@ void main() {
     expect(gateway.legacyEvents, isEmpty);
     expect(gateway.events, hasLength(desired.length));
   });
+
+  test(
+    'duplicate managed events are cleaned up without another insert',
+    () async {
+      final schedule = canonicalScheduleFixture();
+      final desired = const CanonicalScheduleEventMapper().map(schedule);
+      final duplicateCandidate = desired.first;
+      final gateway = _CalendarGateway();
+      gateway.events.addAll([
+        for (final candidate in desired)
+          ManagedCalendarEvent(
+            eventId: 'managed-${candidate.syncId}',
+            syncId: candidate.syncId,
+            title: candidate.title,
+            start: candidate.start,
+            end: candidate.end,
+            description: candidate.description,
+            colorId: candidate.colorId,
+          ),
+        ManagedCalendarEvent(
+          eventId: 'managed-z-duplicate',
+          syncId: duplicateCandidate.syncId,
+          title: duplicateCandidate.title,
+          start: duplicateCandidate.start,
+          end: duplicateCandidate.end,
+          description: duplicateCandidate.description,
+          colorId: duplicateCandidate.colorId,
+        ),
+      ]);
+      final dependencies = AppDependencies(
+        scheduleRules: const [],
+        syncHistoryRepository: _RecordingHistoryRepository(),
+        failedSyncRepository: _InMemoryFailedSyncRepository(),
+      );
+      final controller = dependencies.createShiftCalendarWorkflowController(
+        gateway,
+      );
+      addTearDown(controller.dispose);
+
+      await controller.prepareSchedule(schedule);
+
+      final plan = controller.schedulePreparation!.plan;
+      expect(plan.inserts, isEmpty);
+      expect(plan.updates, isEmpty);
+      expect(plan.deletes, hasLength(1));
+      expect(plan.deletes.single.eventId, 'managed-z-duplicate');
+      expect(plan.deletes.single.beforeWrites, isTrue);
+
+      await controller.synchronize();
+
+      expect(gateway.insertCount, 0);
+      expect(gateway.events, hasLength(desired.length));
+    },
+  );
 }
 
 class _CalendarGateway

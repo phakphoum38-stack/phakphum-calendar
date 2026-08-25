@@ -1,0 +1,123 @@
+name: Auto Detect CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Detect project capabilities
+    runs-on: ubuntu-latest
+    outputs:
+      is_dart: ${{ steps.detect.outputs.is_dart }}
+      is_flutter: ${{ steps.detect.outputs.is_flutter }}
+      has_tests: ${{ steps.detect.outputs.has_tests }}
+      has_integration_tests: ${{ steps.detect.outputs.has_integration_tests }}
+      has_web: ${{ steps.detect.outputs.has_web }}
+      has_windows: ${{ steps.detect.outputs.has_windows }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Detect targets
+        id: detect
+        shell: bash
+        run: |
+          chmod +x scripts/detect-ci-targets.sh
+          scripts/detect-ci-targets.sh | tee ci-targets.env
+          cat ci-targets.env >> "$GITHUB_OUTPUT"
+
+      - name: Publish detection summary
+        shell: bash
+        run: |
+          {
+            echo '## CI capability detection'
+            echo ''
+            echo '```text'
+            cat ci-targets.env
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  dart-quality:
+    name: Dart / Flutter quality
+    needs: detect
+    if: needs.detect.outputs.is_dart == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Flutter projects use the Flutter SDK only. Pure Dart projects get
+      # the standalone Dart SDK. Unused SDK/tooling is never initialized.
+      - name: Set up Flutter SDK
+        if: needs.detect.outputs.is_flutter == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Set up Dart SDK
+        if: needs.detect.outputs.is_flutter != 'true'
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
+            flutter pub get
+          else
+            dart pub get
+          fi
+
+      # Formatting is deliberately not a release gate. The authoritative
+      # Flutter validation path is analyze + tests; this avoids false
+      # negatives caused by formatter-only drift in generated/legacy code.
+      - name: Static analysis
+        shell: bash
+        run: |
+          if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
+            flutter analyze
+          else
+            dart analyze
+          fi
+
+      - name: Unit tests
+        if: needs.detect.outputs.has_tests == 'true'
+        shell: bash
+        run: |
+          if [[ "${{ needs.detect.outputs.is_flutter }}" == "true" ]]; then
+            flutter test
+          else
+            dart test
+          fi
+
+      - name: Integration tests
+        if: needs.detect.outputs.has_integration_tests == 'true' && needs.detect.outputs.is_flutter == 'true'
+        shell: bash
+        run: flutter test integration_test
+
+  platform-summary:
+    name: Platform activation summary
+    needs: detect
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Report active targets
+        shell: bash
+        run: |
+          echo "Dart: ${{ needs.detect.outputs.is_dart }}"
+          echo "Flutter: ${{ needs.detect.outputs.is_flutter }}"
+          echo "Tests: ${{ needs.detect.outputs.has_tests }}"
+          echo "Integration tests: ${{ needs.detect.outputs.has_integration_tests }}"
+          echo "Web: ${{ needs.detect.outputs.has_web }}"
+          echo "Windows: ${{ needs.detect.outputs.has_windows }}"

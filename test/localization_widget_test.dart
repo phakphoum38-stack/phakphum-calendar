@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phakphum_calendar/app.dart';
 import 'package:phakphum_calendar/core/di/app_dependencies.dart';
+import 'package:phakphum_calendar/features/edition/domain/app_edition.dart';
 import 'package:phakphum_calendar/features/reports/domain/report_labels.dart';
 import 'package:phakphum_calendar/features/schedule/presentation/pages/monthly_schedule_page.dart';
 import 'package:phakphum_calendar/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(
+    () => SharedPreferences.setMockInitialValues({
+      AppEditionRepository.storageKey: AppEdition.organization.name,
+    }),
+  );
 
   testWidgets('application switches between Thai and English at runtime', (
     tester,

@@ -112,9 +112,18 @@ class UserShiftEventMapper {
       UserShiftChangeType.unrelated => 'ไม่เกี่ยวข้องกับผู้ใช้',
     };
 
+    final beforeName = change.before?.workerName.trim() ?? '';
+    final afterName = change.after?.workerName.trim() ?? '';
+
     return <String>[
       'จัดการโดย Shift Tools',
       'สถานะ: $relationship',
+      if (beforeName.isNotEmpty &&
+          change.type != UserShiftChangeType.ownUnchanged)
+        'เจ้าของเวรเดิม: $beforeName',
+      if (afterName.isNotEmpty &&
+          change.type != UserShiftChangeType.ownUnchanged)
+        'ผู้ปฏิบัติงานปัจจุบัน: $afterName',
       'ชีต: ${assignment.sheetTitle}',
       'เซลล์ต้นทาง: ${assignment.sourceCell}',
     ].join('\n');

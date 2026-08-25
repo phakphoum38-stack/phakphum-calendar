@@ -14,6 +14,19 @@ status are maintained in:
 - ช่องชีต ชื่อ เดือน และปีเริ่มต้นว่าง ไม่มีค่าของผู้ใช้ฝังในแอปหรือ repository ผู้ใช้เลือกเดือนและปี ค.ศ. เองก่อนอ่าน
 - ไอคอนแอปเป็นรูปชีตและปฏิทินบนทุกแพลตฟอร์มที่โปรเจกต์สร้างให้
 
+## เวอร์ชันการใช้งาน
+
+การเปิดแอปครั้งแรกต้องเลือกหนึ่งเวอร์ชัน และเปลี่ยนภายหลังได้จาก
+**ตั้งค่า → เวอร์ชันการใช้งาน** โดยการสลับเวอร์ชันไม่ลบข้อมูลเดิม:
+
+| เวอร์ชัน | เมนูและขอบเขตหลัก |
+| --- | --- |
+| บุคคลทั่วไป | แดชบอร์ด ตารางเวร รายเดือน รายงาน ตั้งค่า และ Google Calendar |
+| องค์กร | ระบบบุคคลทั่วไปทั้งหมด พร้อมรายชื่อ บุคลากร แลกเวร บทบาท และ Admin Console |
+
+ค่าที่เลือกเก็บใน local storage ของอุปกรณ์/เบราว์เซอร์ ไม่มีเวอร์ชันหรือ
+ข้อมูลองค์กรฝังตายตัวใน build
+
 ## SCE 3.0 Phase 2
 
 - หน้า **บุคลากร** เพิ่ม แก้ไข ค้นหา กรอง และปิดใช้งานข้อมูลบุคลากร
@@ -24,6 +37,72 @@ status are maintained in:
   หลัง Preview และบันทึก canonical Schedule ผ่าน repository เดิม
 - Employee Directory และ Shift Templates ใช้ storage key แยกจากข้อมูล legacy
   และ dependencies ทั้งหมดถูกสร้างจาก `AppDependencies`
+
+
+### โครงสร้างตารางเวรรายเดือนแบบยืดหยุ่น
+
+`MonthlyRosterSectionParser` เตรียมโครงสร้างสำหรับอ่านแท็บตารางรายเดือน
+ที่มีหลายบล็อกต่อกัน เช่น เวรใหญ่, exten และคลินิก โดยค้นหาแต่ละบล็อกจาก
+แถวหัวข้อ `วันที่` และเลขวันที่อย่างน้อย 7 คอลัมน์ ไม่ผูกกับชื่อบล็อก
+ชื่อสถานที่ จำนวนแถว หรือจำนวนวันแบบตายตัว
+
+ข้อมูลที่อ่านได้ในแต่ละรายการประกอบด้วย:
+
+- ชื่อบล็อกตามหัวเรื่องในชีต
+- ชื่อแถวหรือสถานที่ปฏิบัติงานตามค่าจริง
+- ชื่อผู้ปฏิบัติงานและวันที่
+- ตำแหน่งเซลล์ต้นทางและสีพื้นหลัง
+
+หัวเรื่องรองรับทั้งช่วงวันที่และข้อความเดือน พ.ศ. ชื่อบล็อกใหม่หรือชื่อแถวใหม่
+จึงเพิ่มใน Google Sheets ได้โดยไม่ต้องเพิ่ม enum หรือแก้เงื่อนไขชื่อใน parser
+เมื่ออ่านไฟล์ แอปจะแปลง snapshot ชุดเดียวกับขั้น import และแสดงผลในเมนู
+**รายเดือน** ผู้ใช้ค้นหาชื่อบล็อก สถานที่ หรือผู้ปฏิบัติงาน กรองแต่ละบล็อก
+กำหนดช่วงวันที่ และอ่านเซลล์ใหม่ได้โดยไม่แก้ไขไฟล์ต้นฉบับ
+
+แท็บ **รายเดือน** มี workflow นำเข้าของตัวเองโดยไม่เปลี่ยนหน้า Import หลัก:
+
+- เลือก Google Sheets จากบัญชีที่ล็อกอิน หรือนำเข้า `.xlsx`, `.csv`, `.tsv`
+  และ `.txt` จากเครื่อง
+- เปิดกล้องหรือเลือกรูป แล้วตรวจภาพตัวอย่างก่อนบันทึกและ Import
+- กด `+` เพื่อสร้างเทมเพลตรายเดือนแบบว่าง กำหนดช่วงวันที่ และเพิ่มกลุ่มเวร
+  ได้หลายกลุ่ม
+- แก้ไขหรือลบเทมเพลตที่สร้างไว้ได้ โดยเทมเพลตเก็บเฉพาะใน local storage
+- ถ้า parser อ่านโครงสร้างตารางไม่ได้ แอปจะสร้างมุมมองรายเดือนกลางจาก
+  รายการเวรที่ Import ได้
+
+### รายชื่อและสถานะรายวัน
+
+แท็บ **รายชื่อ** ใช้รายชื่อเจ้าหน้าที่ร่วมกับมุมมองตารางเวรรายวัน:
+
+- เพิ่มรายชื่อหลายคนพร้อมกัน โดยใส่หนึ่งชื่อต่อหนึ่งบรรทัดหรือคั่นด้วยจุลภาค
+- Import ไฟล์ตารางเวรด้วย parser ชุดเดียวกับแท็บรายเดือน
+- เลือกวันที่อ้างอิง แล้วแปลงชื่อแถวในต้นฉบับเป็นสถานะ `เวร`, `แทนเวร`,
+  `OFF`, `ลากิจ`, `ลาป่วย`, `ลาพักร้อน`, `ลาคลอด` หรือ `ลาบวช`
+- เปลี่ยนสถานะของแต่ละคนจาก Dropdown หลังชื่อ
+- ติ๊ก **ล็อก** และระบุจุดเวรหนึ่งจุดต่อคนได้ ส่วน generation API รองรับ
+  `lockedDutyPointsByEmployeeId` เพื่อเลือกบุคคลนั้นที่จุดเดิมก่อนและไม่นำ
+  ไปจัดในจุดอื่นเมื่อ caller ส่ง mapping นี้เข้า `GenerationRequest`
+- การอ่านรายชื่อและสถานะไม่แก้ไขไฟล์ต้นฉบับ และการตั้งค่าล็อกในเครื่อง
+  จะยังคงอยู่เมื่อ Import รายชื่อใหม่
+
+### Admin Console
+
+แท็บ **Admin** เป็นหน้าตั้งค่าบทบาทแบบกำหนดภายหลัง:
+
+1. ค่าเริ่มต้นไม่มีบัญชี Admin หรืออีเมลฝังอยู่ในซอร์สโค้ด
+2. ล็อกอิน Google แล้วกด **กำหนดบัญชีนี้เป็น Admin** เพื่อ bootstrap
+   ผู้ดูแลคนแรก
+3. Admin เพิ่มอีเมลและกำหนดบทบาท `Admin`, `Manager`, `In-charge`
+   หรือ `Staff` ได้
+4. ระบบปฏิเสธหน้า Admin Console สำหรับบัญชีที่ไม่ใช่ Admin และไม่อนุญาต
+   ให้ลบ Admin คนสุดท้าย
+5. หน้าจอแสดงสิทธิ์จาก `AccessPolicy` ของแต่ละบทบาท
+
+การตั้งค่า Admin รุ่นปัจจุบันเก็บเฉพาะอุปกรณ์/เบราว์เซอร์ จึงเหมาะกับ
+single-device configuration และการเตรียม workflow เท่านั้น หากต้องการบังคับ
+สิทธิ์ร่วมกันหลายเครื่องหรือหลายผู้ใช้ใน production ต้องใช้ backend identity
+store และตรวจ authorization ฝั่งเซิร์ฟเวอร์ ไม่ควรถือ local storage เป็น
+security boundary ฝั่งเซิร์ฟเวอร์
 
 ## Version 4.1
 
@@ -97,8 +176,10 @@ local persistence หรือ Google Calendar synchronization ของแอ�
 
 ### 3. อ่านและตรวจตารางเวร
 
-1. กด **ค้นหาไฟล์แรก**, **แก้ไขล่าสุด**, วาง URL ที่คัดลอกจากเบราว์เซอร์
+1. กด **เลือกไฟล์จาก Google Sheets** แล้วเลือกไฟล์ที่บัญชีเข้าถึงได้โดยตรง
    หรือเลือกไฟล์ `.xlsx`, `.csv`, `.tsv`, `.txt` ในเครื่อง
+   ปุ่ม **เปิดกล้อง** จะขอสิทธิ์และเปิดกล้องทันที หลังถ่ายสามารถเลือก
+   **บันทึกและ Import**, **ถ่ายใหม่** หรือ **ยกเลิก**
 2. กรอก **ชื่อที่ต้องค้นหา** ให้ตรงกับชื่อในตารางเวร หรือปล่อยว่างเพื่อใช้ชื่อบัญชี Google
 3. เลือก **เดือน** และ **ปี ค.ศ.** แล้วกด **เพิ่มเดือน (ไม่จำกัด)**
    หรือไม่กดเพิ่มเพื่ออ่านเดือนที่เลือกเพียงเดือนเดียว
@@ -112,6 +193,18 @@ local persistence หรือ Google Calendar synchronization ของแอ�
 10. กด **ยืนยันและบันทึก Calendar** เฉพาะเมื่อรายการถูกต้อง
 
 แอปอ่านชีตต้นฉบับด้วย `spreadsheets.readonly` และไม่มีคำสั่งแก้เซลล์ในขั้นตอนอ่านเวร การเขียน Calendar จะเกิดหลังผู้ใช้กดยืนยันเท่านั้น
+
+### 3.1 ใช้แท็บรายเดือนและรายชื่อ
+
+1. เปิดแท็บ **รายเดือน** แล้วเลือก Google Sheets, ไฟล์ในเครื่อง, กล้อง
+   หรือรูปภาพจากหน้านี้ได้โดยตรง
+2. ตรวจบล็อก วันที่ แถวเวร และรายชื่อที่ parser อ่านได้ หรือกด `+`
+   เพื่อสร้างเทมเพลตว่างและกลุ่มเวรเอง
+3. เปิดแท็บ **รายชื่อ** เลือกวันที่อ้างอิง แล้วกด **Import ไฟล์**
+4. ตรวจสถานะที่อ่านจากแถวต้นฉบับ และแก้จาก Dropdown เมื่อจำเป็น
+5. ติ๊ก **ล็อก** เฉพาะบุคคลที่ต้องอยู่จุดเวรเดิม แล้วระบุชื่อจุดเวรให้ตรงกับ
+   location ที่ใช้ในกฎ Generate
+6. ในมุมมองตารางเวรรายวัน กดอ่านรายชื่อใหม่เพื่อแสดงข้อมูลที่บันทึกไว้ล่าสุด
 
 #### ค้นหาไฟล์ต้นฉบับจาก Drive metadata
 
@@ -314,7 +407,7 @@ cd bundle
 4. สร้าง OAuth Client ตามระบบ:
    - Web: เพิ่ม Authorized JavaScript origins เช่น `http://localhost:8080` และ `https://phakphoum38-stack.github.io`
    - Android: package `com.phakphoum.phakphum_calendar` พร้อม SHA-1/SHA-256 ของ signing key
-   - iOS: bundle ID `com.phakphoum.phakphumCalendar`
+   - iOS: สร้าง Client ชนิด **iOS** ด้วย bundle ID `com.phakphoum.phakphumCalendar`; ห้ามใช้ Web Client ID แทน `GIDClientID`
    - macOS: bundle ID `com.phakphoum.phakphumCalendar` และ URL scheme จาก Reversed Client ID
 5. ห้าม commit Client Secret, access token, refresh token, service-account key หรือไฟล์ข้อมูลบัญชีลง repository
 
@@ -328,18 +421,28 @@ Scopes ที่แอปขอ:
 
 สิทธิ์ `drive` และ `spreadsheets` มีขอบเขตกว้างและอาจทำให้แอป production ต้องผ่าน OAuth verification ของ Google
 
-## GitHub Secrets
+## GitHub Secrets สำหรับ OAuth
 
 ตั้งค่าที่ **Repository → Settings → Secrets and variables → Actions**:
 
 - `GOOGLE_WEB_CLIENT_ID`
-- `GOOGLE_SERVER_CLIENT_ID`
-- `GOOGLE_IOS_CLIENT_ID`
-- `GOOGLE_REVERSED_CLIENT_ID`
+- `GOOGLE_SERVER_CLIENT_ID` — ไม่บังคับ หากไม่ตั้ง iOS workflow จะใช้ `GOOGLE_WEB_CLIENT_ID`
+- `GOOGLE_IOS_CLIENT_ID` — บังคับสำหรับ iOS และต้องสร้างเป็นชนิด **iOS**
+- `GOOGLE_REVERSED_CLIENT_ID` — ไม่บังคับ เพราะ workflow คำนวณจาก iOS Client ID ได้
 - `GOOGLE_MACOS_CLIENT_ID`
 - `GOOGLE_MACOS_REVERSED_CLIENT_ID`
 
 workflow จะนำค่าไปใส่เฉพาะตอน build ไม่มีไฟล์บัญชี ลิงก์ชีต หรือผลลัพธ์เวรถูกอัปโหลดเป็น artifact
+
+สำหรับ iOS ค่าใน IPA ที่ build แล้วต้องเป็นดังนี้:
+
+- `GIDClientID` = iOS OAuth Client ID
+- `GIDServerClientID` = Web OAuth Client ID
+- `CFBundleURLSchemes` = `REVERSED_CLIENT_ID` ของ iOS Client
+
+ไฟล์ `ios/Runner/Info.plist` ใน repository ใช้ placeholder เพื่อไม่ฝังค่า OAuth
+ของบัญชีลง source ส่วน GitHub Actions จะแทนค่าเหล่านี้จาก Secrets ก่อน build
+และตรวจซ้ำใน `Runner.app/Info.plist` ก่อนสร้าง IPA
 
 ## Build จากซอร์ส
 
@@ -390,6 +493,12 @@ cd android
 ต้องใช้ macOS, Xcode และ Apple toolchain:
 
 ```bash
+flutter clean
+flutter pub get
+cd ios
+pod install
+cd ..
+
 flutter run -d DEVICE_ID \
   --dart-define=GOOGLE_IOS_CLIENT_ID="YOUR_IOS_CLIENT_ID" \
   --dart-define=GOOGLE_SERVER_CLIENT_ID="YOUR_WEB_CLIENT_ID"
@@ -450,7 +559,9 @@ dart run flutter_launcher_icons
 - `Build Android APK` — release APK สำหรับทดสอบและ SHA-256
 - `Build iOS IPA (Unsigned)` — unsigned IPA และ SHA-256
 - `Build and Deploy Web` — Web artifact และ GitHub Pages
-- `Build Desktop Apps` — Windows ZIP, macOS ZIP และ Linux TAR.GZ พร้อม SHA-256
+- `Build Windows` — Windows x64 ZIP พร้อม SHA-256
+- `Build macOS` — macOS application ZIP พร้อม SHA-256
+- `Build Linux` — Linux x64 TAR.GZ พร้อม SHA-256
 
 ทุก workflow รองรับ **Run workflow** และจะทำงานอัตโนมัติเมื่อไฟล์ที่เกี่ยวข้องถูก push เข้า `main`
 
@@ -460,6 +571,10 @@ dart run flutter_launcher_icons
 - URL ชีตที่ตรวจแล้ว, ค่า OAuth ที่กรอกจาก UI, แถบเครื่องมือ, บันทึก และ audit log เก็บใน local storage ของอุปกรณ์/เบราว์เซอร์
 - รายการชีตที่บันทึกแยกด้วย Google account ID แบบ opaque และต้องผ่าน `ownedByMe` ไม่บันทึกรหัสผ่านหรือ Google token เอง
 - Audit log เก็บสูงสุด 200 รายการในเครื่อง
+- เทมเพลตรายเดือน กลุ่มเวร รายชื่อ สถานะ จุดเวรที่ล็อก และบทบาท Admin
+  เก็บใน local storage ของอุปกรณ์/เบราว์เซอร์
+- ค่า Admin ใน local storage ไม่ใช่ server-enforced authorization และไม่ซิงก์
+  ข้ามอุปกรณ์ ต้องใช้ backend identity store ก่อนใช้เป็นระบบสิทธิ์ production
 - การลบรายการชีตในแท็บบันทึกไม่ลบไฟล์ Google Sheets
 - แอปไม่เพิ่มผู้เข้าร่วม ไม่ส่งคำเชิญ และไม่สร้าง Google Meet
 - repository และ build artifacts ต้องมีเฉพาะซอร์ส/ไฟล์แอป ห้ามรวมไฟล์ชีต ผลลัพธ์เวร อีเมล token หรือข้อมูลบัญชี
@@ -484,3 +599,9 @@ The existing application shell remains the active entry point while the producti
 ## Version 3.0 SaaS Foundation
 
 Version 3.0 adds multi-tenant isolation, public API contracts, idempotent writes, a plugin SDK foundation and platform administration metrics. See `VERSION_3_0_STATUS.md` and `docs/wiki/VERSION_3_ARCHITECTURE.md`.
+
+## License
+
+Copyright 2026 Phakphum
+
+Licensed under the [Apache License, Version 2.0](LICENSE).

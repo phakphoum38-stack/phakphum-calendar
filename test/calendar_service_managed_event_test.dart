@@ -86,4 +86,87 @@ void main() {
     expect(result.busyPeriods.single.end, DateTime(2026, 8, 16, 9));
     expect(result.busyPeriods.single.start.isUtc, isFalse);
   });
+
+  test('finds only duplicate events managed by Shift Tools', () async {
+    final client = MockClient(
+      (_) async => http.Response(
+        jsonEncode({
+          'items': [
+            {
+              'id': 'managed-a',
+              'summary': 'รายการ A',
+              'start': {'date': '2026-08-10'},
+              'end': {'date': '2026-08-11'},
+              'extendedProperties': {
+                'private': {'sceSyncId': 'sync-1'},
+              },
+            },
+            {
+              'id': 'managed-b',
+              'summary': 'รายการ A',
+              'start': {'dateTime': '2026-08-10T08:00:00+07:00'},
+              'end': {'dateTime': '2026-08-10T16:00:00+07:00'},
+              'extendedProperties': {
+                'private': {'sceSyncId': 'sync-1'},
+              },
+            },
+            {
+              'id': 'legacy-a',
+              'extendedProperties': {
+                'private': {
+                  'sourceApp': CalendarService.sourceApp,
+                  'sourceKey': 'source-1',
+                },
+              },
+            },
+            {
+              'id': 'legacy-b',
+              'extendedProperties': {
+                'private': {
+                  'sourceApp': CalendarService.sourceApp,
+                  'sourceKey': 'source-1',
+                },
+              },
+            },
+            {
+              'id': 'personal-copy',
+              'summary': 'ชื่อและเวลาเหมือนเวร แต่ไม่มี metadata',
+            },
+            {
+              'id': 'managed-single',
+              'extendedProperties': {
+                'private': {'sceSyncId': 'sync-2'},
+              },
+            },
+          ],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      ),
+    );
+    addTearDown(client.close);
+
+    final duplicates = await const CalendarService()
+        .findManagedDuplicateEventIds(
+          client,
+          year: 2026,
+          month: 8,
+          desiredShifts: [
+            Shift(
+              code: 'A',
+              rowLabel: 'รายการ A',
+              assignedName: '',
+              start: DateTime(2026, 8, 10, 8),
+              end: DateTime(2026, 8, 10, 16),
+              sheetTitle: 'นำเข้า',
+              cell: 'A1',
+              category: ShiftCategory.own,
+            ),
+          ],
+        );
+
+    expect(duplicates, ['legacy-b', 'managed-a']);
+    expect(duplicates, isNot(contains('personal-copy')));
+    expect(duplicates, isNot(contains('managed-single')));
+  });
 }

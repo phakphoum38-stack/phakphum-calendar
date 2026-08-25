@@ -94,7 +94,50 @@ The Calendar synchronization engine must operate by diff:
 
 Never delete and rebuild the entire calendar as a normal synchronization strategy.
 
-## 8. Roadmap
+## 8. Delivery support policy
+
+The current stabilization target is deliberately limited to two active delivery
+surfaces:
+
+```text
+main
+├── Windows        ACTIVE
+├── Website        ACTIVE
+├── Android       PAUSED
+├── iOS            PAUSED
+├── macOS          PAUSED
+└── Linux          PAUSED
+```
+
+Windows x64 and Web/GitHub Pages are the only active release targets. Android,
+iOS, macOS, and Linux remain preserved in `main` where their source is useful,
+but they are not merge or release gates. They may be restored later through an
+explicit, isolated verification cycle.
+
+The detailed delivery state is maintained in `docs/DELIVERY_STATUS.md` and the
+workflow support contract in `.github/workflows/README.md`.
+
+## 9. CI/release contract
+
+The active release surface is:
+
+- `.github/workflows/windows.yml` — Windows x64 release ZIP and SHA-256 checksum.
+- `.github/workflows/web.yml` — Flutter Web release artifact and GitHub Pages deployment.
+
+The stabilization state is recorded as Format PASS, Analyze PASS, Test PASS,
+Coverage PASS, Artifact PASS, Windows PASS, Website PASS, and Final Gate PASS.
+These checks describe the accepted verification state; they are not a reason
+to reintroduce a broad platform matrix.
+
+Failure-containment rules:
+
+1. A paused platform must never block Windows or Web.
+2. Missing `integration_test/` must never fail a supported release workflow.
+3. `coverage/lcov.info` is not a required artifact of Windows/Web release workflows.
+4. Formatting changes are committed explicitly, not auto-committed by release gates.
+5. Windows and Web workflows remain independent.
+
+## 10. Roadmap
 
 ### Sprint 0 — Foundation
 - project structure;
@@ -151,7 +194,7 @@ Never delete and rebuild the entire calendar as a normal synchronization strateg
 - multi-platform builds;
 - release 1.0.
 
-## 9. Definition of Done
+## 11. Definition of Done
 
 A feature is complete only when:
 
@@ -164,7 +207,8 @@ A feature is complete only when:
 - changelog is updated;
 - an ADR exists when architecture changed.
 
-## 10. Immediate next milestone
+## 12. Immediate next milestone
 
-Create a valid Flutter project around this foundation, select state management and
-dependency injection through ADRs, then implement immutable domain models and parser contracts.
+Maintain the reduced Windows + Web delivery surface, keep paused platform code
+preserved in `main`, and only restore another platform after an explicit
+platform-specific verification cycle.

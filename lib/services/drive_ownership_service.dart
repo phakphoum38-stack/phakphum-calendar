@@ -161,20 +161,33 @@ class DriveOwnershipService implements DriveOwnershipGateway {
     http.Client client,
     String fileId,
   ) async {
-    final normalizedFileId = fileId.trim();
+    final normalizedFileId = fileId.replaceAll(RegExp(r'\s+'), '');
     if (normalizedFileId.isEmpty) {
       throw StateError('ไม่พบรหัสไฟล์ Google Sheets');
     }
+    if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(normalizedFileId)) {
+      throw const FormatException('รหัสไฟล์ Google Sheets ไม่ถูกต้อง');
+    }
 
-    final file =
-        await drive.DriveApi(client).files.get(
-              normalizedFileId,
-              supportsAllDrives: true,
-              $fields: 'id,name,mimeType,ownedByMe,trashed,webViewLink',
-            )
-            as drive.File;
-    validateOwnedSpreadsheet(file);
-    return file;
+    try {
+      final file =
+          await drive.DriveApi(client).files.get(
+                normalizedFileId,
+                supportsAllDrives: true,
+                $fields: 'id,name,mimeType,ownedByMe,trashed,webViewLink',
+              )
+              as drive.File;
+      validateOwnedSpreadsheet(file);
+      return file;
+    } on drive.DetailedApiRequestError catch (error) {
+      if (error.status == 404) {
+        throw StateError(
+          'ไม่พบไฟล์ Google Sheets หรือบัญชีนี้ไม่มีสิทธิ์เข้าถึง '
+          'กรุณาเลือกไฟล์ใหม่จาก Google Drive',
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Kept with the old name to avoid breaking existing callers.

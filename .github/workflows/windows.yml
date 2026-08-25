@@ -1,0 +1,108 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "windows/**"
+      - "web/**"
+      - "test/**"
+      - "integration_test/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "assets/**"
+      - "windows/**"
+      - "web/**"
+      - "test/**"
+      - "integration_test/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Windows x64 / Analyze / Test / Build
+    runs-on: windows-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Flutter tests
+        run: flutter test
+
+      - name: Build Windows release
+        env:
+          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+        run: flutter build windows --release --dart-define=GOOGLE_SERVER_CLIENT_ID="$env:GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Verify Windows executable
+        shell: pwsh
+        run: |
+          $exe = "build/windows/x64/runner/Release/phakphum_calendar.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "Windows executable was not produced: $exe"
+            exit 1
+          }
+          $item = Get-Item $exe
+          Write-Host "Windows executable: $($item.FullName)"
+          Write-Host "Size: $($item.Length) bytes"
+
+      - name: Package Windows application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist/windows -Force | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/windows/phakphum-calendar-windows.zip -Force
+          $hash = (Get-FileHash dist/windows/phakphum-calendar-windows.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  phakphum-calendar-windows.zip" | Set-Content dist/windows/SHA256SUMS.txt -Encoding ascii
+
+      - name: Publish Windows gate summary
+        shell: pwsh
+        run: |
+          @"
+          ## Windows Final Gate
+          - Flutter analyze: PASS
+          - Flutter tests: PASS
+          - Windows release build: PASS
+          - Windows executable: PASS
+          - Windows package: PASS
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: phakphum-calendar-windows-x64
+          path: dist/windows
+          if-no-files-found: error
+          retention-days: 14

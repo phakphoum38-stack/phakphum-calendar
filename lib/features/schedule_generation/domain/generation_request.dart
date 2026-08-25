@@ -14,11 +14,15 @@ class GenerationRequest {
     required List<CoverageRequirement> coverageRequirements,
     List<EmployeeAvailability> availability = const [],
     List<DepartmentCapacity> departmentCapacities = const [],
+    Map<String, String> lockedDutyPointsByEmployeeId = const {},
   }) : employees = List.unmodifiable(employees),
        shiftTypes = List.unmodifiable(shiftTypes),
        coverageRequirements = List.unmodifiable(coverageRequirements),
        availability = List.unmodifiable(availability),
-       departmentCapacities = List.unmodifiable(departmentCapacities);
+       departmentCapacities = List.unmodifiable(departmentCapacities),
+       lockedDutyPointsByEmployeeId = Map.unmodifiable(
+         lockedDutyPointsByEmployeeId,
+       );
 
   final Schedule schedule;
   final DateTime month;
@@ -27,4 +31,5 @@ class GenerationRequest {
   final List<CoverageRequirement> coverageRequirements;
   final List<EmployeeAvailability> availability;
   final List<DepartmentCapacity> departmentCapacities;
+  final Map<String, String> lockedDutyPointsByEmployeeId;
 }

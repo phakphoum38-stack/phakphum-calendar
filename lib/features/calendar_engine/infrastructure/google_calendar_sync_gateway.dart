@@ -10,6 +10,11 @@ class GoogleCalendarSyncGateway
   GoogleCalendarSyncGateway(this._client);
 
   static const String syncIdKey = 'sceSyncId';
+  static const String legacySyncIdKey = 'syncId';
+  static const String legacyManagedByKey = 'managedBy';
+  static const String legacyManagedByValue = 'phakphum-calendar';
+  static const String timeZone = 'Asia/Bangkok';
+  static const Duration _bangkokOffset = Duration(hours: 7);
 
   final http.Client _client;
 
@@ -53,8 +58,8 @@ class GoogleCalendarSyncGateway
     do {
       final events = await api.events.list(
         calendarId,
-        timeMin: timeMin.toUtc(),
-        timeMax: timeMax.toUtc(),
+        timeMin: _bangkokInstant(timeMin),
+        timeMax: _bangkokInstant(timeMax),
         singleEvents: true,
         maxResults: 2500,
         pageToken: pageToken,
@@ -64,30 +69,38 @@ class GoogleCalendarSyncGateway
     } while (pageToken != null && pageToken.isNotEmpty);
 
     return items
-        .where(
-          (event) =>
-              event.id != null &&
-              (!managedOnly ||
-                  event.extendedProperties?.private?[syncIdKey] != null) &&
+        .where((event) {
+          final managedSyncId = _managedSyncId(event);
+          return event.id != null &&
+              (managedOnly ? managedSyncId != null : managedSyncId == null) &&
               event.start?.dateTime != null &&
-              event.end?.dateTime != null &&
-              (managedOnly ||
-                  event.extendedProperties?.private?[syncIdKey] == null),
-        )
+              event.end?.dateTime != null;
+        })
         .map(
           (event) => ManagedCalendarEvent(
             eventId: event.id!,
-            syncId:
-                event.extendedProperties?.private?[syncIdKey] ??
-                'legacy:${event.id!}',
+            syncId: _managedSyncId(event) ?? 'legacy:${event.id!}',
             title: event.summary ?? '',
-            start: event.start!.dateTime!,
-            end: event.end!.dateTime!,
+            start: _bangkokWallTime(event.start!.dateTime!),
+            end: _bangkokWallTime(event.end!.dateTime!),
             description: event.description,
             colorId: event.colorId,
           ),
         )
         .toList(growable: false);
+  }
+
+  String? _managedSyncId(calendar.Event event) {
+    final privateProperties = event.extendedProperties?.private;
+    final currentSyncId = privateProperties?[syncIdKey]?.trim() ?? '';
+    if (currentSyncId.isNotEmpty) return currentSyncId;
+
+    if (privateProperties?[legacyManagedByKey]?.trim() !=
+        legacyManagedByValue) {
+      return null;
+    }
+    final legacySyncId = privateProperties?[legacySyncIdKey]?.trim() ?? '';
+    return legacySyncId.isEmpty ? null : legacySyncId;
   }
 
   @override
@@ -130,8 +143,14 @@ class GoogleCalendarSyncGateway
       summary: command.title,
       description: command.description,
       colorId: command.colorId,
-      start: calendar.EventDateTime(dateTime: command.start),
-      end: calendar.EventDateTime(dateTime: command.end),
+      start: calendar.EventDateTime(
+        dateTime: _bangkokInstant(command.start),
+        timeZone: timeZone,
+      ),
+      end: calendar.EventDateTime(
+        dateTime: _bangkokInstant(command.end),
+        timeZone: timeZone,
+      ),
       extendedProperties: calendar.EventExtendedProperties(
         private: <String, String>{syncIdKey: command.syncId},
       ),
@@ -143,10 +162,41 @@ class GoogleCalendarSyncGateway
       eventId: event.id ?? '',
       syncId: event.extendedProperties?.private?[syncIdKey] ?? fallbackSyncId,
       title: event.summary ?? '',
-      start: event.start?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
-      end: event.end?.dateTime ?? DateTime.fromMillisecondsSinceEpoch(0),
+      start: event.start?.dateTime == null
+          ? DateTime.fromMillisecondsSinceEpoch(0)
+          : _bangkokWallTime(event.start!.dateTime!),
+      end: event.end?.dateTime == null
+          ? DateTime.fromMillisecondsSinceEpoch(0)
+          : _bangkokWallTime(event.end!.dateTime!),
       description: event.description,
       colorId: event.colorId,
     );
   }
+
+  /// Calendar candidates use Bangkok wall-clock values throughout the domain.
+  /// Convert explicitly instead of depending on the browser or host timezone.
+  static DateTime _bangkokWallTime(DateTime instant) {
+    final bangkok = instant.toUtc().add(_bangkokOffset);
+    return DateTime(
+      bangkok.year,
+      bangkok.month,
+      bangkok.day,
+      bangkok.hour,
+      bangkok.minute,
+      bangkok.second,
+      bangkok.millisecond,
+      bangkok.microsecond,
+    );
+  }
+
+  static DateTime _bangkokInstant(DateTime wallTime) => DateTime.utc(
+    wallTime.year,
+    wallTime.month,
+    wallTime.day,
+    wallTime.hour,
+    wallTime.minute,
+    wallTime.second,
+    wallTime.millisecond,
+    wallTime.microsecond,
+  ).subtract(_bangkokOffset);
 }

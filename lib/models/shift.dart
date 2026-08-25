@@ -76,6 +76,7 @@ class Shift {
     this.sourceColorValue,
     this.customTitle,
     this.calendarColorId,
+    this.relationshipComment,
   });
 
   final String code;
@@ -92,11 +93,19 @@ class Shift {
   final int? sourceColorValue;
   final String? customTitle;
   final String? calendarColorId;
+  final String? relationshipComment;
 
-  bool get isNightShift =>
-      !isOffDuty &&
-      start.hour == 0 &&
-      end.difference(start) == const Duration(hours: 8);
+  bool get isNightShift {
+    if (isOffDuty) return false;
+    final normalizedCode = code.trim().toUpperCase();
+    final normalizedLabel = rowLabel.trim().toLowerCase();
+    return normalizedCode == 'N' ||
+        normalizedCode.startsWith('N') ||
+        normalizedLabel.contains('ดึก') ||
+        normalizedLabel.contains('night') ||
+        (start.hour == 0 && end.difference(start) == const Duration(hours: 8));
+  }
+
   bool get isOffDuty => category == ShiftCategory.off || code == 'OFF';
 
   String get displayName {
@@ -123,11 +132,14 @@ class Shift {
   Shift copyWith({
     ShiftCategory? category,
     bool? excluded,
+    bool? generated,
     DateTime? start,
     DateTime? end,
     String? customTitle,
     String? calendarColorId,
     bool clearCalendarColor = false,
+    String? relationshipComment,
+    bool clearRelationshipComment = false,
   }) => Shift(
     code: code,
     rowLabel: rowLabel,
@@ -138,13 +150,16 @@ class Shift {
     cell: cell,
     category: category ?? this.category,
     excluded: excluded ?? this.excluded,
-    generated: generated,
+    generated: generated ?? this.generated,
     linkedShiftKey: linkedShiftKey,
     sourceColorValue: sourceColorValue,
     customTitle: customTitle ?? this.customTitle,
     calendarColorId: clearCalendarColor
         ? null
         : calendarColorId ?? this.calendarColorId,
+    relationshipComment: clearRelationshipComment
+        ? null
+        : relationshipComment ?? this.relationshipComment,
   );
 }
 
