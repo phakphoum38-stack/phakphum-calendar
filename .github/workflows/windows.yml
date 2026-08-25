@@ -8,22 +8,24 @@ on:
       - "lib/**"
       - "assets/**"
       - "windows/**"
+      - "web/**"
       - "test/**"
       - "integration_test/**"
       - "pubspec.yaml"
       - "pubspec.lock"
-      - ".github/workflows/windows.yml"
+      - ".github/workflows/**"
   push:
     branches: [main]
     paths:
       - "lib/**"
       - "assets/**"
       - "windows/**"
+      - "web/**"
       - "test/**"
       - "integration_test/**"
       - "pubspec.yaml"
       - "pubspec.lock"
-      - ".github/workflows/windows.yml"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
