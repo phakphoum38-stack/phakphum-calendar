@@ -7,6 +7,8 @@ class SavedSheet {
     required this.savedAt,
     this.sheetId,
     this.sheetTitle,
+    this.isActive = false,
+    this.hasExplicitActiveState = true,
   });
 
   final String ownerAccountId;
@@ -16,6 +18,8 @@ class SavedSheet {
   final String? sheetTitle;
   final String url;
   final DateTime savedAt;
+  final bool isActive;
+  final bool hasExplicitActiveState;
 
   String get key => '$ownerAccountId:$spreadsheetId:${sheetId ?? 'all'}';
 
@@ -46,16 +50,17 @@ class SavedSheet {
     'sheetTitle': sheetTitle,
     'url': url,
     'savedAt': savedAt.toIso8601String(),
+    'isActive': isActive,
   };
 
   factory SavedSheet.fromJson(Map<String, Object?> json) {
     final ownerAccountId = json['ownerAccountId']?.toString().trim() ?? '';
-    final spreadsheetId =
-        json['spreadsheetId']?.toString().replaceAll(RegExp(r'\s+'), '') ?? '';
+    final spreadsheetId = json['spreadsheetId']?.toString().trim() ?? '';
     final url = json['url']?.toString().trim() ?? '';
     if (ownerAccountId.isEmpty || spreadsheetId.isEmpty || url.isEmpty) {
       throw const FormatException('ข้อมูลชีตที่บันทึกไม่ครบถ้วน');
     }
+    final hasExplicitActiveState = json.containsKey('isActive');
     return SavedSheet(
       ownerAccountId: ownerAccountId,
       spreadsheetId: spreadsheetId,
@@ -70,6 +75,23 @@ class SavedSheet {
       savedAt:
           DateTime.tryParse(json['savedAt']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
+      // Legacy records had no active flag. New records persist an explicit
+      // false value when the user intentionally deactivates a source.
+      isActive: json['isActive'] == true,
+      hasExplicitActiveState: hasExplicitActiveState,
     );
   }
+
+  SavedSheet copyWith({DateTime? savedAt, bool? isActive}) => SavedSheet(
+    ownerAccountId: ownerAccountId,
+    spreadsheetId: spreadsheetId,
+    spreadsheetTitle: spreadsheetTitle,
+    sheetId: sheetId,
+    sheetTitle: sheetTitle,
+    url: url,
+    savedAt: savedAt ?? this.savedAt,
+    isActive: isActive ?? this.isActive,
+    hasExplicitActiveState:
+        isActive == null ? hasExplicitActiveState : true,
+  );
 }

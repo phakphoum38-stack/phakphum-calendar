@@ -1,25 +1,17 @@
 import 'dart:async';
 
-import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../controller/app_controller.dart';
 import '../domain/entities/schedule.dart';
 import '../features/reports/presentation/controllers/monthly_schedule_report_controller.dart';
 import '../features/reports/presentation/pages/monthly_schedule_report_page.dart';
-import '../features/admin/presentation/admin_access_page.dart';
-import '../features/edition/domain/app_edition.dart';
-import '../features/roster_names/presentation/roster_name_list_page.dart';
 import '../features/employees/presentation/pages/employee_directory_page.dart';
 import '../features/employees/presentation/controllers/employee_directory_controller.dart';
 import '../features/dashboard/application/dashboard_summary_service.dart';
 import '../features/dashboard/presentation/widgets/dashboard_summary_grid.dart';
 import '../features/shift_exchange/presentation/pages/shift_exchange_page.dart';
 import '../features/shift_exchange/presentation/controllers/shift_exchange_controller.dart';
-import '../features/shift_parser/domain/monthly_roster_section.dart';
-import '../features/shift_parser/domain/monthly_roster_template.dart';
 import '../features/shift_templates/application/shift_template_controller.dart';
 import '../features/shift_templates/presentation/shift_templates_page.dart';
 import '../features/schedule/presentation/controllers/schedule_controller.dart';
@@ -81,16 +73,12 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int selectedIndex = 0;
-  final editionRepository = AppEditionRepository();
-  AppEdition? edition;
-  bool editionLoading = true;
   bool _permissionDialogOpen = false;
   String? _permissionDialogShownForEmail;
 
   List<NavigationDestination> _destinations(
     BuildContext context,
     AppController controller,
-    AppEdition currentEdition,
   ) => [
     NavigationDestination(
       icon: const Icon(Icons.dashboard_outlined),
@@ -100,33 +88,18 @@ class _AppShellState extends State<AppShell> {
       icon: const Icon(Icons.event_note_outlined),
       label: context.l10n.schedule,
     ),
-    const NavigationDestination(
-      icon: Icon(Icons.calendar_view_month_outlined),
-      label: 'รายเดือน',
+    NavigationDestination(
+      icon: const Icon(Icons.groups_outlined),
+      label: context.l10n.employees,
     ),
-    if (currentEdition == AppEdition.organization) ...[
-      const NavigationDestination(
-        icon: Icon(Icons.badge_outlined),
-        label: 'รายชื่อ',
-      ),
-      NavigationDestination(
-        icon: const Icon(Icons.groups_outlined),
-        label: context.l10n.employees,
-      ),
-      NavigationDestination(
-        icon: const Icon(Icons.swap_horiz_outlined),
-        label: context.l10n.shiftExchange,
-      ),
-    ],
+    NavigationDestination(
+      icon: const Icon(Icons.swap_horiz_outlined),
+      label: context.l10n.shiftExchange,
+    ),
     NavigationDestination(
       icon: const Icon(Icons.print_outlined),
       label: context.l10n.reports,
     ),
-    if (currentEdition == AppEdition.organization)
-      const NavigationDestination(
-        icon: Icon(Icons.admin_panel_settings_outlined),
-        label: 'Admin',
-      ),
     NavigationDestination(
       icon: const Icon(Icons.settings_outlined),
       label: context.l10n.settings,
@@ -137,7 +110,6 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     widget.controller.addListener(_handleControllerChanged);
-    unawaited(_loadEdition());
   }
 
   @override
@@ -165,26 +137,6 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  Future<void> _loadEdition() async {
-    final loaded = await editionRepository.load();
-    if (mounted) {
-      setState(() {
-        edition = loaded;
-        editionLoading = false;
-      });
-    }
-  }
-
-  Future<void> _selectEdition(AppEdition value) async {
-    await editionRepository.save(value);
-    if (mounted) {
-      setState(() {
-        edition = value;
-        selectedIndex = 0;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.controller,
@@ -193,27 +145,15 @@ class _AppShellState extends State<AppShell> {
       if (!controller.initialized) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      if (editionLoading) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
-      if (edition == null) {
-        return _EditionSelectionPage(onSelected: _selectEdition);
-      }
       return LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 900;
-          final currentEdition = edition!;
-          final destinations = _destinations(
-            context,
-            controller,
-            currentEdition,
-          );
+          final destinations = _destinations(context, controller);
           final pages = <Widget>[
             _DashboardPage(
               controller: controller,
               perform: _perform,
               compareCalendar: _compareCalendar,
-              deleteDuplicateCalendarEvents: _deleteDuplicateCalendarEvents,
               sync: _sync,
               openAlerts: () =>
                   unawaited(_openUtilityPage(_UtilityPage.notifications)),
@@ -225,30 +165,22 @@ class _AppShellState extends State<AppShell> {
               perform: _perform,
               openRosterEditor: _openRosterEditor,
             ),
-            _MonthlyRosterPage(controller: controller, perform: _perform),
-            if (currentEdition == AppEdition.organization) ...[
-              RosterNameListPage(controller: controller, perform: _perform),
-              EmployeeDirectoryPage(
-                schedule: controller.canonicalSchedule,
-                controllerFactory: widget.employeeDirectoryControllerFactory,
-              ),
-              ShiftExchangePage(
-                schedule: controller.canonicalSchedule,
-                controllerFactory: widget.shiftExchangeControllerFactory,
-              ),
-            ],
+            EmployeeDirectoryPage(
+              schedule: controller.canonicalSchedule,
+              controllerFactory: widget.employeeDirectoryControllerFactory,
+            ),
+            ShiftExchangePage(
+              schedule: controller.canonicalSchedule,
+              controllerFactory: widget.shiftExchangeControllerFactory,
+            ),
             MonthlyScheduleReportPage(
               schedule: controller.canonicalSchedule,
               controllerFactory: widget.reportControllerFactory,
             ),
-            if (currentEdition == AppEdition.organization)
-              AdminAccessPage(currentEmail: controller.auth.account?.email),
             _SettingsPage(
               controller: controller,
               createFutureSheet: _createFutureSheet,
               openShiftTemplates: _openShiftTemplates,
-              edition: currentEdition,
-              changeEdition: _selectEdition,
             ),
           ];
           final content = IndexedStack(index: selectedIndex, children: pages);
@@ -600,24 +532,6 @@ class _AppShellState extends State<AppShell> {
     );
     if (compared && widget.controller.pendingAlertCount > 0) {
       await _showConflictWarningDialog();
-    }
-  }
-
-  Future<void> _deleteDuplicateCalendarEvents() async {
-    final scanned = await _performWithResult(
-      widget.controller.findDuplicateCalendarEvents,
-    );
-    if (!scanned || !mounted) return;
-    final count = widget.controller.duplicateCalendarEventCount;
-    if (count == 0) return;
-    final confirmed = await _showConfirmationDialog(
-      title: 'ลบเวรซ้ำ $count รายการ?',
-      message:
-          'ระบบจะเก็บหนึ่งรายการต่อเวร และลบเฉพาะรายการซ้ำที่มี metadata '
-          'ของ Shift Tools กิจกรรมส่วนตัวจะไม่ถูกลบ',
-    );
-    if (confirmed == true) {
-      await _perform(widget.controller.deleteDuplicateCalendarEvents);
     }
   }
 
@@ -1125,7 +1039,6 @@ class _DashboardPage extends StatefulWidget {
     required this.controller,
     required this.perform,
     required this.compareCalendar,
-    required this.deleteDuplicateCalendarEvents,
     required this.sync,
     required this.openAlerts,
     required this.configureGoogleOAuth,
@@ -1135,7 +1048,6 @@ class _DashboardPage extends StatefulWidget {
   final AppController controller;
   final Future<void> Function(Future<void> Function()) perform;
   final Future<void> Function() compareCalendar;
-  final Future<void> Function() deleteDuplicateCalendarEvents;
   final Future<void> Function() sync;
   final VoidCallback openAlerts;
   final Future<void> Function() configureGoogleOAuth;
@@ -1208,7 +1120,7 @@ class _DashboardPageState extends State<_DashboardPage> {
     if (!mounted) return;
 
     if (controller.recentOwnedSheets.isEmpty) {
-      throw StateError('ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้');
+      throw StateError('ไม่พบ Google Sheets ที่บัญชีนี้เป็นเจ้าของ');
     }
 
     final selected = await showDialog<List<RecentOwnedSheet>>(
@@ -1224,6 +1136,43 @@ class _DashboardPageState extends State<_DashboardPage> {
 
     if (selected == null || selected.isEmpty || !mounted) return;
     await controller.selectRecentSourceSheets(selected);
+  }
+
+  Future<void> _pasteGoogleSheetUrl() async {
+    final input = TextEditingController();
+    final url = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('วาง URL ของ Google Sheets'),
+        content: SizedBox(
+          width: 540,
+          child: TextField(
+            controller: input,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'URL ที่คัดลอกจากเบราว์เซอร์',
+              hintText: 'https://docs.google.com/spreadsheets/d/…/edit',
+              helperText:
+                  'บันทึกเฉพาะในเครื่องของบัญชีนี้ และไม่ส่ง URL ขึ้น GitHub',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, input.text.trim()),
+            child: const Text('ตรวจและใช้ไฟล์นี้'),
+          ),
+        ],
+      ),
+    );
+    input.dispose();
+    if (url == null || url.isEmpty) return;
+    await widget.controller.selectSourceForCurrentAccount(url);
   }
 
   Future<void> _addPeriod() async {
@@ -1253,43 +1202,12 @@ class _DashboardPageState extends State<_DashboardPage> {
         ),
       );
 
-  Future<void> _pickSyncRangeDate({required bool start}) async {
-    final controller = widget.controller;
-    final currentStart =
-        controller.syncRangeStart ??
-        DateTime(year ?? DateTime.now().year, month ?? DateTime.now().month);
-    final currentEnd =
-        controller.syncRangeEnd ??
-        DateTime(currentStart.year, currentStart.month + 1, 0);
-    final initialDate = start ? currentStart : currentEnd;
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(initialDate.year - 5),
-      lastDate: DateTime(initialDate.year + 10, 12, 31),
-    );
-    if (selected == null) return;
-    final nextStart = start ? selected : currentStart;
-    final nextEnd = start && currentEnd.isBefore(selected)
-        ? selected
-        : start
-        ? currentEnd
-        : selected;
-    await controller.updateSyncDateRange(nextStart, nextEnd);
-  }
-
-  Future<void> _addManualSourceItem({
-    Uint8List? capturedImageBytes,
-    String initialSourceKind = 'รูป/ภาพถ่าย',
-  }) async {
+  Future<void> _addManualSourceItem() async {
     await _saveSettings();
     if (!mounted) return;
     final result = await showDialog<_ManualSourceResult>(
       context: context,
-      builder: (context) => _ManualSourceDialog(
-        capturedImageBytes: capturedImageBytes,
-        initialSourceKind: initialSourceKind,
-      ),
+      builder: (context) => const _ManualSourceDialog(),
     );
     if (result == null) return;
     await widget.controller.addManualShift(
@@ -1299,76 +1217,6 @@ class _DashboardPageState extends State<_DashboardPage> {
       end: result.end,
       category: result.category,
       colorCommand: result.colorCommand,
-    );
-  }
-
-  Future<void> _captureAndImportPhoto() async {
-    while (mounted) {
-      final photo = await _takePhoto();
-      if (photo == null || !mounted) return;
-      final bytes = await photo.readAsBytes();
-      if (bytes.length > 15 * 1024 * 1024) {
-        throw const FormatException(
-          'รูปมีขนาดเกิน 15 MB กรุณาลดความละเอียดแล้วถ่ายใหม่',
-        );
-      }
-      if (!mounted) return;
-      final action = await showDialog<_CapturedPhotoAction>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => _CapturedPhotoPreview(bytes: bytes),
-      );
-      switch (action) {
-        case _CapturedPhotoAction.saveAndImport:
-          await _saveCapturedPhoto(bytes);
-          if (!mounted) return;
-          await _addManualSourceItem(
-            capturedImageBytes: bytes,
-            initialSourceKind: 'กล้อง',
-          );
-          return;
-        case _CapturedPhotoAction.retake:
-          continue;
-        case _CapturedPhotoAction.cancel:
-        case null:
-          return;
-      }
-    }
-  }
-
-  Future<XFile?> _takePhoto() async {
-    try {
-      return await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        imageQuality: 90,
-        maxWidth: 2400,
-        requestFullMetadata: false,
-      );
-    } on PlatformException catch (error) {
-      final code = error.code.toLowerCase();
-      final denied = code.contains('denied') || code.contains('restricted');
-      throw StateError(
-        denied
-            ? 'ไม่ได้รับสิทธิ์ใช้กล้อง กรุณาอนุญาตกล้องในการตั้งค่าอุปกรณ์หรือเบราว์เซอร์'
-            : 'ไม่สามารถเปิดกล้องบนอุปกรณ์นี้ได้: ${error.message ?? error.code}',
-      );
-    }
-  }
-
-  Future<void> _saveCapturedPhoto(Uint8List bytes) async {
-    final now = DateTime.now();
-    final name =
-        'shift-roster-${now.year}'
-        '${now.month.toString().padLeft(2, '0')}'
-        '${now.day.toString().padLeft(2, '0')}-'
-        '${now.hour.toString().padLeft(2, '0')}'
-        '${now.minute.toString().padLeft(2, '0')}'
-        '${now.second.toString().padLeft(2, '0')}';
-    await FileSaver.instance.saveFile(
-      name: name,
-      bytes: bytes,
-      fileExtension: 'jpg',
-      mimeType: MimeType.jpeg,
     );
   }
 
@@ -1455,8 +1303,8 @@ class _DashboardPageState extends State<_DashboardPage> {
                                       controller.localSourceLabel != null
                                           ? 'อ่านในหน่วยความจำ • ไม่อัปโหลดไฟล์หรือชื่อไฟล์'
                                           : controller.hasRosterSource
-                                          ? 'ไฟล์หลักสำหรับอ่านตารางเวร • บันทึกไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
-                                          : 'เลือกไฟล์จาก Google Sheets ของบัญชีที่ล็อกอิน',
+                                          ? 'ใช้ไฟล์ปัจจุบันเป็นค่าเริ่มต้น • บันทึกประวัติไว้ ${controller.savedSheetsForCurrentAccount.length} ไฟล์'
+                                          : 'ยังไม่ได้เลือกไฟล์หลักของบัญชีนี้',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -1478,10 +1326,30 @@ class _DashboardPageState extends State<_DashboardPage> {
                           FilledButton.icon(
                             onPressed:
                                 controller.auth.isSignedIn && !controller.busy
+                                ? () => widget.perform(
+                                    () => _pickGoogleSheet(
+                                      order: OwnedSheetOrder.firstCreated,
+                                    ),
+                                  )
+                                : null,
+                            icon: const Icon(Icons.history_outlined),
+                            label: const Text('ค้นหาจาก Timeline'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                controller.auth.isSignedIn && !controller.busy
                                 ? () => widget.perform(_pickGoogleSheet)
                                 : null,
-                            icon: const Icon(Icons.table_chart_outlined),
-                            label: const Text('เลือกไฟล์จาก Google Sheets'),
+                            icon: const Icon(Icons.update_outlined),
+                            label: const Text('Timeline: แก้ไขล่าสุด'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                controller.auth.isSignedIn && !controller.busy
+                                ? () => widget.perform(_pasteGoogleSheetUrl)
+                                : null,
+                            icon: const Icon(Icons.link),
+                            label: const Text('วาง URL จากเบราว์เซอร์'),
                           ),
                           OutlinedButton.icon(
                             onPressed: controller.busy
@@ -1498,28 +1366,13 @@ class _DashboardPageState extends State<_DashboardPage> {
                           OutlinedButton.icon(
                             onPressed: controller.busy
                                 ? null
-                                : () => widget.perform(_captureAndImportPhoto),
-                            icon: const Icon(Icons.camera_alt_outlined),
-                            label: const Text('เปิดกล้อง'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: controller.busy
-                                ? null
                                 : () => widget.perform(_addManualSourceItem),
                             icon: const Icon(Icons.add_a_photo_outlined),
-                            label: const Text('รูป / เว็บไซต์ (กรอกเอง)'),
+                            label: const Text(
+                              'รูป / กล้อง / เว็บไซต์ (กรอกเอง)',
+                            ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      _LocalReferenceFileCard(
-                        controller: controller,
-                        attach: () => widget.perform(() async {
-                          await _saveSettings();
-                          await controller.attachLocalReferenceFile();
-                        }),
-                        clear: () =>
-                            widget.perform(controller.clearLocalReferenceFile),
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -1638,43 +1491,6 @@ class _DashboardPageState extends State<_DashboardPage> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: controller.busy
-                                ? null
-                                : () => widget.perform(
-                                    () => _pickSyncRangeDate(start: true),
-                                  ),
-                            icon: const Icon(Icons.date_range_outlined),
-                            label: Text(
-                              controller.syncRangeStart == null
-                                  ? 'กำหนดวันเริ่มซิงก์'
-                                  : 'เริ่ม ${_thaiDate(controller.syncRangeStart!)}',
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: controller.busy
-                                ? null
-                                : () => widget.perform(
-                                    () => _pickSyncRangeDate(start: false),
-                                  ),
-                            icon: const Icon(Icons.event_available_outlined),
-                            label: Text(
-                              controller.syncRangeEnd == null
-                                  ? 'กำหนดวันสิ้นสุดซิงก์'
-                                  : 'สิ้นสุด ${_thaiDate(controller.syncRangeEnd!)}',
-                            ),
-                          ),
-                          const Text(
-                            'หัวตารางเป็นค่าเริ่มต้น แก้ช่วงได้ก่อน Preview และ Sync',
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 16),
                       _AutoRefreshControls(
                         controller: controller,
@@ -1697,7 +1513,7 @@ class _DashboardPageState extends State<_DashboardPage> {
                                     await _saveSettings();
                                     if (!controller.hasSelectedSourceSheet) {
                                       throw StateError(
-                                        'กรุณาเลือก Google Sheets ก่อนอ่านตารางเวร',
+                                        'ยังไม่ได้เลือกไฟล์หลักของบัญชีนี้',
                                       );
                                     }
                                     await controller.loadRoster();
@@ -1715,16 +1531,6 @@ class _DashboardPageState extends State<_DashboardPage> {
                                 : null,
                             icon: const Icon(Icons.difference_outlined),
                             label: const Text('เปรียบเทียบ Calendar'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed:
-                                controller.auth.isSignedIn &&
-                                    controller.shifts.isNotEmpty &&
-                                    !controller.busy
-                                ? widget.deleteDuplicateCalendarEvents
-                                : null,
-                            icon: const Icon(Icons.delete_sweep_outlined),
-                            label: const Text('ลบเวรซ้ำ'),
                           ),
                           FilledButton.tonalIcon(
                             onPressed:
@@ -1790,104 +1596,6 @@ class _DashboardPageState extends State<_DashboardPage> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LocalReferenceFileCard extends StatelessWidget {
-  const _LocalReferenceFileCard({
-    required this.controller,
-    required this.attach,
-    required this.clear,
-  });
-
-  final AppController controller;
-  final VoidCallback attach;
-  final VoidCallback clear;
-
-  @override
-  Widget build(BuildContext context) {
-    final comparison = controller.localReferenceComparison;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: comparison != null && !comparison.isExactMatch
-              ? Theme.of(context).colorScheme.tertiary
-              : Theme.of(context).colorScheme.outlineVariant,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.attach_file),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    controller.localReferenceLabel ??
-                        'ไฟล์ต้นฉบับจากเครื่อง (ไม่บังคับ)',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                if (controller.localReferenceLabel != null)
-                  IconButton(
-                    tooltip: 'ถอดไฟล์ต้นฉบับ',
-                    onPressed: controller.busy ? null : clear,
-                    icon: const Icon(Icons.close),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'ใช้เทียบกับไฟล์ล่าสุดเพื่อสร้างคอมเมนต์คนแทนเวรและยกเวร '
-              'ข้อมูลความสัมพันธ์จะรวมในคำอธิบาย Calendar '
-              'โดยไม่สร้างรายการซ้ำจากไฟล์แนบ',
-            ),
-            if (comparison != null) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  Chip(label: Text('ตรงกัน ${comparison.matched}')),
-                  Chip(label: Text('เปลี่ยน ${comparison.changed}')),
-                  Chip(
-                    label: Text(
-                      'ขาดจากไฟล์ซิงก์ ${comparison.missingFromSync}',
-                    ),
-                  ),
-                  Chip(
-                    label: Text('มีเฉพาะไฟล์ซิงก์ ${comparison.onlyInSync}'),
-                  ),
-                  Chip(
-                    label: Text(
-                      'รับ/แทนเวร ${controller.localReceivedShiftCount}',
-                    ),
-                  ),
-                  Chip(label: Text('ยกเวร ${controller.localGivenShiftCount}')),
-                ],
-              ),
-            ],
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: controller.busy || controller.shifts.isEmpty
-                  ? null
-                  : attach,
-              icon: const Icon(Icons.attach_file),
-              label: Text(
-                controller.localReferenceLabel == null
-                    ? 'แนบไฟล์ต้นฉบับเพื่อเปรียบเทียบ'
-                    : 'เปลี่ยนไฟล์ต้นฉบับ',
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -2489,13 +2197,7 @@ class _ManualSourceResult {
 }
 
 class _ManualSourceDialog extends StatefulWidget {
-  const _ManualSourceDialog({
-    this.capturedImageBytes,
-    required this.initialSourceKind,
-  });
-
-  final Uint8List? capturedImageBytes;
-  final String initialSourceKind;
+  const _ManualSourceDialog();
 
   @override
   State<_ManualSourceDialog> createState() => _ManualSourceDialogState();
@@ -2512,19 +2214,11 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
 
   final title = TextEditingController();
   final colorCommand = TextEditingController();
-  late String sourceKind;
+  String sourceKind = sourceKinds.first;
   DateTime date = DateTime.now();
   TimeOfDay start = const TimeOfDay(hour: 8, minute: 0);
   TimeOfDay end = const TimeOfDay(hour: 16, minute: 0);
   ShiftCategory category = ShiftCategory.own;
-
-  @override
-  void initState() {
-    super.initState();
-    sourceKind = sourceKinds.contains(widget.initialSourceKind)
-        ? widget.initialSourceKind
-        : sourceKinds.first;
-  }
 
   @override
   void dispose() {
@@ -2593,18 +2287,6 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.capturedImageBytes != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  widget.capturedImageBytes!,
-                  height: 220,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'ภาพตารางเวรที่ถ่ายจากกล้อง',
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
             const Text(
               'แอปไม่เดาข้อความด้วย OCR กรุณาอ่านต้นฉบับและกรอกข้อมูล '
               'จากนั้นตรวจอีกครั้งในแท็บตัวอย่างก่อนซิงก์',
@@ -2688,918 +2370,6 @@ class _ManualSourceDialogState extends State<_ManualSourceDialog> {
       ),
     ],
   );
-}
-
-enum _CapturedPhotoAction { saveAndImport, retake, cancel }
-
-class _CapturedPhotoPreview extends StatelessWidget {
-  const _CapturedPhotoPreview({required this.bytes});
-
-  final Uint8List bytes;
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('ตรวจภาพที่ถ่าย'),
-    content: SizedBox(
-      width: 640,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.memory(
-          bytes,
-          height: 420,
-          fit: BoxFit.contain,
-          semanticLabel: 'ภาพตารางเวรก่อนบันทึกและ Import',
-        ),
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context, _CapturedPhotoAction.cancel),
-        child: const Text('ยกเลิก'),
-      ),
-      OutlinedButton.icon(
-        onPressed: () => Navigator.pop(context, _CapturedPhotoAction.retake),
-        icon: const Icon(Icons.refresh),
-        label: const Text('ถ่ายใหม่'),
-      ),
-      FilledButton.icon(
-        onPressed: () =>
-            Navigator.pop(context, _CapturedPhotoAction.saveAndImport),
-        icon: const Icon(Icons.save_alt),
-        label: const Text('บันทึกและ Import'),
-      ),
-    ],
-  );
-}
-
-class _MonthlyRosterPage extends StatefulWidget {
-  const _MonthlyRosterPage({required this.controller, required this.perform});
-
-  final AppController controller;
-  final Future<void> Function(Future<void> Function()) perform;
-
-  @override
-  State<_MonthlyRosterPage> createState() => _MonthlyRosterPageState();
-}
-
-class _MonthlyRosterPageState extends State<_MonthlyRosterPage> {
-  final search = TextEditingController();
-  final templateRepository = MonthlyRosterTemplateRepository();
-  List<MonthlyRosterTemplate> templates = const [];
-  String? selectedSection;
-  DateTime? filterStart;
-  DateTime? filterEnd;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadTemplates());
-  }
-
-  @override
-  void dispose() {
-    search.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadTemplates() async {
-    final loaded = await templateRepository.load();
-    if (mounted) setState(() => templates = loaded);
-  }
-
-  Future<void> _importGoogleSheet() async {
-    final controller = widget.controller;
-    if (!controller.auth.isSignedIn) {
-      throw StateError('กรุณาเข้าสู่ระบบ Google ก่อนเลือกไฟล์');
-    }
-    await controller.findAvailableSourceSheets();
-    if (!mounted || controller.recentOwnedSheets.isEmpty) {
-      if (controller.recentOwnedSheets.isEmpty) {
-        throw StateError('ไม่พบ Google Sheets ที่บัญชีนี้เข้าถึงได้');
-      }
-      return;
-    }
-    final selected = await showDialog<List<RecentOwnedSheet>>(
-      context: context,
-      builder: (context) => _GoogleSheetPickerDialog(
-        files: controller.recentOwnedSheets,
-        order: OwnedSheetOrder.recentlyModified,
-        alreadyAddedSpreadsheetIds: controller.savedSheetsForCurrentAccount
-            .map((sheet) => sheet.spreadsheetId)
-            .toSet(),
-      ),
-    );
-    if (selected == null || selected.isEmpty) return;
-    await controller.selectRecentSourceSheets(selected);
-    await controller.loadMonthlyRoster();
-  }
-
-  Future<void> _importPhoto(ImageSource source) async {
-    final photo = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: 90,
-      maxWidth: 2400,
-      requestFullMetadata: false,
-    );
-    if (photo == null || !mounted) return;
-    final bytes = await photo.readAsBytes();
-    if (!mounted) return;
-    if (bytes.length > 15 * 1024 * 1024) {
-      throw const FormatException('รูปมีขนาดเกิน 15 MB');
-    }
-    final action = await showDialog<_CapturedPhotoAction>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _CapturedPhotoPreview(bytes: bytes),
-    );
-    if (action != _CapturedPhotoAction.saveAndImport || !mounted) return;
-    if (source == ImageSource.camera) {
-      final now = DateTime.now();
-      await FileSaver.instance.saveFile(
-        name: 'monthly-roster-${now.millisecondsSinceEpoch}',
-        bytes: bytes,
-        fileExtension: 'jpg',
-        mimeType: MimeType.jpeg,
-      );
-    }
-    if (!mounted) return;
-    final result = await showDialog<_ManualSourceResult>(
-      context: context,
-      builder: (context) => _ManualSourceDialog(
-        capturedImageBytes: bytes,
-        initialSourceKind: source == ImageSource.camera
-            ? 'กล้อง'
-            : 'รูป/ภาพถ่าย',
-      ),
-    );
-    if (result == null) return;
-    await widget.controller.addManualShift(
-      sourceKind: result.sourceKind,
-      title: result.title,
-      start: result.start,
-      end: result.end,
-      category: result.category,
-      colorCommand: result.colorCommand,
-    );
-  }
-
-  Future<void> _editTemplate([MonthlyRosterTemplate? current]) async {
-    final value = await showDialog<MonthlyRosterTemplate>(
-      context: context,
-      builder: (context) => _MonthlyRosterTemplateDialog(template: current),
-    );
-    if (value == null) return;
-    final updated = [...templates];
-    final index = updated.indexWhere((item) => item.id == value.id);
-    if (index < 0) {
-      updated.add(value);
-    } else {
-      updated[index] = value;
-    }
-    await templateRepository.saveAll(updated);
-    if (mounted) setState(() => templates = List.unmodifiable(updated));
-  }
-
-  Future<void> _deleteTemplate(MonthlyRosterTemplate template) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ลบเทมเพลตรายเดือน?'),
-        content: Text('ลบ “${template.title}” จากเครื่องนี้'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('ยกเลิก'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('ลบ'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    final updated = templates
-        .where((item) => item.id != template.id)
-        .toList(growable: false);
-    await templateRepository.saveAll(updated);
-    if (mounted) setState(() => templates = updated);
-  }
-
-  MonthlyRosterSection _templateSection(MonthlyRosterTemplate template) =>
-      MonthlyRosterSection(
-        title: template.title,
-        headerRowIndex: 0,
-        assignments: const [],
-        rowLabels: template.rowLabels,
-        startDate:
-            filterStart != null && template.startDate.isBefore(filterStart!)
-            ? filterStart
-            : template.startDate,
-        endDate: filterEnd != null && template.endDate.isAfter(filterEnd!)
-            ? filterEnd
-            : template.endDate,
-      );
-
-  Future<void> _pickFilterDate({required bool startDate}) async {
-    final now = DateTime.now();
-    final current = startDate ? filterStart : filterEnd;
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: current ?? now,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year + 10, 12, 31),
-    );
-    if (selected == null) return;
-    setState(() {
-      if (startDate) {
-        filterStart = selected;
-        if (filterEnd != null && filterEnd!.isBefore(selected)) {
-          filterEnd = selected;
-        }
-      } else {
-        filterEnd = selected;
-        if (filterStart != null && filterStart!.isAfter(selected)) {
-          filterStart = selected;
-        }
-      }
-    });
-  }
-
-  bool _includesFilterDate(DateTime date) =>
-      (filterStart == null || !date.isBefore(filterStart!)) &&
-      (filterEnd == null || !date.isAfter(filterEnd!));
-
-  @override
-  Widget build(BuildContext context) {
-    final report = widget.controller.monthlyRoster;
-    final filteredReport = report.filtered(
-      query: search.text,
-      sectionTitle: selectedSection,
-      includesDate: filterStart == null && filterEnd == null
-          ? null
-          : _includesFilterDate,
-    );
-    final query = search.text.trim().toLowerCase();
-    final visibleTemplates = templates
-        .where((template) {
-          if (selectedSection != null && selectedSection != template.title) {
-            return false;
-          }
-          if (filterStart != null && template.endDate.isBefore(filterStart!)) {
-            return false;
-          }
-          if (filterEnd != null && template.startDate.isAfter(filterEnd!)) {
-            return false;
-          }
-          return query.isEmpty ||
-              template.title.toLowerCase().contains(query) ||
-              template.rowLabels.any(
-                (row) => row.toLowerCase().contains(query),
-              );
-        })
-        .toList(growable: false);
-    final sections = [
-      ...visibleTemplates.map(_templateSection),
-      ...filteredReport.sections,
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ตารางเวรรายเดือน',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          report.sections.isEmpty
-                              ? 'นำเข้าตารางหรือสร้างเทมเพลตรายเดือนแบบว่าง'
-                              : '${report.sections.length} บล็อก • '
-                                    '${report.assignments.length} ช่องปฏิบัติงาน',
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton.filled(
-                    onPressed: widget.controller.busy
-                        ? null
-                        : () => _editTemplate(),
-                    icon: const Icon(Icons.add),
-                    tooltip: 'สร้างเทมเพลตรายเดือน',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  FilledButton.icon(
-                    onPressed:
-                        widget.controller.auth.isSignedIn &&
-                            !widget.controller.busy
-                        ? () => widget.perform(_importGoogleSheet)
-                        : null,
-                    icon: const Icon(Icons.table_chart_outlined),
-                    label: const Text('Google Sheets'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: widget.controller.busy
-                        ? null
-                        : () => widget.perform(
-                            widget.controller.importLocalMonthlyRosterFile,
-                          ),
-                    icon: const Icon(Icons.upload_file_outlined),
-                    label: const Text('Excel / CSV / ไฟล์'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: widget.controller.busy
-                        ? null
-                        : () => widget.perform(
-                            () => _importPhoto(ImageSource.camera),
-                          ),
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('เปิดกล้อง'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: widget.controller.busy
-                        ? null
-                        : () => widget.perform(
-                            () => _importPhoto(ImageSource.gallery),
-                          ),
-                    icon: const Icon(Icons.image_outlined),
-                    label: const Text('เลือกรูป'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed:
-                        widget.controller.busy ||
-                            !widget.controller.hasRosterSource
-                        ? null
-                        : () => widget.perform(
-                            widget.controller.loadMonthlyRoster,
-                          ),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('อ่านใหม่'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: search,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'ค้นหาบล็อก สถานที่ หรือชื่อผู้ปฏิบัติงาน',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _pickFilterDate(startDate: true),
-                    icon: const Icon(Icons.date_range_outlined),
-                    label: Text(
-                      filterStart == null
-                          ? 'วันเริ่ม'
-                          : 'เริ่ม ${_thaiDate(filterStart!)}',
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _pickFilterDate(startDate: false),
-                    icon: const Icon(Icons.event_available_outlined),
-                    label: Text(
-                      filterEnd == null
-                          ? 'วันสิ้นสุด'
-                          : 'สิ้นสุด ${_thaiDate(filterEnd!)}',
-                    ),
-                  ),
-                  if (filterStart != null || filterEnd != null)
-                    IconButton(
-                      onPressed: () => setState(() {
-                        filterStart = null;
-                        filterEnd = null;
-                      }),
-                      icon: const Icon(Icons.filter_alt_off_outlined),
-                      tooltip: 'ล้างช่วงวันที่',
-                    ),
-                ],
-              ),
-              if (report.sections.isNotEmpty || templates.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        label: const Text('ทั้งหมด'),
-                        selected: selectedSection == null,
-                        onSelected: (_) =>
-                            setState(() => selectedSection = null),
-                      ),
-                      const SizedBox(width: 8),
-                      for (final title in <String>{
-                        ...templates.map((template) => template.title),
-                        ...report.sections.map((section) => section.title),
-                      }) ...[
-                        ChoiceChip(
-                          label: Text(_compactSectionTitle(title)),
-                          selected: selectedSection == title,
-                          onSelected: (_) =>
-                              setState(() => selectedSection = title),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: report.sections.isEmpty && templates.isEmpty
-              ? _MonthlyRosterEmptyState(controller: widget.controller)
-              : sections.isEmpty
-              ? const _EmptyState(
-                  icon: Icons.search_off,
-                  title: 'ไม่พบข้อมูลที่ค้นหา',
-                  message: 'ลองเปลี่ยนคำค้นหาหรือตัวกรองบล็อก',
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: sections.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final section = sections[index];
-                    final template = index < visibleTemplates.length
-                        ? visibleTemplates[index]
-                        : null;
-                    return _MonthlyRosterSectionCard(
-                      section: section,
-                      onEdit: template == null
-                          ? null
-                          : () => _editTemplate(template),
-                      onDelete: template == null
-                          ? null
-                          : () => _deleteTemplate(template),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MonthlyRosterTemplateDialog extends StatefulWidget {
-  const _MonthlyRosterTemplateDialog({this.template});
-
-  final MonthlyRosterTemplate? template;
-
-  @override
-  State<_MonthlyRosterTemplateDialog> createState() =>
-      _MonthlyRosterTemplateDialogState();
-}
-
-class _MonthlyRosterTemplateDialogState
-    extends State<_MonthlyRosterTemplateDialog> {
-  late final title = TextEditingController(text: widget.template?.title ?? '');
-  late final List<_ShiftGroupDraft> groups;
-  late DateTime start =
-      widget.template?.startDate ??
-      DateTime(DateTime.now().year, DateTime.now().month);
-  late DateTime end =
-      widget.template?.endDate ??
-      DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
-
-  @override
-  void initState() {
-    super.initState();
-    groups = widget.template == null
-        ? [_ShiftGroupDraft.empty(1)]
-        : widget.template!.groups
-              .map(_ShiftGroupDraft.fromGroup)
-              .toList(growable: true);
-  }
-
-  @override
-  void dispose() {
-    title.dispose();
-    for (final group in groups) {
-      group.dispose();
-    }
-    super.dispose();
-  }
-
-  void _addGroup() {
-    setState(() => groups.add(_ShiftGroupDraft.empty(groups.length + 1)));
-  }
-
-  void _removeGroup(int index) {
-    if (groups.length == 1) return;
-    final removed = groups.removeAt(index);
-    removed.dispose();
-    setState(() {});
-  }
-
-  Future<void> _pickDate({required bool startDate}) async {
-    final current = startDate ? start : end;
-    final selected = await showDatePicker(
-      context: context,
-      initialDate: current,
-      firstDate: DateTime(current.year - 5),
-      lastDate: DateTime(current.year + 10, 12, 31),
-    );
-    if (selected == null) return;
-    setState(() {
-      if (startDate) {
-        start = selected;
-        if (end.isBefore(start)) end = start;
-      } else {
-        end = selected;
-      }
-    });
-  }
-
-  void _submit() {
-    final name = title.text.trim();
-    final shiftGroups = groups.map((group) => group.value).toList();
-    if (name.isEmpty ||
-        shiftGroups.any(
-          (group) => group.title.isEmpty || group.rowLabels.isEmpty,
-        )) {
-      return;
-    }
-    Navigator.pop(
-      context,
-      MonthlyRosterTemplate(
-        id:
-            widget.template?.id ??
-            'monthly-${DateTime.now().microsecondsSinceEpoch}',
-        title: name,
-        startDate: start,
-        endDate: end,
-        groups: shiftGroups,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(
-      widget.template == null ? 'สร้างเทมเพลตรายเดือน' : 'แก้ไขเทมเพลตรายเดือน',
-    ),
-    content: SizedBox(
-      width: 560,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: title,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'ชื่อเทมเพลต'),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'กลุ่มเวร',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                IconButton.filledTonal(
-                  onPressed: _addGroup,
-                  icon: const Icon(Icons.add),
-                  tooltip: 'เพิ่มกลุ่มเวร',
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            for (var index = 0; index < groups.length; index++) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: groups[index].title,
-                            decoration: InputDecoration(
-                              labelText: 'ชื่อกลุ่มเวร ${index + 1}',
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: groups.length == 1
-                              ? null
-                              : () => _removeGroup(index),
-                          icon: const Icon(Icons.delete_outline),
-                          tooltip: 'ลบกลุ่มเวร',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: groups[index].rows,
-                      minLines: 3,
-                      maxLines: 6,
-                      decoration: const InputDecoration(
-                        labelText: 'แถวเวรหรือสถานที่',
-                        hintText: 'หนึ่งแถวต่อหนึ่งบรรทัด',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _pickDate(startDate: true),
-                  icon: const Icon(Icons.first_page),
-                  label: Text('เริ่ม ${_thaiDate(start)}'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _pickDate(startDate: false),
-                  icon: const Icon(Icons.last_page),
-                  label: Text('สิ้นสุด ${_thaiDate(end)}'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('ยกเลิก'),
-      ),
-      FilledButton.icon(
-        onPressed: _submit,
-        icon: const Icon(Icons.save_outlined),
-        label: const Text('บันทึก'),
-      ),
-    ],
-  );
-}
-
-class _ShiftGroupDraft {
-  _ShiftGroupDraft({
-    required this.id,
-    required String title,
-    required List<String> rowLabels,
-  }) : title = TextEditingController(text: title),
-       rows = TextEditingController(text: rowLabels.join('\n'));
-
-  factory _ShiftGroupDraft.empty(int number) => _ShiftGroupDraft(
-    id: 'group-${DateTime.now().microsecondsSinceEpoch}-$number',
-    title: 'กลุ่มเวร $number',
-    rowLabels: const [],
-  );
-
-  factory _ShiftGroupDraft.fromGroup(MonthlyRosterShiftGroup group) =>
-      _ShiftGroupDraft(
-        id: group.id,
-        title: group.title,
-        rowLabels: group.rowLabels,
-      );
-
-  final String id;
-  final TextEditingController title;
-  final TextEditingController rows;
-
-  MonthlyRosterShiftGroup get value => MonthlyRosterShiftGroup(
-    id: id,
-    title: title.text.trim(),
-    rowLabels: List.unmodifiable(
-      rows.text
-          .split(RegExp(r'[\r\n,]+'))
-          .map((row) => row.trim())
-          .where((row) => row.isNotEmpty)
-          .toSet(),
-    ),
-  );
-
-  void dispose() {
-    title.dispose();
-    rows.dispose();
-  }
-}
-
-class _MonthlyRosterEmptyState extends StatelessWidget {
-  const _MonthlyRosterEmptyState({required this.controller});
-
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) => _EmptyState(
-    icon: Icons.calendar_view_month_outlined,
-    title: controller.hasRosterSource
-        ? 'ยังไม่ได้อ่านตารางรายเดือน'
-        : 'ยังไม่ได้เลือกแหล่งข้อมูลเวร',
-    message: controller.hasRosterSource
-        ? 'กด “อ่านใหม่” เพื่อค้นหาบล็อกที่มีแถววันที่ในชีต'
-        : 'นำเข้า Google Sheets, Excel, CSV, รูปภาพ หรือกล้องจากหน้านี้',
-  );
-}
-
-class _MonthlyRosterSectionCard extends StatelessWidget {
-  const _MonthlyRosterSectionCard({
-    required this.section,
-    this.onEdit,
-    this.onDelete,
-  });
-
-  final MonthlyRosterSection section;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final dates = section.assignments.map((item) => item.date).toSet().toList();
-    if (dates.isEmpty && section.startDate != null && section.endDate != null) {
-      for (
-        var date = section.startDate!;
-        !date.isAfter(section.endDate!);
-        date = date.add(const Duration(days: 1))
-      ) {
-        dates.add(date);
-      }
-    }
-    dates.sort();
-    final rowIndexes =
-        section.assignments.map((item) => item.rowIndex).toSet().toList()
-          ..sort();
-    final rowLabels = <int, String>{
-      for (var index = 0; index < section.rowLabels.length; index++)
-        index: section.rowLabels[index],
-      for (final assignment in section.assignments)
-        assignment.rowIndex: assignment.rowLabel,
-    };
-    rowIndexes.addAll(rowLabels.keys);
-    rowIndexes.sort();
-    final byPosition = <(int, DateTime), MonthlyRosterAssignment>{
-      for (final assignment in section.assignments)
-        (assignment.rowIndex, assignment.date): assignment,
-    };
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const CircleAvatar(child: Icon(Icons.view_week_outlined)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        section.title,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${rowIndexes.length} แถว • '
-                        '${section.assignments.length} ช่อง',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                if (onEdit != null || onDelete != null)
-                  PopupMenuButton<String>(
-                    tooltip: 'จัดการเทมเพลต',
-                    onSelected: (value) =>
-                        value == 'edit' ? onEdit?.call() : onDelete?.call(),
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'edit', child: Text('แก้ไข')),
-                      PopupMenuItem(value: 'delete', child: Text('ลบ')),
-                    ],
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (section.assignments.isEmpty && rowLabels.isEmpty)
-              const Text('บล็อกนี้ยังไม่มีรายชื่อผู้ปฏิบัติงาน')
-            else
-              Scrollbar(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columnSpacing: 20,
-                    headingRowHeight: 44,
-                    dataRowMinHeight: 48,
-                    dataRowMaxHeight: 64,
-                    columns: [
-                      const DataColumn(label: Text('เวร / สถานที่')),
-                      for (final date in dates)
-                        DataColumn(
-                          numeric: false,
-                          label: Text('${date.day}\n${_shortWeekday(date)}'),
-                        ),
-                    ],
-                    rows: [
-                      for (final rowIndex in rowIndexes)
-                        DataRow(
-                          cells: [
-                            DataCell(
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  minWidth: 110,
-                                  maxWidth: 180,
-                                ),
-                                child: Text(
-                                  rowLabels[rowIndex]!,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            for (final date in dates)
-                              DataCell(
-                                _MonthlyRosterCell(
-                                  assignment: byPosition[(rowIndex, date)],
-                                ),
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MonthlyRosterCell extends StatelessWidget {
-  const _MonthlyRosterCell({this.assignment});
-
-  final MonthlyRosterAssignment? assignment;
-
-  @override
-  Widget build(BuildContext context) {
-    final item = assignment;
-    if (item == null) return const SizedBox(width: 72);
-    final color = _colorFromHex(item.backgroundColor);
-    return Tooltip(
-      message: '${item.sourceCell} • ${item.workerName}',
-      child: Container(
-        width: 92,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: color?.withValues(alpha: 0.18),
-          border: Border.all(
-            color: color ?? Theme.of(context).colorScheme.outlineVariant,
-          ),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          item.workerName,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
 }
 
 class _PreviewPage extends StatelessWidget {
@@ -3693,9 +2463,11 @@ class _PreviewPage extends StatelessWidget {
                     builder: (context, constraints) {
                       final narrow = constraints.maxWidth < 620;
                       final selector = OutlinedButton.icon(
-                        onPressed: () => _editShift(context, index, shift),
+                        onPressed: shift.generated
+                            ? null
+                            : () => _editShift(context, index, shift),
                         icon: const Icon(Icons.palette_outlined),
-                        label: const Text('ตั้งวันที่ เวลา ชื่อ ประเภท และสี'),
+                        label: const Text('ตั้งชื่อ เวลา ประเภท และสี'),
                       );
                       final details = Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3724,7 +2496,7 @@ class _PreviewPage extends StatelessWidget {
                                     Icons.bedtime_outlined,
                                     size: 16,
                                   ),
-                                  label: Text('OFF ค่าเริ่มต้น'),
+                                  label: Text('OFF อัตโนมัติ'),
                                 ),
                               if (shift.sourceColorValue != null)
                                 Chip(
@@ -3768,17 +2540,17 @@ class _PreviewPage extends StatelessWidget {
                             '${shift.sheetTitle} • ${shift.cell} • ${shift.assignedName}',
                           ),
                           if (shift.generated)
-                            const Text(
-                              'ระบบสร้างจากค่าเริ่มต้น กดตั้งค่าเพื่อแก้ไขได้',
-                            ),
+                            const Text('ช่วงพัก 08:00–16:00 หลังเวรดึก'),
                         ],
                       );
                       final check = Checkbox(
                         value: !shift.excluded,
-                        onChanged: (value) => controller.updateShift(
-                          index,
-                          excluded: value != true,
-                        ),
+                        onChanged: shift.generated
+                            ? null
+                            : (value) => controller.updateShift(
+                                index,
+                                excluded: value != true,
+                              ),
                       );
                       final bar = Container(
                         width: 5,
@@ -3926,11 +2698,6 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
     text: widget.shift.calendarColorId ?? '',
   );
   late ShiftCategory category = widget.shift.category;
-  late DateTime date = DateTime(
-    widget.shift.start.year,
-    widget.shift.start.month,
-    widget.shift.start.day,
-  );
   late TimeOfDay start = TimeOfDay.fromDateTime(widget.shift.start);
   late TimeOfDay end = TimeOfDay.fromDateTime(widget.shift.end);
 
@@ -3939,16 +2706,6 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
     title.dispose();
     colorCommand.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final selected = await showDatePicker(
-      context: context,
-      firstDate: DateTime(date.year - 5),
-      lastDate: DateTime(date.year + 10, 12, 31),
-      initialDate: date,
-    );
-    if (selected != null) setState(() => date = selected);
   }
 
   Future<void> _pickTime({required bool isStart}) async {
@@ -3967,14 +2724,15 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
   }
 
   void _submit() {
+    final day = widget.shift.start;
     final startAt = DateTime(
-      date.year,
-      date.month,
-      date.day,
+      day.year,
+      day.month,
+      day.day,
       start.hour,
       start.minute,
     );
-    var endAt = DateTime(date.year, date.month, date.day, end.hour, end.minute);
+    var endAt = DateTime(day.year, day.month, day.day, end.hour, end.minute);
     if (!endAt.isAfter(startAt)) {
       endAt = endAt.add(const Duration(days: 1));
     }
@@ -4024,11 +2782,6 @@ class _ShiftSettingsDialogState extends State<_ShiftSettingsDialog> {
               spacing: 10,
               runSpacing: 10,
               children: [
-                OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_month_outlined),
-                  label: Text(_thaiDate(date)),
-                ),
                 OutlinedButton.icon(
                   onPressed: () => _pickTime(isStart: true),
                   icon: const Icon(Icons.schedule),
@@ -4329,7 +3082,7 @@ class _AuditPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'เปิดดูชีตที่สร้างหรือบันทึกไว้ แยกตามบัญชี Google ที่ล็อกอิน',
+                          'SavedSheets เป็นประวัติไฟล์ทั้งหมด แยกตามบัญชี Google; เอาติ๊กออกจะไม่ลบประวัติ',
                         ),
                       ],
                     );
@@ -4525,8 +3278,8 @@ class _SavedSheetCard extends StatelessWidget {
                   ),
                   TextButton.icon(
                     onPressed: disabled ? null : () => unawaited(delete(sheet)),
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('ลบ'),
+                    icon: const Icon(Icons.check_box_outline_blank),
+                    label: const Text('เอาติ๊กออก'),
                     style: TextButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.error,
                     ),
@@ -4552,99 +3305,21 @@ class _SavedSheetCard extends StatelessWidget {
   );
 }
 
-class _EditionSelectionPage extends StatelessWidget {
-  const _EditionSelectionPage({required this.onSelected});
-
-  final Future<void> Function(AppEdition edition) onSelected;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('เลือกเวอร์ชัน Shift Tools')),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'รูปแบบการใช้งาน',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'เลือกตามลักษณะการใช้งาน เปลี่ยนภายหลังได้จากหน้าตั้งค่า',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            for (final value in AppEdition.values) ...[
-              Card(
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: CircleAvatar(
-                    child: Icon(
-                      value == AppEdition.personal
-                          ? Icons.person_outline
-                          : Icons.apartment_outlined,
-                    ),
-                  ),
-                  title: Text(
-                    value.label,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(value.description),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => onSelected(value),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
 class _SettingsPage extends StatelessWidget {
   const _SettingsPage({
     required this.controller,
     required this.createFutureSheet,
     required this.openShiftTemplates,
-    required this.edition,
-    required this.changeEdition,
   });
   final AppController controller;
   final Future<void> Function(String template, String newTitle)
   createFutureSheet;
   final VoidCallback openShiftTemplates;
-  final AppEdition edition;
-  final Future<void> Function(AppEdition edition) changeEdition;
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
     children: [
-      Card(
-        child: ListTile(
-          leading: CircleAvatar(
-            child: Icon(
-              edition == AppEdition.personal
-                  ? Icons.person_outline
-                  : Icons.apartment_outlined,
-            ),
-          ),
-          title: const Text('เวอร์ชันการใช้งาน'),
-          subtitle: Text('${edition.label} • ${edition.description}'),
-          trailing: const Icon(Icons.swap_horiz),
-          onTap: () => _showEditionDialog(context),
-        ),
-      ),
-      const SizedBox(height: 16),
       Card(
         child: ListTile(
           leading: const CircleAvatar(
@@ -4718,32 +3393,6 @@ class _SettingsPage extends StatelessWidget {
       ),
     ],
   );
-
-  Future<void> _showEditionDialog(BuildContext context) async {
-    final selected = await showDialog<AppEdition>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('เลือกเวอร์ชันการใช้งาน'),
-        children: [
-          for (final value in AppEdition.values)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, value),
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  value == edition ? Icons.check_circle : Icons.circle_outlined,
-                ),
-                title: Text(value.label),
-                subtitle: Text(value.description),
-              ),
-            ),
-        ],
-      ),
-    );
-    if (selected != null && selected != edition) {
-      await changeEdition(selected);
-    }
-  }
 }
 
 class _FutureSheetCard extends StatefulWidget {
@@ -4925,21 +3574,6 @@ const _thaiMonths = [
 
 String _thaiDate(DateTime value) =>
     '${value.day} ${_thaiMonths[value.month - 1]} ${value.year + 543}';
-String _shortWeekday(DateTime value) =>
-    const ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'][value.weekday - 1];
-String _compactSectionTitle(String value) {
-  final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
-  return normalized.length <= 28
-      ? normalized
-      : '${normalized.substring(0, 27)}…';
-}
-
-Color? _colorFromHex(String? value) {
-  if (value == null) return null;
-  final rgb = int.tryParse(value.replaceFirst('#', ''), radix: 16);
-  return rgb == null ? null : Color(0xFF000000 | rgb);
-}
-
 String _time(DateTime value) =>
     '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
 String _clock(DateTime value) =>
