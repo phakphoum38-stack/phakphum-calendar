@@ -16,7 +16,7 @@ concurrency:
 jobs:
   resolve-and-validate:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout PR branch
@@ -35,14 +35,30 @@ jobs:
         shell: pwsh
         run: git fetch origin main
 
-      - name: Resolve conflicts keeping PR implementation for conflicting hunks
+      - name: Merge main and resolve known conflicts
         shell: pwsh
         run: |
-          git merge origin/main --no-edit -X ours
+          git merge origin/main --no-edit
           if ($LASTEXITCODE -ne 0) {
-            Write-Host 'Merge still has unresolved conflicts.' -ForegroundColor Red
-            git status --short
-            exit 1
+            Write-Host "Merge reported conflicts; applying intentional ownership rules." -ForegroundColor Yellow
+
+            # Product implementation stays from this PR.
+            git checkout --ours -- lib/controller/app_controller.dart lib/ui/app_shell.dart
+
+            # CI/workflow infrastructure stays aligned with current main.
+            git checkout --theirs -- .github/workflows/desktop.yml .github/workflows/validate.yml
+
+            # Resolve any remaining known merge state explicitly.
+            git add lib/controller/app_controller.dart lib/ui/app_shell.dart .github/workflows/desktop.yml .github/workflows/validate.yml
+
+            $remaining = git diff --name-only --diff-filter=U
+            if ($remaining) {
+              Write-Host "Unresolved files remain:" -ForegroundColor Red
+              $remaining
+              exit 1
+            }
+
+            git commit -m "chore: resolve PR30 conflicts against main"
           }
 
       - name: Setup Flutter
@@ -79,7 +95,6 @@ jobs:
         shell: pwsh
         run: flutter build windows --release
 
-      - name: Push resolved merge commit
+      - name: Push resolved branch
         shell: pwsh
-        run: |
-          git push origin HEAD:codex/update-timeline-source-selection-options
+        run: git push origin HEAD:codex/update-timeline-source-selection-options
