@@ -1,0 +1,85 @@
+name: Resolve PR30 against main
+
+on:
+  push:
+    branches:
+      - codex/update-timeline-source-selection-options
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: resolve-pr30
+  cancel-in-progress: true
+
+jobs:
+  resolve-and-validate:
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/update-timeline-source-selection-options
+          fetch-depth: 0
+
+      - name: Configure git
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch current main
+        shell: pwsh
+        run: git fetch origin main
+
+      - name: Resolve conflicts keeping PR implementation for conflicting hunks
+        shell: pwsh
+        run: |
+          git merge origin/main --no-edit -X ours
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host 'Merge still has unresolved conflicts.' -ForegroundColor Red
+            git status --short
+            exit 1
+          }
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        shell: pwsh
+        run: flutter config --enable-windows-desktop
+
+      - name: Pub get
+        shell: pwsh
+        run: flutter pub get
+
+      - name: Diff check
+        shell: pwsh
+        run: git diff --check HEAD~1 HEAD
+
+      - name: Dart format check
+        shell: pwsh
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Flutter analyze
+        shell: pwsh
+        run: flutter analyze
+
+      - name: Flutter tests
+        shell: pwsh
+        run: flutter test
+
+      - name: Windows release build
+        shell: pwsh
+        run: flutter build windows --release
+
+      - name: Push resolved merge commit
+        shell: pwsh
+        run: |
+          git push origin HEAD:codex/update-timeline-source-selection-options
