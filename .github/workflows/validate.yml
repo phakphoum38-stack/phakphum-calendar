@@ -35,27 +35,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
       - name: Show tool versions
         run: |
           flutter --version
           dart --version
-
       - name: Install dependencies
         run: flutter pub get
-
       - name: Analyze
         run: flutter analyze --fatal-infos
-
       - name: Run tests with coverage
         run: flutter test --coverage --reporter expanded
-
       - name: Enforce minimum line coverage
         shell: bash
         run: |
@@ -72,7 +66,6 @@ jobs:
               if (percentage + 0.000001 < minimum) exit 1
             }
           ' coverage/lcov.info
-
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7
@@ -99,13 +92,11 @@ jobs:
     name: Static security scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           persist-credentials: false
-
       - name: Scan repository secrets and configuration
         uses: aquasecurity/trivy-action@v0.36.0
         with:
