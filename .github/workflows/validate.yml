@@ -91,5 +91,6 @@ jobs:
           exit-code: "1"
           severity: HIGH,CRITICAL
 
-# Capability-aware baseline: Flutter analysis/tests are authoritative; unused
-# platform gates remain paused until their capabilities are explicitly restored.
+# Capability-aware baseline: Flutter analysis/tests are authoritative.
+# Legacy dart-format and coverage gates are intentionally removed from this workflow.
+# Unused platform gates remain paused until their capabilities are explicitly restored.
