@@ -16,7 +16,6 @@ on:
       - "analysis_options.yaml"
       - ".github/workflows/**"
 
-authorization: {}
 permissions:
   contents: read
 
