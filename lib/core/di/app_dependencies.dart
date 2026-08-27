@@ -115,7 +115,7 @@ class AppDependencies {
     this.calendarSyncService,
     this.googleSheetsService,
     this.notificationService,
-    String? Function(String key)? workflowMessageProvider,
+    String? Function(String key)? workflowMessageProviderOverride,
   }) : googleAuthService = googleAuthService ?? GoogleAuthService(),
        legacySettingsService = legacySettingsService ?? SettingsService(),
        legacySheetsService = legacySheetsService ?? SheetsService(),
@@ -176,13 +176,15 @@ class AppDependencies {
            SharedPreferencesShiftTemplateRepository(),
        scheduleRepository =
            scheduleRepository ?? SharedPreferencesScheduleRepository();
-       workflowMessageProvider = workflowMessageProvider ??
+         workflowMessageProvider = workflowMessageProviderOverride ??
            ((key) => workflowMessageFor(AppLocalizationsTh(), key));
 
   /// Creates the dependency graph used by the production application.
   factory AppDependencies.production({
     String? Function(String key)? workflowMessageProvider,
-  }) => AppDependencies(workflowMessageProvider: workflowMessageProvider);
+  }) => AppDependencies(
+    workflowMessageProviderOverride: workflowMessageProvider,
+  );
 
   final GoogleAuthGateway googleAuthService;
   final AppSettingsStore legacySettingsService;

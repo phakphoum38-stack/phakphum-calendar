@@ -1040,6 +1040,26 @@ abstract class AppLocalizations {
 
   String workflowBlockedCount(int count);
 
+  String get workflowScheduleFailedValidation;
+
+  String get workflowReadyToConfirm;
+
+  String get workflowWarningsBeforeConfirm;
+
+  String get workflowCalendarCheckFailed;
+
+  String get workflowNoValidatedPlan;
+
+  String get workflowNoValidationResult;
+
+  String get workflowItemsStillBlocked;
+
+  String get workflowSyncPartialSuccess;
+
+  String get workflowSyncSuccessful;
+
+  String get workflowSyncFailed;
+
   String get startupTimeout;
 
   String startupFailed(String error);

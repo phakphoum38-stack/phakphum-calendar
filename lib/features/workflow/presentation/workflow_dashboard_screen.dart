@@ -27,7 +27,7 @@ class WorkflowDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               if (summary == null)
-                const Card(
+                Card(
                   child: Padding(
                     padding: EdgeInsets.all(20),
                     child: Text(context.l10n.noScheduleData),
