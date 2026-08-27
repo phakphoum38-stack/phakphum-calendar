@@ -69,8 +69,8 @@ import '../../services/sheets_service.dart';
 import '../../services/shift_alert_service.dart';
 import '../../services/shift_parser.dart';
 import '../google/authorized_google_client_factory.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/app_localizations_th.dart';
 import '../result/result.dart';
 import '../validation/rule_evaluator.dart';
 
@@ -175,8 +175,8 @@ class AppDependencies {
            shiftTemplateRepository ??
            SharedPreferencesShiftTemplateRepository(),
        scheduleRepository =
-           scheduleRepository ?? SharedPreferencesScheduleRepository();
-         workflowMessageProvider = workflowMessageProviderOverride ??
+           scheduleRepository ?? SharedPreferencesScheduleRepository(),
+       workflowMessageProvider = workflowMessageProviderOverride ??
            ((key) => workflowMessageFor(AppLocalizationsTh(), key));
 
   /// Creates the dependency graph used by the production application.
