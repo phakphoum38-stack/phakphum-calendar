@@ -489,4 +489,29 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get notes => 'หมายเหตุ';
+
+  @override
+  String workflowAddedCount(int count) => 'เพิ่ม $count';
+
+  @override
+  String workflowUpdatedCount(int count) => 'แก้ไข $count';
+
+  @override
+  String workflowDeletedCount(int count) => 'ลบ $count';
+
+  @override
+  String workflowUnchangedCount(int count) => 'ไม่เปลี่ยน $count';
+
+  @override
+  String workflowWarningCount(int count) => 'เตือน $count';
+
+  @override
+  String workflowBlockedCount(int count) => 'บล็อก $count';
+
+  @override
+  String get startupTimeout =>
+      'เริ่มต้นระบบช้าเกินไป กรุณาตรวจการตั้งค่า Google OAuth หรือรีโหลดหน้าเว็บ';
+
+  @override
+  String startupFailed(String error) => 'เริ่มต้นระบบไม่สำเร็จ: $error';
 }

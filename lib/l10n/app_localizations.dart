@@ -1027,6 +1027,22 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notes'**
   String get notes;
+
+  String workflowAddedCount(int count);
+
+  String workflowUpdatedCount(int count);
+
+  String workflowDeletedCount(int count);
+
+  String workflowUnchangedCount(int count);
+
+  String workflowWarningCount(int count);
+
+  String workflowBlockedCount(int count);
+
+  String get startupTimeout;
+
+  String startupFailed(String error);
 }
 
 class _AppLocalizationsDelegate

@@ -494,4 +494,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notes => 'Notes';
+
+    @override
+    String workflowAddedCount(int count) => 'Added $count';
+
+    @override
+    String workflowUpdatedCount(int count) => 'Updated $count';
+
+    @override
+    String workflowDeletedCount(int count) => 'Deleted $count';
+
+    @override
+    String workflowUnchangedCount(int count) => 'Unchanged $count';
+
+    @override
+    String workflowWarningCount(int count) => 'Warnings $count';
+
+    @override
+    String workflowBlockedCount(int count) => 'Blocked $count';
+
+    @override
+    String get startupTimeout =>
+            'Startup took too long. Check Google OAuth settings or reload the page.';
+
+    @override
+    String startupFailed(String error) => 'Startup failed: $error';
 }

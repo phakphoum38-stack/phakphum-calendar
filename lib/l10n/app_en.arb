@@ -170,5 +170,14 @@
   },
   "scheduleSaved": "Schedule saved.",
   "location": "Location",
-  "notes": "Notes"
+  "notes": "Notes",
+  "workflowAddedCount": "Added {count}",
+  "workflowUpdatedCount": "Updated {count}",
+  "workflowDeletedCount": "Deleted {count}",
+  "workflowUnchangedCount": "Unchanged {count}",
+  "workflowWarningCount": "Warnings {count}",
+  "workflowBlockedCount": "Blocked {count}",
+  "startupTimeout": "Startup took too long. Check Google OAuth settings or reload the page.",
+  "startupFailed": "Startup failed: {error}",
+  "@startupFailed": {"placeholders": {"error": {"type": "String"}}}
 }

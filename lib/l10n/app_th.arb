@@ -154,5 +154,14 @@
   "deleteAssignmentConfirmation": "ลบ {employee} ออกจากเวร {shift} ใช่หรือไม่",
   "scheduleSaved": "บันทึกตารางเวรแล้ว",
   "location": "สถานที่",
-  "notes": "หมายเหตุ"
+  "notes": "หมายเหตุ",
+  "workflowAddedCount": "เพิ่ม {count}",
+  "workflowUpdatedCount": "แก้ไข {count}",
+  "workflowDeletedCount": "ลบ {count}",
+  "workflowUnchangedCount": "ไม่เปลี่ยน {count}",
+  "workflowWarningCount": "เตือน {count}",
+  "workflowBlockedCount": "บล็อก {count}",
+  "startupTimeout": "เริ่มต้นระบบช้าเกินไป กรุณาตรวจการตั้งค่า Google OAuth หรือรีโหลดหน้าเว็บ",
+  "startupFailed": "เริ่มต้นระบบไม่สำเร็จ: {error}",
+  "@startupFailed": {"placeholders": {"error": {"type": "String"}}}
 }
