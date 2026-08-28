@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  api:
+    build: ./php
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: phakphum
+      DB_USER: root
+      DB_PASSWORD: example
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: phakphum
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
