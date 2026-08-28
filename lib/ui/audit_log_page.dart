@@ -26,7 +26,7 @@ class AuditLogPage extends StatelessWidget {
                   ),
                 );
               },
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
               itemCount: entries.length,
             ),
     );

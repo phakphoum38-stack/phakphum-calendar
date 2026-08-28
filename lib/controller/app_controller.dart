@@ -713,7 +713,7 @@ class AppController extends ChangeNotifier implements ControllerState {
         );
           // Generate timelines on-demand without keeping revision exports.
           final generator = RosterTimelineGenerator();
-          final timelines = await generator.generateFromDocuments([
+          final timelines = generator.generateFromDocuments([
             RosterRevisionDocument(
               revisionId: 'current',
               modifiedAt: DateTime.now(),

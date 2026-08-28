@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controller/app_controller.dart';
 import '../features/diff_engine/domain/calendar_event_candidate.dart';
-import '../features/diff_engine/domain/calendar_diff.dart';
 
 enum ChangeType { add, update, delete, conflict }
 
@@ -86,7 +85,7 @@ class _PreviewChangesPageState extends State<PreviewChangesPage> {
             child: ListView.separated(
               padding: const EdgeInsets.all(12),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return Card(
@@ -100,7 +99,11 @@ class _PreviewChangesPageState extends State<PreviewChangesPage> {
                         Checkbox(
                           value: selected.contains(index),
                           onChanged: (v) => setState(() {
-                            if (v == true) selected.add(index); else selected.remove(index);
+                            if (v == true) {
+                              selected.add(index);
+                            } else {
+                              selected.remove(index);
+                            }
                           }),
                         ),
                         IconButton(
