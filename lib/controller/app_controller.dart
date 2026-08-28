@@ -125,7 +125,6 @@ class AppController extends ChangeNotifier implements ControllerState {
     required this._scheduleRepository,
     required this._legacyScheduleAdapter,
     required this._calendarWorkflowControllerFactory,
-    required this._revisionService,
   });
 
   void _initializeDemo() {
@@ -194,7 +193,6 @@ class AppController extends ChangeNotifier implements ControllerState {
   final LegacyScheduleAdapter _legacyScheduleAdapter;
   final Future<ShiftCalendarWorkflowController> Function()
   _calendarWorkflowControllerFactory;
-  final RosterRevisionGateway _revisionService;
 
   AppSettings settings = AppSettings.defaults();
   late LegacyScheduleConversion _legacySchedule = _legacyScheduleAdapter
