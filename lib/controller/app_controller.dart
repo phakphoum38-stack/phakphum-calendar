@@ -58,7 +58,6 @@ class AppController extends ChangeNotifier implements ControllerState {
     required LegacyScheduleAdapter legacyScheduleAdapter,
     required Future<ShiftCalendarWorkflowController> Function()
     calendarWorkflowControllerFactory,
-    RosterRevisionGateway revisionService = const RosterRevisionService(),
   }) {
     return AppController._(
       auth: auth,
@@ -73,7 +72,6 @@ class AppController extends ChangeNotifier implements ControllerState {
       scheduleRepository: scheduleRepository,
       legacyScheduleAdapter: legacyScheduleAdapter,
       calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
-      revisionService: revisionService,
     );
   }
 
@@ -91,7 +89,6 @@ class AppController extends ChangeNotifier implements ControllerState {
     required LegacyScheduleAdapter legacyScheduleAdapter,
     required Future<ShiftCalendarWorkflowController> Function()
     calendarWorkflowControllerFactory,
-    RosterRevisionGateway revisionService = const RosterRevisionService(),
   }) {
     final controller = AppController(
       auth: auth,
@@ -106,7 +103,6 @@ class AppController extends ChangeNotifier implements ControllerState {
       scheduleRepository: scheduleRepository,
       legacyScheduleAdapter: legacyScheduleAdapter,
       calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
-      revisionService: revisionService,
     );
     controller._initializeDemo();
     return controller;
