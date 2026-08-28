@@ -13,7 +13,7 @@ jobs:
 
       - name: Install Flutter SDK
         run: |
-          git clone https://github.com/flutter/flutter.git -b 3.12.2 --depth 1 $HOME/flutter
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
           echo "$HOME/flutter/bin" >> $GITHUB_PATH
           flutter --version
 
