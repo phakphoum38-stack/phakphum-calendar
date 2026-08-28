@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/l10n.dart';
 import '../application/shift_calendar_workflow_controller.dart';
 
 class WorkflowDashboardScreen extends StatelessWidget {
@@ -16,7 +17,7 @@ class WorkflowDashboardScreen extends StatelessWidget {
         final summary = preview?.simulation.summary;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Shift Tools')),
+          appBar: AppBar(title: Text(context.l10n.appTitle)),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -26,10 +27,10 @@ class WorkflowDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               if (summary == null)
-                const Card(
+                Card(
                   child: Padding(
                     padding: EdgeInsets.all(20),
-                    child: Text('กรุณาเลือกตารางต้นฉบับและตารางปัจจุบัน'),
+                    child: Text(context.l10n.noScheduleData),
                   ),
                 )
               else
@@ -37,12 +38,12 @@ class WorkflowDashboardScreen extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    Chip(label: Text('เพิ่ม ${summary.addCount}')),
-                    Chip(label: Text('แก้ไข ${summary.updateCount}')),
-                    Chip(label: Text('ลบ ${summary.deleteCount}')),
-                    Chip(label: Text('ไม่เปลี่ยน ${summary.unchangedCount}')),
-                    Chip(label: Text('เตือน ${summary.warningCount}')),
-                    Chip(label: Text('บล็อก ${summary.blockedCount}')),
+                    Chip(label: Text(context.l10n.workflowAddedCount(summary.addCount))),
+                    Chip(label: Text(context.l10n.workflowUpdatedCount(summary.updateCount))),
+                    Chip(label: Text(context.l10n.workflowDeletedCount(summary.deleteCount))),
+                    Chip(label: Text(context.l10n.workflowUnchangedCount(summary.unchangedCount))),
+                    Chip(label: Text(context.l10n.workflowWarningCount(summary.warningCount))),
+                    Chip(label: Text(context.l10n.workflowBlockedCount(summary.blockedCount))),
                   ],
                 ),
               if (controller.message != null) ...[
@@ -74,7 +75,7 @@ class WorkflowDashboardScreen extends StatelessWidget {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.calendar_month),
-                      label: const Text('ยืนยันลง Google Calendar'),
+                      label: Text(context.l10n.googleSyncConfirm),
                     ),
                   ),
                 ),

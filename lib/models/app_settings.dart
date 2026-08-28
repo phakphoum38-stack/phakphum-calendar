@@ -9,6 +9,7 @@ class AppSettings {
     required this.archiveOriginal,
     required this.autoRefresh,
     required this.refreshSeconds,
+    required this.autoSync,
     required this.googleWebClientId,
   });
 
@@ -21,6 +22,7 @@ class AppSettings {
       archiveOriginal: true,
       autoRefresh: false,
       refreshSeconds: 5,
+      autoSync: false,
       googleWebClientId: '',
     );
   }
@@ -32,6 +34,7 @@ class AppSettings {
   final bool archiveOriginal;
   final bool autoRefresh;
   final int refreshSeconds;
+  final bool autoSync;
   final String googleWebClientId;
 
   List<RosterPeriod> get effectivePeriods {
@@ -55,6 +58,7 @@ class AppSettings {
     bool? archiveOriginal,
     bool? autoRefresh,
     int? refreshSeconds,
+    bool? autoSync,
     String? googleWebClientId,
   }) => AppSettings(
     targetName: targetName ?? this.targetName,
@@ -64,6 +68,7 @@ class AppSettings {
     archiveOriginal: archiveOriginal ?? this.archiveOriginal,
     autoRefresh: autoRefresh ?? this.autoRefresh,
     refreshSeconds: refreshSeconds ?? this.refreshSeconds,
+    autoSync: autoSync ?? this.autoSync,
     googleWebClientId: googleWebClientId ?? this.googleWebClientId,
   );
 
@@ -75,6 +80,7 @@ class AppSettings {
     archiveOriginal: archiveOriginal,
     autoRefresh: autoRefresh,
     refreshSeconds: refreshSeconds,
+    autoSync: autoSync,
     googleWebClientId: googleWebClientId,
   );
 }

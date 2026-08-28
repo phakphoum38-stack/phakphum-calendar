@@ -26,6 +26,7 @@ import '../features/shift_parser/domain/monthly_roster_section.dart';
 import '../features/shift_parser/domain/normalized_cell.dart';
 import '../features/shift_parser/domain/shift_parser_input.dart';
 import '../features/workflow/application/shift_calendar_workflow_controller.dart';
+import '../features/diff_engine/domain/calendar_event_candidate.dart';
 import '../services/calendar_service.dart';
 import '../services/calendar_color_service.dart';
 import '../services/drive_archive_service.dart';
@@ -39,6 +40,8 @@ import '../services/sheets_service.dart';
 import '../services/shift_alert_service.dart';
 import '../services/shift_parser.dart';
 import '../core/state/controller_state.dart';
+import '../features/diff_engine/domain/calendar_diff.dart';
+import '../services/roster_timeline_generator.dart';
 
 class AppController extends ChangeNotifier implements ControllerState {
   factory AppController({
@@ -55,7 +58,6 @@ class AppController extends ChangeNotifier implements ControllerState {
     required LegacyScheduleAdapter legacyScheduleAdapter,
     required Future<ShiftCalendarWorkflowController> Function()
     calendarWorkflowControllerFactory,
-    RosterRevisionGateway revisionService = const RosterRevisionService(),
   }) {
     return AppController._(
       auth: auth,
@@ -70,7 +72,6 @@ class AppController extends ChangeNotifier implements ControllerState {
       scheduleRepository: scheduleRepository,
       legacyScheduleAdapter: legacyScheduleAdapter,
       calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
-      revisionService: revisionService,
     );
   }
 
@@ -88,7 +89,6 @@ class AppController extends ChangeNotifier implements ControllerState {
     required LegacyScheduleAdapter legacyScheduleAdapter,
     required Future<ShiftCalendarWorkflowController> Function()
     calendarWorkflowControllerFactory,
-    RosterRevisionGateway revisionService = const RosterRevisionService(),
   }) {
     final controller = AppController(
       auth: auth,
@@ -103,7 +103,6 @@ class AppController extends ChangeNotifier implements ControllerState {
       scheduleRepository: scheduleRepository,
       legacyScheduleAdapter: legacyScheduleAdapter,
       calendarWorkflowControllerFactory: calendarWorkflowControllerFactory,
-      revisionService: revisionService,
     );
     controller._initializeDemo();
     return controller;
@@ -122,7 +121,6 @@ class AppController extends ChangeNotifier implements ControllerState {
     required this._scheduleRepository,
     required this._legacyScheduleAdapter,
     required this._calendarWorkflowControllerFactory,
-    required this._revisionService,
   });
 
   void _initializeDemo() {
@@ -191,7 +189,6 @@ class AppController extends ChangeNotifier implements ControllerState {
   final LegacyScheduleAdapter _legacyScheduleAdapter;
   final Future<ShiftCalendarWorkflowController> Function()
   _calendarWorkflowControllerFactory;
-  final RosterRevisionGateway _revisionService;
 
   AppSettings settings = AppSettings.defaults();
   late LegacyScheduleConversion _legacySchedule = _legacyScheduleAdapter
@@ -301,31 +298,43 @@ class AppController extends ChangeNotifier implements ControllerState {
 
   Future<void> initialize() async {
     if (initialized) return;
-    try {
-      settings = await _settingsService.load();
-    } catch (caught) {
-      error = 'โหลดการตั้งค่าไม่สำเร็จ: $caught';
-    }
-    try {
-      auditEntries = await _settingsService.loadAudit();
-    } catch (caught) {
-      error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
-    }
-    try {
-      savedSheets = await _settingsService.loadSavedSheets();
-    } catch (caught) {
-      error ??= 'โหลดรายการชีตที่บันทึกไม่สำเร็จ: $caught';
-    }
-    try {
-      pinnedToolIds = await _settingsService.loadPinnedToolIds();
-    } catch (caught) {
-      error ??= 'โหลดแถบเครื่องมือไม่สำเร็จ: $caught';
-    }
-    try {
-      alertDecisions = await _settingsService.loadAlertDecisions();
-    } catch (caught) {
-      error ??= 'โหลดการตัดสินใจแจ้งเตือนไม่สำเร็จ: $caught';
-    }
+    await Future.wait<void>([
+      () async {
+        try {
+          settings = await _settingsService.load();
+        } catch (caught) {
+          error = 'โหลดการตั้งค่าไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          auditEntries = await _settingsService.loadAudit();
+        } catch (caught) {
+          error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          savedSheets = await _settingsService.loadSavedSheets();
+        } catch (caught) {
+          error ??= 'โหลดรายการชีตที่บันทึกไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          pinnedToolIds = await _settingsService.loadPinnedToolIds();
+        } catch (caught) {
+          error ??= 'โหลดแถบเครื่องมือไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          alertDecisions = await _settingsService.loadAlertDecisions();
+        } catch (caught) {
+          error ??= 'โหลดการตัดสินใจแจ้งเตือนไม่สำเร็จ: $caught';
+        }
+      }(),
+    ]);
     auth.addListener(_onAuthChanged);
     await auth.initialize(webClientId: settings.googleWebClientId);
     initialized = true;
@@ -696,11 +705,17 @@ class AppController extends ChangeNotifier implements ControllerState {
         _currentAllRosterShifts = _filterToSyncDateRange(
           _currentAllRosterShifts,
         );
-        await _loadRevisionTimelines(
-          client,
-          spreadsheetId: spreadsheetId,
-          currentShifts: _currentAllRosterShifts,
-        );
+          // Generate timelines on-demand without keeping revision exports.
+          final generator = RosterTimelineGenerator();
+          final timelines = generator.generateFromDocuments([
+            RosterRevisionDocument(
+              revisionId: 'current',
+              modifiedAt: DateTime.now(),
+              snapshots: snapshots,
+            )
+          ]);
+          _revisionTimelines = timelines;
+          _loadedRevisionCount = 1;
         final periods = _periodsForShifts(rangedParsed);
         _replaceLegacyShifts(
           _alertService.addOffDutyPeriods(
@@ -738,6 +753,24 @@ class AppController extends ChangeNotifier implements ControllerState {
       }
     });
     _scheduleAutoRefresh();
+    // Optionally perform automatic prepare+sync when enabled.
+    if (settings.autoSync && auth.isSignedIn) {
+      try {
+        if (pendingAlertCount == 0) {
+          await prepareCalendarSync();
+          await syncCalendar();
+        } else {
+          await _addAudit(
+            'auto.sync.skipped',
+            'ข้ามการซิงก์อัตโนมัติเนื่องจากมีแจ้งเตือนค้าง $pendingAlertCount รายการ',
+            true,
+          );
+        }
+      } catch (e) {
+        // Log and continue — do not fail the load flow if sync fails.
+        await _addAudit('auto.sync.failed', 'Auto sync failed: $e', false);
+      }
+    }
   }
 
   Future<void> importLocalRosterFile() async {
@@ -1212,6 +1245,57 @@ class AppController extends ChangeNotifier implements ControllerState {
     });
   }
 
+  /// Builds and returns a prepared calendar diff for preview purposes.
+  Future<CalendarDiff> previewCalendarDiff() async {
+    // Dispose any previous prepared workflow and create a new one.
+    _pendingCalendarWorkflow?.dispose();
+    _pendingCalendarWorkflow = null;
+    final workflow = await _createPreparedCalendarWorkflow();
+    _pendingCalendarWorkflow = workflow;
+    final prep = workflow.schedulePreparation;
+    if (prep == null) {
+      throw StateError('ไม่พบแผนการซิงก์ที่เตรียมไว้');
+    }
+    return prep.diff;
+  }
+
+  /// Prepares a preview for a pre-mapped list of desired calendar event
+  /// candidates (used for swap/one-off previews) and returns the computed diff.
+  Future<CalendarDiff> previewCandidates(
+      List<CalendarEventCandidate> desired) async {
+    final workflow = await _calendarWorkflowControllerFactory();
+    try {
+      await workflow.prepareCandidatePreview(desired: desired);
+      final preview = workflow.preview;
+      if (preview == null) throw StateError('ไม่พบ preview หลังจากเตรียม');
+      return preview.diff;
+    } finally {
+      workflow.dispose();
+    }
+  }
+
+  /// Executes synchronization for a pre-mapped set of desired candidates.
+  Future<void> syncCandidates(List<CalendarEventCandidate> desired) async {
+    final workflow = await _calendarWorkflowControllerFactory();
+    try {
+      await workflow.prepareCandidatePreview(desired: desired);
+      if (workflow.preview == null) {
+        throw StateError('ไม่พบแผนการซิงก์สำหรับรายการนี้');
+      }
+      await workflow.synchronize();
+      final result = workflow.lastResult;
+      if (result != null) {
+        await _addAudit(
+          'calendar.sync.candidates',
+          'ซิงก์ candidates: เพิ่ม ${result.historyEntry.inserted} แก้ไข ${result.historyEntry.updated} ลบ ${result.historyEntry.deleted}',
+          !result.hasFailures,
+        );
+      }
+    } finally {
+      workflow.dispose();
+    }
+  }
+
   /// Releases an authorized prepared workflow when confirmation is cancelled.
   void cancelCalendarSyncPreparation() {
     _pendingCalendarWorkflow?.dispose();
@@ -1659,48 +1743,6 @@ class AppController extends ChangeNotifier implements ControllerState {
             snapshots: snapshots,
           )
         : fallback;
-  }
-
-  Future<void> _loadRevisionTimelines(
-    GoogleApiClient client, {
-    required String spreadsheetId,
-    required List<Shift> currentShifts,
-  }) async {
-    _revisionTimelines = const {};
-    _loadedRevisionCount = 0;
-    try {
-      final documents = await _revisionService.readHistory(
-        client,
-        spreadsheetId,
-      );
-      final revisions = <RosterRevisionShifts>[];
-      for (final document in documents) {
-        final historical = _filterToSyncDateRange(
-          _parseAllRosterSnapshots(document.snapshots, fallback: const []),
-        );
-        revisions.add(
-          RosterRevisionShifts(
-            revisionId: document.revisionId,
-            modifiedAt: document.modifiedAt,
-            shifts: historical,
-          ),
-        );
-      }
-      _loadedRevisionCount = documents.length;
-      revisions.add(
-        RosterRevisionShifts(
-          revisionId: 'current',
-          modifiedAt: DateTime.now(),
-          shifts: currentShifts,
-        ),
-      );
-      _revisionTimelines = buildRosterAssignmentTimelines(revisions);
-    } catch (_) {
-      // Revision history is an optional read-only enhancement. A temporary
-      // Drive history/export failure must never hide the current live roster.
-      _revisionTimelines = const {};
-      _loadedRevisionCount = 0;
-    }
   }
 
   List<Shift> _applyReferenceRelationships(List<Shift> primary) {
