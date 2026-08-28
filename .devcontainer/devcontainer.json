@@ -1,0 +1,16 @@
+{
+  "name": "phakphum-calendar (PHP 8.4)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspaces/phakphum-calendar",
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "extensions": [
+    "bmewburn.vscode-intelephense-client",
+    "felixfbecker.php-debug"
+  ],
+  "postCreateCommand": "composer --version || true",
+  "remoteUser": "root"
+}

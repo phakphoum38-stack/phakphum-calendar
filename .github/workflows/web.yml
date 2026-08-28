@@ -55,6 +55,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - name: Build web release
         env:
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
@@ -89,7 +94,7 @@ jobs:
 
   deploy-pages:
     name: Deploy GitHub Pages
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build-web
     runs-on: ubuntu-latest
     timeout-minutes: 15
