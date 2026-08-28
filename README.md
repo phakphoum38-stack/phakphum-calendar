@@ -141,6 +141,46 @@ Laravel เป็น operational/future server boundary และยังไม
 local persistence หรือ Google Calendar synchronization ของแอป ดูวิธีติดตั้งและ API
 ทั้งหมดที่ [backend/README.md](backend/README.md)
 
+## Quick Start (Local development)
+
+A short path to get the app and backend running locally. Use the Docker backend flow when your local PHP does not meet the project requirement (PHP >= 8.4).
+
+1. Flutter app (from repository root):
+
+```bash
+flutter pub get
+flutter run
+```
+
+2. Backend (preferred: Docker if local PHP is older than 8.4):
+
+Local (if PHP & Composer match project requirement):
+
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+Docker (no PHP install required locally):
+
+```bash
+docker run --rm -v "$PWD/backend:/app" -w /app composer:2 composer install
+docker run --rm -p 8000:8000 -v "$PWD/backend:/app" -w /app php:8.4-cli \
+  sh -c "php artisan migrate --seed && php artisan serve --host=0.0.0.0 --port=8000"
+```
+
+Health checks:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+curl http://127.0.0.1:8000/api/v1/ready
+```
+
 
 ## สถานะของแต่ละระบบ
 
