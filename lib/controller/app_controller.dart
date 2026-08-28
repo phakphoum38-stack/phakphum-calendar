@@ -1751,48 +1751,6 @@ class AppController extends ChangeNotifier implements ControllerState {
         : fallback;
   }
 
-  Future<void> _loadRevisionTimelines(
-    GoogleApiClient client, {
-    required String spreadsheetId,
-    required List<Shift> currentShifts,
-  }) async {
-    _revisionTimelines = const {};
-    _loadedRevisionCount = 0;
-    try {
-      final documents = await _revisionService.readHistory(
-        client,
-        spreadsheetId,
-      );
-      final revisions = <RosterRevisionShifts>[];
-      for (final document in documents) {
-        final historical = _filterToSyncDateRange(
-          _parseAllRosterSnapshots(document.snapshots, fallback: const []),
-        );
-        revisions.add(
-          RosterRevisionShifts(
-            revisionId: document.revisionId,
-            modifiedAt: document.modifiedAt,
-            shifts: historical,
-          ),
-        );
-      }
-      _loadedRevisionCount = documents.length;
-      revisions.add(
-        RosterRevisionShifts(
-          revisionId: 'current',
-          modifiedAt: DateTime.now(),
-          shifts: currentShifts,
-        ),
-      );
-      _revisionTimelines = buildRosterAssignmentTimelines(revisions);
-    } catch (_) {
-      // Revision history is an optional read-only enhancement. A temporary
-      // Drive history/export failure must never hide the current live roster.
-      _revisionTimelines = const {};
-      _loadedRevisionCount = 0;
-    }
-  }
-
   List<Shift> _applyReferenceRelationships(List<Shift> primary) {
     if (_revisionTimelines.isEmpty &&
         (localReferenceLabel == null ||

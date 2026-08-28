@@ -254,7 +254,7 @@ class _PreviewChangesPageState extends State<PreviewChangesPage> {
   Widget _summaryBadge(String label, int count, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -376,28 +376,4 @@ class _PreviewChangesPageState extends State<PreviewChangesPage> {
     );
   }
 
-  List<ChangeItem> _sampleItems() => [
-        ChangeItem(
-          type: ChangeType.add,
-          title: '20 ส.ค. 08:00–16:00 — ต้นเวร: สมชาย — ผู้รับ: นพพล',
-          subtitle: 'Sheet: A12 — แผนก: เฝ้าเวร',
-          newValue: 'Google event will be created (color: blue)',
-        ),
-        ChangeItem(
-          type: ChangeType.update,
-          title: '21 ส.ค. 16:00–00:00 — ต้นเวร: สมศรี — ผู้แลก: นพพล',
-          subtitle: 'Update time from 15:00→16:00',
-          oldValue: '15:00–23:00',
-          newValue: '16:00–00:00',
-        ),
-        ChangeItem(
-          type: ChangeType.conflict,
-          title: '22 ส.ค. 08:00–12:00 — Conflict with existing event',
-          subtitle: 'Overlaps with personal calendar',
-        ),
-        ChangeItem(
-          type: ChangeType.delete,
-          title: '23 ส.ค. 08:00–16:00 — Remove draft event',
-        ),
-      ];
 }
