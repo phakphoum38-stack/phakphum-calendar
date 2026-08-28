@@ -41,6 +41,7 @@ import '../services/shift_alert_service.dart';
 import '../services/shift_parser.dart';
 import '../core/state/controller_state.dart';
 import '../features/diff_engine/domain/calendar_diff.dart';
+import '../services/roster_timeline_generator.dart';
 
 class AppController extends ChangeNotifier implements ControllerState {
   factory AppController({

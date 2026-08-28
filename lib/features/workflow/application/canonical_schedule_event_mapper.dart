@@ -6,6 +6,7 @@ import '../../../core/utils/calendar_event_matcher.dart';
 import '../../../domain/entities/schedule.dart';
 import '../../../domain/entities/shift_assignment.dart';
 import '../../diff_engine/domain/calendar_event_candidate.dart';
+import '../../../services/calendar_color_service.dart';
 
 /// Maps canonical schedule assignments to provider-neutral calendar events.
 class CanonicalScheduleEventMapper {
@@ -50,7 +51,16 @@ class CanonicalScheduleEventMapper {
               end: end,
               shouldExist: true,
               description: _description(assignment),
-              colorId: assignment.shift.calendarColorId ?? assignment.shift.category.googleColorId,
+                colorId: () {
+                  try {
+                    final option = CalendarColorService.options.firstWhere(
+                      (o) => o.colorValue == assignment.shift.color,
+                    );
+                    return option.id;
+                  } catch (e) {
+                    return null;
+                  }
+                }(),
             ),
           );
         }
@@ -65,7 +75,7 @@ class CanonicalScheduleEventMapper {
       'ผู้ปฏิบัติงาน: ${assignment.employee.fullName}',
       'แผนก: ${assignment.employee.department.name}',
     ];
-    final rel = assignment.shift.relationshipComment?.trim() ?? '';
+    final rel = assignment.remark?.trim() ?? '';
     final location = assignment.location?.trim() ?? '';
     final remark = assignment.remark?.trim() ?? '';
     if (rel.isNotEmpty) details.add('ความสัมพันธ์: $rel');
