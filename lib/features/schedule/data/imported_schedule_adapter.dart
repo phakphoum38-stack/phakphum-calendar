@@ -1,6 +1,7 @@
 import '../../excel_import/domain/shift_record.dart';
 import '../../../domain/entities/schedule.dart';
 import '../../../domain/entities/schedule_month.dart';
+import '../../../services/shift_time_service.dart';
 import '../domain/department.dart';
 import '../domain/employee.dart';
 import '../domain/shift.dart';
@@ -122,13 +123,16 @@ class ImportedScheduleAdapter {
   Shift _shift(String name) {
     final normalized = name.trim();
     final id = _identifier(normalized);
+    // Attempt to derive start/end times from the label.
+    final durations =
+        ShiftTimeService.parseDurations(normalized) ?? [Duration.zero, Duration.zero];
     return Shift(
       id: id,
       code: normalized,
       name: normalized,
       color: _colorFor(id),
-      startTime: Duration.zero,
-      endTime: Duration.zero,
+      startTime: durations[0],
+      endTime: durations[1],
       workingHours: 0,
     );
   }

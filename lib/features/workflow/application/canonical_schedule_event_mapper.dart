@@ -45,11 +45,12 @@ class CanonicalScheduleEventMapper {
           candidates.add(
             CalendarEventCandidate(
               syncId: _syncId('$identity|$occurrence'),
-              title: CalendarEventMatcher.calendarTitle(assignment.shift.name),
+              title: '${CalendarEventMatcher.calendarTitle(assignment.shift.name)} — ${assignment.employee.fullName}',
               start: start,
               end: end,
               shouldExist: true,
               description: _description(assignment),
+              colorId: assignment.shift.calendarColorId ?? assignment.shift.category.googleColorId,
             ),
           );
         }
@@ -64,8 +65,10 @@ class CanonicalScheduleEventMapper {
       'ผู้ปฏิบัติงาน: ${assignment.employee.fullName}',
       'แผนก: ${assignment.employee.department.name}',
     ];
+    final rel = assignment.shift.relationshipComment?.trim() ?? '';
     final location = assignment.location?.trim() ?? '';
     final remark = assignment.remark?.trim() ?? '';
+    if (rel.isNotEmpty) details.add('ความสัมพันธ์: $rel');
     if (location.isNotEmpty) details.add('สถานที่: $location');
     if (remark.isNotEmpty) details.add('หมายเหตุ: $remark');
     return details.join('\n');

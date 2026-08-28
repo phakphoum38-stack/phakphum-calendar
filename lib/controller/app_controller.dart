@@ -26,6 +26,7 @@ import '../features/shift_parser/domain/monthly_roster_section.dart';
 import '../features/shift_parser/domain/normalized_cell.dart';
 import '../features/shift_parser/domain/shift_parser_input.dart';
 import '../features/workflow/application/shift_calendar_workflow_controller.dart';
+import '../features/diff_engine/domain/calendar_event_candidate.dart';
 import '../services/calendar_service.dart';
 import '../services/calendar_color_service.dart';
 import '../services/drive_archive_service.dart';
@@ -39,6 +40,7 @@ import '../services/sheets_service.dart';
 import '../services/shift_alert_service.dart';
 import '../services/shift_parser.dart';
 import '../core/state/controller_state.dart';
+import '../features/diff_engine/domain/calendar_diff.dart';
 
 class AppController extends ChangeNotifier implements ControllerState {
   factory AppController({
@@ -708,11 +710,17 @@ class AppController extends ChangeNotifier implements ControllerState {
         _currentAllRosterShifts = _filterToSyncDateRange(
           _currentAllRosterShifts,
         );
-        await _loadRevisionTimelines(
-          client,
-          spreadsheetId: spreadsheetId,
-          currentShifts: _currentAllRosterShifts,
-        );
+          // Generate timelines on-demand without keeping revision exports.
+          final generator = RosterTimelineGenerator();
+          final timelines = await generator.generateFromDocuments([
+            RosterRevisionDocument(
+              revisionId: 'current',
+              modifiedAt: DateTime.now(),
+              snapshots: snapshots,
+            )
+          ]);
+          _revisionTimelines = timelines;
+          _loadedRevisionCount = 1;
         final periods = _periodsForShifts(rangedParsed);
         _replaceLegacyShifts(
           _alertService.addOffDutyPeriods(
@@ -750,6 +758,24 @@ class AppController extends ChangeNotifier implements ControllerState {
       }
     });
     _scheduleAutoRefresh();
+    // Optionally perform automatic prepare+sync when enabled.
+    if (settings.autoSync && auth.isSignedIn) {
+      try {
+        if (pendingAlertCount == 0) {
+          await prepareCalendarSync();
+          await syncCalendar();
+        } else {
+          await _addAudit(
+            'auto.sync.skipped',
+            'ข้ามการซิงก์อัตโนมัติเนื่องจากมีแจ้งเตือนค้าง $pendingAlertCount รายการ',
+            true,
+          );
+        }
+      } catch (e) {
+        // Log and continue — do not fail the load flow if sync fails.
+        await _addAudit('auto.sync.failed', 'Auto sync failed: $e', false);
+      }
+    }
   }
 
   Future<void> importLocalRosterFile() async {
@@ -1222,6 +1248,57 @@ class AppController extends ChangeNotifier implements ControllerState {
           ? 'ตรวจสอบแล้ว พร้อมยืนยันการซิงก์'
           : 'ตรวจสอบแล้ว พบคำเตือน $warnings รายการ พร้อมให้ผู้ใช้ยืนยัน';
     });
+  }
+
+  /// Builds and returns a prepared calendar diff for preview purposes.
+  Future<CalendarDiff> previewCalendarDiff() async {
+    // Dispose any previous prepared workflow and create a new one.
+    _pendingCalendarWorkflow?.dispose();
+    _pendingCalendarWorkflow = null;
+    final workflow = await _createPreparedCalendarWorkflow();
+    _pendingCalendarWorkflow = workflow;
+    final prep = workflow.schedulePreparation;
+    if (prep == null) {
+      throw StateError('ไม่พบแผนการซิงก์ที่เตรียมไว้');
+    }
+    return prep.diff;
+  }
+
+  /// Prepares a preview for a pre-mapped list of desired calendar event
+  /// candidates (used for swap/one-off previews) and returns the computed diff.
+  Future<CalendarDiff> previewCandidates(
+      List<CalendarEventCandidate> desired) async {
+    final workflow = await _calendarWorkflowControllerFactory();
+    try {
+      await workflow.prepareCandidatePreview(desired: desired);
+      final preview = workflow.preview;
+      if (preview == null) throw StateError('ไม่พบ preview หลังจากเตรียม');
+      return preview.diff;
+    } finally {
+      workflow.dispose();
+    }
+  }
+
+  /// Executes synchronization for a pre-mapped set of desired candidates.
+  Future<void> syncCandidates(List<CalendarEventCandidate> desired) async {
+    final workflow = await _calendarWorkflowControllerFactory();
+    try {
+      await workflow.prepareCandidatePreview(desired: desired);
+      if (workflow.preview == null) {
+        throw StateError('ไม่พบแผนการซิงก์สำหรับรายการนี้');
+      }
+      await workflow.synchronize();
+      final result = workflow.lastResult;
+      if (result != null) {
+        await _addAudit(
+          'calendar.sync.candidates',
+          'ซิงก์ candidates: เพิ่ม ${result.historyEntry.inserted} แก้ไข ${result.historyEntry.updated} ลบ ${result.historyEntry.deleted}',
+          !result.hasFailures,
+        );
+      }
+    } finally {
+      workflow.dispose();
+    }
   }
 
   /// Releases an authorized prepared workflow when confirmation is cancelled.
