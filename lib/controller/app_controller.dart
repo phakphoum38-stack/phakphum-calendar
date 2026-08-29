@@ -686,9 +686,14 @@ class AppController extends ChangeNotifier implements ControllerState {
         monthlyRoster = parsedMonthly.sections.isEmpty
             ? MonthlyRosterParseReport.fromShifts(parsed)
             : parsedMonthly;
-        _loadedRosterShifts = parsed;
-        _setDefaultSyncDateRange(parsed);
-        final rangedParsed = _filterToSyncDateRange(parsed);
+        final monthlyFallback = _monthlyAssignmentsToShifts(
+          parsedMonthly,
+          searchNames: searchNames,
+        );
+        final effectiveParsed = parsed.isNotEmpty ? parsed : monthlyFallback;
+        _loadedRosterShifts = effectiveParsed;
+        _setDefaultSyncDateRange(effectiveParsed);
+        final rangedParsed = _filterToSyncDateRange(effectiveParsed);
         _currentAllRosterShifts = _parseAllRosterSnapshots(
           snapshots,
           fallback: rangedParsed,
@@ -1647,6 +1652,118 @@ class AppController extends ChangeNotifier implements ControllerState {
     }
     return parsedByKey.values.toList()
       ..sort((left, right) => left.start.compareTo(right.start));
+  }
+
+  List<Shift> _monthlyAssignmentsToShifts(
+    MonthlyRosterParseReport report, {
+    required List<String> searchNames,
+  }) {
+    final targets = searchNames
+        .map(_compactRosterName)
+        .where((x) => x.isNotEmpty)
+        .toSet();
+
+    final found = <String, Shift>{};
+
+    for (final assignment in report.assignments) {
+      final worker = assignment.workerName.trim();
+
+      if (worker.isEmpty || !targets.any(_compactRosterName(worker).contains)) {
+        continue;
+      }
+
+      final rule = _monthlyRule(assignment.rowLabel);
+      if (rule == null) continue;
+
+      final start = DateTime(
+        assignment.date.year,
+        assignment.date.month,
+        assignment.date.day,
+        rule.$1,
+        rule.$2,
+      );
+
+      var end = DateTime(
+        assignment.date.year,
+        assignment.date.month,
+        assignment.date.day,
+        rule.$3,
+        rule.$4,
+      );
+
+      if (!end.isAfter(start)) {
+        end = end.add(const Duration(days: 1));
+      }
+
+      final shift = Shift(
+        code: rule.$5,
+        rowLabel: assignment.rowLabel.trim().isEmpty
+            ? rule.$5
+            : assignment.rowLabel.trim(),
+        assignedName: worker,
+        start: start,
+        end: end,
+        sheetTitle: assignment.sectionTitle,
+        cell: assignment.sourceCell,
+        category: rule.$6,
+      );
+
+      found.putIfAbsent(shift.sourceKey, () => shift);
+    }
+
+    return found.values.toList()..sort((a, b) => a.start.compareTo(b.start));
+  }
+
+  String _compactRosterName(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
+
+  (int, int, int, int, String, ShiftCategory)? _monthlyRule(String label) {
+    final v = label.trim().toUpperCase().replaceAll(RegExp(r'[\s.\-_]+'), '');
+
+    if (v == 'GEN') {
+      return (7, 30, 12, 0, 'UG', ShiftCategory.clinic);
+    }
+
+    if (v == 'ER' || v == 'CT') {
+      return (8, 0, 16, 0, 'U$v', ShiftCategory.own);
+    }
+
+    if (v.contains('14ชั้น')) {
+      return (7, 0, 8, 0, 'U14', ShiftCategory.own);
+    }
+
+    final p = RegExp(r'^P([1-4])(เช้า|บ่าย|ดึก)$').firstMatch(v);
+
+    if (p != null) {
+      final base = 'P${p.group(1)}';
+
+      return switch (p.group(2)) {
+        'เช้า' => (8, 0, 16, 0, 'U$base', ShiftCategory.own),
+        'บ่าย' => (16, 0, 0, 0, 'A$base', ShiftCategory.own),
+        'ดึก' => (0, 0, 8, 0, 'N$base', ShiftCategory.own),
+        _ => null,
+      };
+    }
+
+    for (final base in const ['CTIPD', 'CTER', 'IPD', 'ER']) {
+      if (!v.startsWith(base)) continue;
+
+      final part = v.substring(base.length);
+
+      if (part == 'เช้า') {
+        return (8, 0, 16, 0, 'U$base', ShiftCategory.own);
+      }
+
+      if (part == 'บ่าย') {
+        return (16, 0, base == 'ER' ? 0 : 8, 0, 'A$base', ShiftCategory.own);
+      }
+
+      if (part == 'ดึก' && base == 'ER') {
+        return (0, 0, 8, 0, 'NER', ShiftCategory.own);
+      }
+    }
+
+    return null;
   }
 
   List<Shift> _parseAllRosterSnapshots(
