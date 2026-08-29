@@ -1,0 +1,127 @@
+name: One-shot roster sync repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event.head_commit.message == 'chore(ci): trigger roster sync repair'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Patch controller
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('lib/controller/app_controller.dart')
+          s = p.read_text()
+          old = '''        monthlyRoster = parsedMonthly.sections.isEmpty
+            ? MonthlyRosterParseReport.fromShifts(parsed)
+            : parsedMonthly;
+        _loadedRosterShifts = parsed;
+'''
+          new = '''        monthlyRoster = parsedMonthly.sections.isEmpty
+            ? MonthlyRosterParseReport.fromShifts(parsed)
+            : parsedMonthly;
+        final monthlyFallback = _monthlyAssignmentsToShifts(
+          parsedMonthly,
+          searchNames: searchNames,
+        );
+        final effectiveParsed = parsed.isNotEmpty ? parsed : monthlyFallback;
+        _loadedRosterShifts = effectiveParsed;
+'''
+          if old not in s: raise SystemExit('loadRoster anchor not found')
+          s = s.replace(old, new, 1)
+          old2 = '''        _setDefaultSyncDateRange(parsed);
+        final rangedParsed = _filterToSyncDateRange(parsed);
+'''
+          new2 = '''        _setDefaultSyncDateRange(effectiveParsed);
+        final rangedParsed = _filterToSyncDateRange(effectiveParsed);
+'''
+          if old2 not in s: raise SystemExit('range anchor not found')
+          s = s.replace(old2, new2, 1)
+          marker = '''  List<Shift> _parseAllRosterSnapshots(
+'''
+          helper = '''  List<Shift> _monthlyAssignmentsToShifts(
+    MonthlyRosterParseReport report, {
+    required List<String> searchNames,
+  }) {
+    final targets = searchNames.map(_compactRosterName).where((x) => x.isNotEmpty).toSet();
+    final found = <String, Shift>{};
+    for (final a in report.assignments) {
+      final worker = a.workerName.trim();
+      if (worker.isEmpty || !targets.any(_compactRosterName(worker).contains)) continue;
+      final rule = _monthlyRule(a.rowLabel);
+      if (rule == null) continue;
+      final start = DateTime(a.date.year, a.date.month, a.date.day, rule.$1, rule.$2);
+      var end = DateTime(a.date.year, a.date.month, a.date.day, rule.$3, rule.$4);
+      if (!end.isAfter(start)) end = end.add(const Duration(days: 1));
+      final shift = Shift(
+        code: rule.$5,
+        rowLabel: a.rowLabel.trim().isEmpty ? rule.$5 : a.rowLabel.trim(),
+        assignedName: worker,
+        start: start,
+        end: end,
+        sheetTitle: a.sectionTitle,
+        cell: a.sourceCell,
+        category: rule.$6,
+      );
+      found.putIfAbsent(shift.sourceKey, () => shift);
+    }
+    return found.values.toList()..sort((a, b) => a.start.compareTo(b.start));
+  }
+
+  String _compactRosterName(String value) => value.trim().replaceAll(RegExp(r'\\s+'), '').toLowerCase();
+
+  (int, int, int, int, String, ShiftCategory)? _monthlyRule(String label) {
+    final v = label.trim().toUpperCase().replaceAll(RegExp(r'[\\s.\\-_]+'), '');
+    if (v == 'GEN') return (7, 30, 12, 0, 'UG', ShiftCategory.clinic);
+    if (v == 'ER' || v == 'CT') return (8, 0, 16, 0, 'U$v', ShiftCategory.own);
+    if (v.contains('14ชั้น')) return (7, 0, 8, 0, 'U14', ShiftCategory.own);
+    final p = RegExp(r'^P([1-4])(เช้า|บ่าย|ดึก)$').firstMatch(v);
+    if (p != null) {
+      final base = 'P${p.group(1)}';
+      return switch (p.group(2)) {
+        'เช้า' => (8, 0, 16, 0, 'U$base', ShiftCategory.own),
+        'บ่าย' => (16, 0, 0, 0, 'A$base', ShiftCategory.own),
+        'ดึก' => (0, 0, 8, 0, 'N$base', ShiftCategory.own),
+        _ => null,
+      };
+    }
+    for (final base in const ['CTIPD', 'CTER', 'IPD', 'ER']) {
+      if (!v.startsWith(base)) continue;
+      final part = v.substring(base.length);
+      if (part == 'เช้า') return (8, 0, 16, 0, 'U$base', ShiftCategory.own);
+      if (part == 'บ่าย') return (16, 0, base == 'ER' ? 0 : 8, 0, 'A$base', ShiftCategory.own);
+      if (part == 'ดึก' && base == 'ER') return (0, 0, 8, 0, 'NER', ShiftCategory.own);
+    }
+    return null;
+  }
+
+'''
+          if marker not in s: raise SystemExit('parser anchor not found')
+          s = s.replace(marker, helper + marker, 1)
+          p.write_text(s)
+      - name: Format and verify
+        run: |
+          flutter pub get
+          dart format lib/controller/app_controller.dart
+          flutter analyze
+          flutter test
+          git diff --check
+      - name: Commit repaired controller
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/controller/app_controller.dart
+          git commit -m 'fix(shift-parser): restore roster shifts from monthly grid'
+          git push
