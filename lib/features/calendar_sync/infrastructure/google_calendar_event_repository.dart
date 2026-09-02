@@ -9,6 +9,7 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
   GoogleCalendarEventRepository({
     required this._calendarApi,
     required String calendarId,
+    this.requestTimeout = defaultRequestTimeout,
   }) : _calendarId = calendarId.trim(),
        _mapper = const GoogleCalendarEventMapper() {
     if (_calendarId.isEmpty) {
@@ -23,6 +24,9 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
   final calendar.CalendarApi _calendarApi;
   final String _calendarId;
   final GoogleCalendarEventMapper _mapper;
+  final Duration requestTimeout;
+
+  static const Duration defaultRequestTimeout = Duration(seconds: 20);
 
   @override
   Future<List<CalendarEventRecord>> listManagedEvents({
@@ -48,7 +52,7 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
               '${GoogleCalendarEventMapper.managedByValue}',
         ],
         pageToken: pageToken,
-      );
+      ).timeout(requestTimeout);
 
       for (final event in response.items ?? const <calendar.Event>[]) {
         final record = _mapper.fromGoogleEvent(event);
@@ -70,7 +74,9 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
   Future<String> createEvent(CalendarEventCandidate candidate) async {
     final request = _mapper.toGoogleEvent(candidate);
 
-    final created = await _calendarApi.events.insert(request, _calendarId);
+    final created = await _calendarApi.events
+        .insert(request, _calendarId)
+        .timeout(requestTimeout);
 
     final providerEventId = created.id?.trim();
 
@@ -92,14 +98,18 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
 
     final request = _mapper.toGoogleEvent(candidate);
 
-    await _calendarApi.events.update(request, _calendarId, normalizedEventId);
+    await _calendarApi.events
+        .update(request, _calendarId, normalizedEventId)
+        .timeout(requestTimeout);
   }
 
   @override
   Future<void> deleteEvent({required String providerEventId}) async {
     final normalizedEventId = _requireProviderEventId(providerEventId);
 
-    await _calendarApi.events.delete(_calendarId, normalizedEventId);
+    await _calendarApi.events
+        .delete(_calendarId, normalizedEventId)
+        .timeout(requestTimeout);
   }
 
   int _compareRecords(CalendarEventRecord left, CalendarEventRecord right) {
