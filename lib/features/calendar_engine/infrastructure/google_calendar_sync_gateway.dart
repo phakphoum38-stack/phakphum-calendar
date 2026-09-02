@@ -7,7 +7,10 @@ import '../domain/managed_calendar_event.dart';
 
 class GoogleCalendarSyncGateway
     implements CalendarSyncGateway, ComparableCalendarEventGateway {
-  GoogleCalendarSyncGateway(this._client);
+  GoogleCalendarSyncGateway(
+    this._client, {
+    this.requestTimeout = defaultRequestTimeout,
+  });
 
   static const String syncIdKey = 'sceSyncId';
   static const String legacySyncIdKey = 'syncId';
@@ -18,9 +21,10 @@ class GoogleCalendarSyncGateway
 
   /// Prevent one provider request from leaving the sync Future pending forever.
   /// The sync executor can retry a bounded failure instead of hanging the UI.
-  static const Duration requestTimeout = Duration(seconds: 20);
+  static const Duration defaultRequestTimeout = Duration(seconds: 20);
 
   final http.Client _client;
+  final Duration requestTimeout;
 
   @override
   Future<List<ManagedCalendarEvent>> listManagedEvents({
