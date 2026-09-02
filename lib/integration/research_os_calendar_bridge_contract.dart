@@ -10,6 +10,7 @@ final class ResearchOsCalendarBridgeContract {
   static const defaultPort = 8765;
   static const healthPath = '/v1/research-os/health';
   static const syncPath = '/v1/research-os/sync';
+  static const syncStatusPathPrefix = '/v1/research-os/sync/';
 
   static const requestTimeoutSeconds = 20;
 
@@ -18,4 +19,7 @@ final class ResearchOsCalendarBridgeContract {
 
   static Uri syncUri({int port = defaultPort}) =>
       Uri.parse('http://$host:$port$syncPath');
+
+  static Uri syncStatusUri(String syncId, {int port = defaultPort}) =>
+      Uri.parse('http://$host:$port$syncStatusPathPrefix$syncId');
 }
