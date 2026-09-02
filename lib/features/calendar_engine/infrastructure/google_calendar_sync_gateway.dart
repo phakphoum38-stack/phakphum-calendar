@@ -16,6 +16,10 @@ class GoogleCalendarSyncGateway
   static const String timeZone = 'Asia/Bangkok';
   static const Duration _bangkokOffset = Duration(hours: 7);
 
+  /// Prevent one provider request from leaving the sync Future pending forever.
+  /// The sync executor can retry a bounded failure instead of hanging the UI.
+  static const Duration requestTimeout = Duration(seconds: 20);
+
   final http.Client _client;
 
   @override
@@ -56,14 +60,16 @@ class GoogleCalendarSyncGateway
     final items = <calendar.Event>[];
     String? pageToken;
     do {
-      final events = await api.events.list(
-        calendarId,
-        timeMin: _bangkokInstant(timeMin),
-        timeMax: _bangkokInstant(timeMax),
-        singleEvents: true,
-        maxResults: 2500,
-        pageToken: pageToken,
-      );
+      final events = await api.events
+          .list(
+            calendarId,
+            timeMin: _bangkokInstant(timeMin),
+            timeMax: _bangkokInstant(timeMax),
+            singleEvents: true,
+            maxResults: 2500,
+            pageToken: pageToken,
+          )
+          .timeout(requestTimeout);
       items.addAll(events.items ?? const <calendar.Event>[]);
       pageToken = events.nextPageToken;
     } while (pageToken != null && pageToken.isNotEmpty);
@@ -106,10 +112,12 @@ class GoogleCalendarSyncGateway
   @override
   Future<ManagedCalendarEvent> insert(CalendarSyncCommand command) async {
     final api = calendar.CalendarApi(_client);
-    final created = await api.events.insert(
-      _toEvent(command),
-      command.calendarId,
-    );
+    final created = await api.events
+        .insert(
+          _toEvent(command),
+          command.calendarId,
+        )
+        .timeout(requestTimeout);
 
     return _toManaged(created, command.syncId);
   }
@@ -120,11 +128,13 @@ class GoogleCalendarSyncGateway
     required CalendarSyncCommand command,
   }) async {
     final api = calendar.CalendarApi(_client);
-    final updated = await api.events.update(
-      _toEvent(command),
-      command.calendarId,
-      eventId,
-    );
+    final updated = await api.events
+        .update(
+          _toEvent(command),
+          command.calendarId,
+          eventId,
+        )
+        .timeout(requestTimeout);
 
     return _toManaged(updated, command.syncId);
   }
@@ -135,7 +145,7 @@ class GoogleCalendarSyncGateway
     String calendarId = 'primary',
   }) async {
     final api = calendar.CalendarApi(_client);
-    await api.events.delete(calendarId, eventId);
+    await api.events.delete(calendarId, eventId).timeout(requestTimeout);
   }
 
   calendar.Event _toEvent(CalendarSyncCommand command) {
