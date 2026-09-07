@@ -210,3 +210,59 @@ Diagnostics API ไม่ควรรับ OAuth token, URL ชีตส่ว�
 - สำรองฐานข้อมูลและกำหนด retention ของ diagnostic logs
 
 ดูรายละเอียดเพิ่มเติมที่ [SECURITY.md](../SECURITY.md)
+
+## Quick Start (Local development)
+
+Follow these steps for a fast local development setup. Prefer using the Docker commands
+if you don't have matching platform tool versions locally.
+
+1. Install Flutter SDK (stable) and ensure `flutter` is on your PATH. Verify with:
+
+```bash
+flutter --version
+```
+
+2. Run the Flutter app (from repo root):
+
+```bash
+flutter pub get
+flutter run
+```
+
+3. Backend (Laravel) local setup — recommended: Docker fallback if your PHP version
+   does not match project requirements (project requires PHP >= 8.4):
+
+Local (if PHP & Composer match project requirement):
+
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed
+php artisan serve --host=127.0.0.1 --port=8000
+```
+
+Docker (when local PHP is older than project requirement):
+
+```bash
+# Install composer deps using the official composer image
+docker run --rm -v "$PWD/backend:/app" -w /app composer:2 composer install
+
+# Serve with PHP 8.4 container (adjust port mapping as needed)
+docker run --rm -p 8000:8000 -v "$PWD/backend:/app" -w /app php:8.4-cli \
+  sh -c "php artisan migrate --seed && php artisan serve --host=0.0.0.0 --port=8000"
+```
+
+4. Health checks (once backend is running):
+
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+curl http://127.0.0.1:8000/api/v1/ready
+```
+
+Notes:
+- If `composer install` fails due to PHP version, use the Docker commands above.
+- Keep your Flutter SDK on the stable channel for compatibility with CI artifacts.
+

@@ -4,6 +4,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../controller/app_controller.dart';
 import '../domain/entities/schedule.dart';
@@ -36,6 +37,8 @@ import '../services/drive_ownership_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/shift_color_service.dart';
 import 'google_sign_in_button.dart';
+import 'preview_changes.dart';
+import 'audit_log_page.dart';
 
 enum _UtilityPage {
   notifications,
@@ -2366,6 +2369,26 @@ class _AutoRefreshControls extends StatelessWidget {
               onChanged: (value) => onChanged(value, settings.refreshSeconds),
             ),
             const Text('Auto refresh'),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Switch(
+                      value: settings.autoSync,
+                      onChanged: (value) async {
+                        await controller.updateSettings(
+                          settings.copyWith(autoSync: value),
+                        );
+                      },
+                    ),
+                    const Text('Auto sync'),
+                  ],
+                ),
+              ],
+            ),
             DropdownButton<int>(
               value: settings.refreshSeconds,
               items: [
@@ -3655,13 +3678,32 @@ class _PreviewPage extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: openRosterEditor,
-              icon: const Icon(Icons.edit_calendar_outlined),
-              label: Text(context.l10n.manualRosterEditor),
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: openRosterEditor,
+                    icon: const Icon(Icons.edit_calendar_outlined),
+                    label: Text(context.l10n.manualRosterEditor),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => PreviewChangesPage(controller: controller),
+                    )),
+                    icon: const Icon(Icons.playlist_add_check),
+                    label: const Text('Preview Sync'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SwapWorkflowPage(controller: controller),
+                    )),
+                    icon: const Icon(Icons.swap_horiz),
+                    label: const Text('Swap workflow'),
+                  ),
+                ],
+              ),
             ),
-          ),
         ),
         Expanded(
           child: ListView.separated(
@@ -4666,6 +4708,13 @@ class _SettingsPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
+                'Development strategy',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              _DevStrategyPicker(),
+              const SizedBox(height: 12),
+              Text(
                 'ขอบเขตความปลอดภัย',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
@@ -4685,6 +4734,16 @@ class _SettingsPage extends StatelessWidget {
               const _SafetyRow(
                 icon: Icons.people_outline,
                 text: 'ไม่ส่งคำเชิญและไม่สร้าง Google Meet',
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.history)),
+                title: const Text('Audit log'),
+                subtitle: const Text('ดูบันทึกการซิงก์และกิจกรรมระบบ'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => AuditLogPage(controller: controller)));
+                },
               ),
             ],
           ),
@@ -4754,6 +4813,59 @@ class _FutureSheetCard extends StatefulWidget {
 
   @override
   State<_FutureSheetCard> createState() => _FutureSheetCardState();
+}
+
+class _DevStrategyPicker extends StatefulWidget {
+  const _DevStrategyPicker({super.key});
+
+  @override
+  State<_DevStrategyPicker> createState() => _DevStrategyPickerState();
+}
+
+class _DevStrategyPickerState extends State<_DevStrategyPicker> {
+  static const _key = 'dev_strategy';
+  String _value = 'feature';
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      setState(() => _value = prefs.getString(_key) ?? 'feature');
+    });
+  }
+
+  Future<void> _save(String v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, v);
+    setState(() => _value = v);
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      RadioListTile<String>(
+        value: 'feature',
+        groupValue: _value,
+        title: const Text('Feature-first (SwapRequest)'),
+        subtitle: const Text('เพิ่มระบบคำขอแลกเวรและประวัติการอนุมัติ'),
+        onChanged: (v) => _save(v!),
+      ),
+      RadioListTile<String>(
+        value: 'tests',
+        groupValue: _value,
+        title: const Text('Tests-first (Tests + CI)'),
+        subtitle: const Text('เพิ่ม unit/integration tests และ CI ก่อนฟีเจอร์'),
+        onChanged: (v) => _save(v!),
+      ),
+      RadioListTile<String>(
+        value: 'demo-backend',
+        groupValue: _value,
+        title: const Text('Demo backend'),
+        subtitle: const Text('ส่งคำขอแลกเวรไปยัง demo backend (localhost:8080)'),
+        onChanged: (v) => _save(v!),
+      ),
+    ],
+  );
 }
 
 class _FutureSheetCardState extends State<_FutureSheetCard> {

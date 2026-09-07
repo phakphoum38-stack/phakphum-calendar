@@ -301,31 +301,43 @@ class AppController extends ChangeNotifier implements ControllerState {
 
   Future<void> initialize() async {
     if (initialized) return;
-    try {
-      settings = await _settingsService.load();
-    } catch (caught) {
-      error = 'โหลดการตั้งค่าไม่สำเร็จ: $caught';
-    }
-    try {
-      auditEntries = await _settingsService.loadAudit();
-    } catch (caught) {
-      error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
-    }
-    try {
-      savedSheets = await _settingsService.loadSavedSheets();
-    } catch (caught) {
-      error ??= 'โหลดรายการชีตที่บันทึกไม่สำเร็จ: $caught';
-    }
-    try {
-      pinnedToolIds = await _settingsService.loadPinnedToolIds();
-    } catch (caught) {
-      error ??= 'โหลดแถบเครื่องมือไม่สำเร็จ: $caught';
-    }
-    try {
-      alertDecisions = await _settingsService.loadAlertDecisions();
-    } catch (caught) {
-      error ??= 'โหลดการตัดสินใจแจ้งเตือนไม่สำเร็จ: $caught';
-    }
+    await Future.wait<void>([
+      () async {
+        try {
+          settings = await _settingsService.load();
+        } catch (caught) {
+          error = 'โหลดการตั้งค่าไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          auditEntries = await _settingsService.loadAudit();
+        } catch (caught) {
+          error ??= 'โหลดบันทึกไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          savedSheets = await _settingsService.loadSavedSheets();
+        } catch (caught) {
+          error ??= 'โหลดรายการชีตที่บันทึกไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          pinnedToolIds = await _settingsService.loadPinnedToolIds();
+        } catch (caught) {
+          error ??= 'โหลดแถบเครื่องมือไม่สำเร็จ: $caught';
+        }
+      }(),
+      () async {
+        try {
+          alertDecisions = await _settingsService.loadAlertDecisions();
+        } catch (caught) {
+          error ??= 'โหลดการตัดสินใจแจ้งเตือนไม่สำเร็จ: $caught';
+        }
+      }(),
+    ]);
     auth.addListener(_onAuthChanged);
     await auth.initialize(webClientId: settings.googleWebClientId);
     initialized = true;
