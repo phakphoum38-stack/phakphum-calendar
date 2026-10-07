@@ -97,6 +97,8 @@ jobs:
           test -f .github/workflows/windows.yml
           test -f .github/workflows/web.yml
           test -f .github/workflows/final-gate.yml
+          test ! -f .github/workflows/flutter-ci.yaml
+          test ! -f .github/workflows/flutter-web-deploy.yaml
           test ! -f .github/workflows/android.yml
           test ! -f .github/workflows/ios.yml
           test ! -f .github/workflows/macos.yml
