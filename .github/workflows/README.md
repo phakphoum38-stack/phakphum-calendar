@@ -1,11 +1,11 @@
 # GitHub Actions workflows
 
-The active delivery surface is intentionally reduced to **two targets only**:
+The active delivery surface is intentionally reduced to **Windows + Web**:
 
+- `ci-auto-detect.yml` — capability detection plus selective Dart/Flutter quality checks.
 - `windows.yml` — Windows x64 release ZIP + SHA-256 checksum.
 - `web.yml` — Flutter Web release + GitHub Pages deployment.
-- `owner-generated-v6x6.yml` — owner-generated capability detection and release-surface guard.
-- `final-gate.yml` — final verification that Windows, Web, and the capability gate all passed for the same `main` commit.
+- `final-gate.yml` — final verification that Auto Detect CI, Windows, and Web all passed for the same `main` commit.
 
 Android, iOS, macOS, Linux, Laravel/backend validation, broad repository
 validation, coverage gates, integration-test gates, and platform-specific
@@ -21,6 +21,8 @@ For the current stabilization phase:
 | --- | --- | --- |
 | Windows x64 | Supported | `windows.yml` |
 | Web / GitHub Pages | Supported | `web.yml` |
+| Capability detection | Supported | `ci-auto-detect.yml` |
+| Final evidence gate | Supported | `final-gate.yml` |
 | Android | Paused | No active workflow |
 | iOS | Paused | No active workflow |
 | macOS | Paused | No active workflow |
@@ -32,11 +34,10 @@ return only through an explicit decision and a separately verified workflow.
 
 ## Owner-generated v6^6 capability policy
 
-`owner-generated-v6x6.yml` is the lightweight source-of-truth guard for the
-current delivery surface. It detects whether the repository contains the
-Flutter/Dart project and whether the supported Windows/Web surfaces exist.
-It records paused platforms explicitly and treats `integration_test/` as
-optional.
+`ci-auto-detect.yml` is the lightweight source-of-truth guard for the current
+delivery surface. It detects whether the repository contains the Flutter/Dart
+project and whether the supported Windows/Web surfaces exist. It records
+paused platforms explicitly and treats `integration_test/` as optional.
 
 The capability gate is intentionally independent of Dart formatting, static
 analysis, coverage generation, and platform release builds. It must not mutate
@@ -46,11 +47,11 @@ source files and must not auto-format code.
 
 `final-gate.yml` is the final evidence gate for `main`.
 
-It is triggered when the active Windows, Web, or owner-generated capability
-workflow completes. It verifies that all three workflows have a successful
-completed run for the **same commit SHA** before reporting `FINAL PASS`.
-It also verifies that the active repository structure remains Windows + Web
-and that Android/iOS/macOS/Linux workflows remain paused.
+It is triggered when the active Windows, Web, or capability workflow completes.
+It verifies that all three workflows have a successful completed run for the
+**same commit SHA** before reporting `FINAL PASS`. It also verifies that the
+active repository structure remains Windows + Web and that
+Android/iOS/macOS/Linux workflows remain paused.
 
 This prevents a green result from one platform being mistaken for a complete
 release result and avoids bringing back the old formatter/coverage failure

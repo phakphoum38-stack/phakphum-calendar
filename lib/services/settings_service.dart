@@ -26,6 +26,7 @@ class SettingsService implements AppSettingsStore {
   static const _nameKey = 'target_name';
   static const _archiveKey = 'archive_original';
   static const _autoRefreshKey = 'auto_refresh';
+  static const _autoSyncKey = 'auto_sync';
   static const _refreshSecondsKey = 'refresh_seconds';
   static const _googleWebClientIdKey = 'google_web_client_id';
   static const _auditKey = 'audit_log';
@@ -52,6 +53,7 @@ class SettingsService implements AppSettingsStore {
       periods: const [],
       archiveOriginal: prefs.getBool(_archiveKey) ?? defaults.archiveOriginal,
       autoRefresh: prefs.getBool(_autoRefreshKey) ?? defaults.autoRefresh,
+      autoSync: prefs.getBool(_autoSyncKey) ?? defaults.autoSync,
       refreshSeconds:
           (prefs.getInt(_refreshSecondsKey) ?? defaults.refreshSeconds).clamp(
             1,
@@ -71,6 +73,7 @@ class SettingsService implements AppSettingsStore {
       prefs.remove('target_month'),
       prefs.setBool(_archiveKey, settings.archiveOriginal),
       prefs.setBool(_autoRefreshKey, settings.autoRefresh),
+      prefs.setBool(_autoSyncKey, settings.autoSync),
       prefs.setInt(_refreshSecondsKey, settings.refreshSeconds.clamp(1, 60)),
       prefs.setString(_googleWebClientIdKey, settings.googleWebClientId),
     ]);
