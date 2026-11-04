@@ -7,7 +7,7 @@ Platform runner.
 
 ## Isolation requirements
 
-- Install in a new directory: `C:\\actions-runner-calendar`.
+- Install in a new directory: `C:\actions-runner-calendar`.
 - Register it only to `https://github.com/phakphum12345/phakphum-calendar`.
 - Add the custom label `calendar-windows`; GitHub supplies the standard
   `self-hosted`, `windows`, and `x64` labels.
@@ -17,6 +17,17 @@ Platform runner.
 - Never commit, paste into chat, or log the short-lived registration token.
 - Do not stop, remove, rename, or reconfigure any existing runner service.
 
+## Machine prerequisites
+
+- Git and the Flutter stable SDK must be installed and available to the
+  Windows account that runs the runner service.
+- Install Visual Studio 2022 with the **Desktop development with C++**
+  workload and a supported Windows SDK for Flutter Windows builds.
+- Confirm `flutter doctor -v` reports the Windows toolchain as ready before
+  dispatching the build workflow.
+- Ensure the runner service account has access only to the files and secrets
+  required for this repository.
+
 ## Installation
 
 1. Open the repository's
@@ -25,7 +36,7 @@ Platform runner.
 2. Select **Windows** and **x64**.
 3. Follow GitHub's current download and extraction commands in an elevated
    PowerShell window, changing the destination to
-   `C:\\actions-runner-calendar`.
+   `C:\actions-runner-calendar`.
 4. Use the Configure command shown by GitHub for this repository. Add the
    custom label `calendar-windows` when prompted, or use the equivalent
    `--labels calendar-windows` option. Keep the default work folder
