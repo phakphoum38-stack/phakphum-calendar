@@ -10,9 +10,13 @@ Google Calendar gateway, or dependency composition root.
 The first increment is deliberately **preview-only**:
 
 - accepts normalized records with explicit batch and source-record IDs;
-- requires explicit title, ISO-8601 start, and ISO-8601 end values;
-- rejects missing IDs, duplicate IDs, invalid timestamps, empty titles, and
-  non-positive time ranges;
+- requires an explicit title and valid ISO-8601 start/end date-times;
+- requires a timezone offset (`+07:00`, for example) or UTC designator (`Z`)
+  on both timestamps; timezone-less local timestamps are blocked;
+- rejects empty batches, missing IDs, duplicate IDs, invalid timestamps,
+  empty titles, and non-positive time ranges;
+- encodes batch and source IDs independently when building stable sync IDs,
+  preventing delimiter-based identity collisions;
 - produces immutable `CalendarEventCandidate` values and blocking findings;
 - has no persistence, file-system, network, Google API, or sync dependency;
 - always reports that user confirmation is required.
@@ -25,7 +29,7 @@ containing:
 - `source_record_id`: stable ID from the source/template mapping process;
 - `title`: reviewed event title;
 - `start_iso8601` and `end_iso8601`: explicit ISO-8601 date-times with a
-  timezone offset where the source timezone is known;
+  timezone offset or `Z`; timezone-less local values are not accepted;
 - optional `description`.
 
 The adapter must not infer dates from sheet names, invent missing times,
