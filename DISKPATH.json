@@ -117,6 +117,11 @@
       "sha256": "06d43b9147d1f0b9eac633759aebc5cff0142931a84e4c0c9ee89bf3518a4065"
     },
     {
+      "path": ".github/workflows/self-hosted-windows.yml",
+      "size": 2739,
+      "sha256": "d2ce9468a5edbf0a0107fa5969f82c016ab5d8397823337ca51a80a436a13f15"
+    },
+    {
       "path": ".github/workflows/web.yml",
       "size": 3193,
       "sha256": "e3e25b3fb2b5dc5369ff7094fd81ef63c1af2960a3971a104750b3f5ed34fa5b"
@@ -910,6 +915,11 @@
       "path": "docs/adr/ADR-0014-multi-source-multi-period-review.md",
       "size": 1376,
       "sha256": "ddad342731c19761300348cf7e7590ab7253e9b4836c93baad4bb72a949285db"
+    },
+    {
+      "path": "docs/ci/SELF_HOSTED_WINDOWS_RUNNER.md",
+      "size": 3532,
+      "sha256": "2b660bec432720b722ab01e337d5fadca3763d5de531222367f99b278f6a923e"
     },
     {
       "path": "docs/google-workspace-setup.html",
