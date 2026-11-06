@@ -9,7 +9,7 @@
     "DISKPATH.json",
     "DISKPATH.md"
   ],
-  "file_count": 776,
+  "file_count": 781,
   "files": [
     {
       "path": ".ai/memory/architecture.md",
@@ -915,6 +915,11 @@
       "path": "docs/google-workspace-setup.html",
       "size": 5829,
       "sha256": "69bec594a366e629476a68f6c56726aad265ec227626c90bf4b9445d5bbe6cb9"
+    },
+    {
+      "path": "docs/universal-generator-calendar-adapter.md",
+      "size": 1983,
+      "sha256": "d21f46dde405cd0d4b86f1e7dd568be14688599b1e6bb0bf3278b91742270e83"
     },
     {
       "path": "docs/wiki/ARCHITECTURE.md",
@@ -2687,6 +2692,21 @@
       "sha256": "d75b200d30d1592982f6778c778c6754f20d491e33dcdcd8c46518977053ec8c"
     },
     {
+      "path": "lib/features/universal_generator_adapter/application/generator_calendar_adapter.dart",
+      "size": 3360,
+      "sha256": "c6f6132d628a15e46d27386c4553f687dd532869241ff520c0b4207e09be33ea"
+    },
+    {
+      "path": "lib/features/universal_generator_adapter/domain/generator_adapter_preview.dart",
+      "size": 1169,
+      "sha256": "f5d7422fa713ab7e7cabb8689088f46f56e98bde51f8407e810b8bfe0e95da0f"
+    },
+    {
+      "path": "lib/features/universal_generator_adapter/domain/generator_event_record.dart",
+      "size": 811,
+      "sha256": "b217540d117096f6cd2574657d474530c7f4c0f4c307b1d5a01540f5eea66d36"
+    },
+    {
       "path": "lib/features/workflow/application/calendar_sync_coordinator.dart",
       "size": 8955,
       "sha256": "bffd7b3ed15b52245dcc48a59af9a6ab0ae9c3d9f49367242dadd58294efa09e"
@@ -3685,6 +3705,11 @@
       "path": "test/timeline_archive_service_test.dart",
       "size": 3703,
       "sha256": "fdf8af1c9b3a40f796f422a847f16291b9b314cbd4359096f1b3dbef3ec9efb2"
+    },
+    {
+      "path": "test/universal_generator_adapter_test.dart",
+      "size": 3302,
+      "sha256": "7de9ee2a103844b3b4f8a606675193b37092f608998da22599dc6bb71606a99d"
     },
     {
       "path": "test/v2/access_control_test.dart",
