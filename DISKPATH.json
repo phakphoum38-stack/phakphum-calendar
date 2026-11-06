@@ -3718,8 +3718,8 @@
     },
     {
       "path": "test/universal_generator_adapter_test.dart",
-      "size": 5515,
-      "sha256": "f46ee98be87010fb9a27eb30c135e1482ee7aa7567b23d710c888368f2d061ea"
+      "size": 5894,
+      "sha256": "827d9df009f6c1e27468a4a716c45aa66b24976aa5d9c0017d96ea85d2a317ca"
     },
     {
       "path": "test/v2/access_control_test.dart",
