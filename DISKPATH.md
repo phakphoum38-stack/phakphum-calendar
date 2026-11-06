@@ -213,7 +213,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `docs/adr/ADR-0014-multi-source-multi-period-review.md` | 1376 | `ddad342731c19761300348cf7e7590ab7253e9b4836c93baad4bb72a949285db` |
 | `docs/ci/SELF_HOSTED_WINDOWS_RUNNER.md` | 3532 | `2b660bec432720b722ab01e337d5fadca3763d5de531222367f99b278f6a923e` |
 | `docs/google-workspace-setup.html` | 5829 | `69bec594a366e629476a68f6c56726aad265ec227626c90bf4b9445d5bbe6cb9` |
-| `docs/universal-generator-calendar-adapter.md` | 1983 | `d21f46dde405cd0d4b86f1e7dd568be14688599b1e6bb0bf3278b91742270e83` |
+| `docs/universal-generator-calendar-adapter.md` | 2286 | `956baeae8204bcc11b34e6b974fcf1e4767e34f47a5bf8153941f346552db363` |
 | `docs/wiki/ARCHITECTURE.md` | 2497 | `983ca3b8f7959c48972089643d0fa0ee7f9e4e757311e3a70306c4d23b308968` |
 | `docs/wiki/CODING_STANDARDS.md` | 2058 | `97d31c48ff09dce90cba2ff513136a94f2abde37eb2249dd0bbc804b1f569ffb` |
 | `docs/wiki/CONTRIBUTING.md` | 1597 | `c16a41dfda1df8f06f400c784b02d4baac0ac2c1c4e20cd3a6a12aaadb2adb3e` |
@@ -568,7 +568,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/simulation/presentation/simulation_preview_screen.dart` | 5776 | `f9740525fca3690e9cb8b0c261925827171fb36973508a4ab8d3ec76b8837149` |
 | `lib/features/tenancy/application/tenant_guard.dart` | 995 | `2eda0e4faab8899ae8e72e640f1a94fa08faa9a31fc4ef9da4d902e64ab17635` |
 | `lib/features/tenancy/domain/tenant.dart` | 1331 | `d75b200d30d1592982f6778c778c6754f20d491e33dcdcd8c46518977053ec8c` |
-| `lib/features/universal_generator_adapter/application/generator_calendar_adapter.dart` | 3360 | `c6f6132d628a15e46d27386c4553f687dd532869241ff520c0b4207e09be33ea` |
+| `lib/features/universal_generator_adapter/application/generator_calendar_adapter.dart` | 4192 | `a9eed38da7c45cf6a8a9aa98be69b2eecd7e7e19fc10c283e22245496eccb88f` |
 | `lib/features/universal_generator_adapter/domain/generator_adapter_preview.dart` | 1169 | `f5d7422fa713ab7e7cabb8689088f46f56e98bde51f8407e810b8bfe0e95da0f` |
 | `lib/features/universal_generator_adapter/domain/generator_event_record.dart` | 811 | `b217540d117096f6cd2574657d474530c7f4c0f4c307b1d5a01540f5eea66d36` |
 | `lib/features/workflow/application/calendar_sync_coordinator.dart` | 8955 | `bffd7b3ed15b52245dcc48a59af9a6ab0ae9c3d9f49367242dadd58294efa09e` |
@@ -771,7 +771,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `test/tenant_guard_test.dart` | 1901 | `342ec8e11672a12ee348a3ea16596c77d5a4472899d6465b8ea704dfdc00a4c1` |
 | `test/thai_roster_every_single_date_test.dart` | 2593 | `5d712ef2716dc267d64146d1b6378665141cee79cf6259737a7202d56023e5ca` |
 | `test/timeline_archive_service_test.dart` | 3703 | `fdf8af1c9b3a40f796f422a847f16291b9b314cbd4359096f1b3dbef3ec9efb2` |
-| `test/universal_generator_adapter_test.dart` | 3302 | `7de9ee2a103844b3b4f8a606675193b37092f608998da22599dc6bb71606a99d` |
+| `test/universal_generator_adapter_test.dart` | 5515 | `f46ee98be87010fb9a27eb30c135e1482ee7aa7567b23d710c888368f2d061ea` |
 | `test/v2/access_control_test.dart` | 598 | `e34ab8a283d9b35b1e8d7a43725cacea5660eebb0bc5ca7a70889e302d496997` |
 | `test/v2/calendar_diff_engine_test.dart` | 4909 | `50935bd3117a6a1ca4e6fdf44720bcf3e3a492c27b782f5b4a833da737b3df28` |
 | `test/v2/calendar_sync_actions_test.dart` | 2571 | `c255290463c71d2ad7b24c9cc271b2355c9ac3b432a0ca55dad162c7cd898b58` |

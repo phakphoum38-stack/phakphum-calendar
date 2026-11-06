@@ -928,8 +928,8 @@
     },
     {
       "path": "docs/universal-generator-calendar-adapter.md",
-      "size": 1983,
-      "sha256": "d21f46dde405cd0d4b86f1e7dd568be14688599b1e6bb0bf3278b91742270e83"
+      "size": 2286,
+      "sha256": "956baeae8204bcc11b34e6b974fcf1e4767e34f47a5bf8153941f346552db363"
     },
     {
       "path": "docs/wiki/ARCHITECTURE.md",
@@ -2703,8 +2703,8 @@
     },
     {
       "path": "lib/features/universal_generator_adapter/application/generator_calendar_adapter.dart",
-      "size": 3360,
-      "sha256": "c6f6132d628a15e46d27386c4553f687dd532869241ff520c0b4207e09be33ea"
+      "size": 4192,
+      "sha256": "a9eed38da7c45cf6a8a9aa98be69b2eecd7e7e19fc10c283e22245496eccb88f"
     },
     {
       "path": "lib/features/universal_generator_adapter/domain/generator_adapter_preview.dart",
@@ -3718,8 +3718,8 @@
     },
     {
       "path": "test/universal_generator_adapter_test.dart",
-      "size": 3302,
-      "sha256": "7de9ee2a103844b3b4f8a606675193b37092f608998da22599dc6bb71606a99d"
+      "size": 5515,
+      "sha256": "f46ee98be87010fb9a27eb30c135e1482ee7aa7567b23d710c888368f2d061ea"
     },
     {
       "path": "test/v2/access_control_test.dart",
