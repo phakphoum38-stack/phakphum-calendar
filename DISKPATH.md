@@ -23,7 +23,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 ## Scope
 
 - Manifest scope: `git-tracked-regular-files`
-- Tracked files: `776`
+- Tracked files: `778`
 - Excluded paths: `DISKPATH.json`, `DISKPATH.md`
 
 ## Repository Paths
@@ -51,6 +51,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `.github/workflows/ios.yml` | 3293 | `5dc716ed94b3cfd421df674aa831d4b6f21c6e3390a054eb12dd02aea1b52934` |
 | `.github/workflows/linux.yml` | 2470 | `850db3a8e9c539389df9eb6e7d801bf40de6b82accd595e90870c200b3e5db9b` |
 | `.github/workflows/roster-knowledge-schema.yml` | 2161 | `06d43b9147d1f0b9eac633759aebc5cff0142931a84e4c0c9ee89bf3518a4065` |
+| `.github/workflows/self-hosted-windows.yml` | 2739 | `d2ce9468a5edbf0a0107fa5969f82c016ab5d8397823337ca51a80a436a13f15` |
 | `.github/workflows/web.yml` | 3193 | `e3e25b3fb2b5dc5369ff7094fd81ef63c1af2960a3971a104750b3f5ed34fa5b` |
 | `.github/workflows/windows.yml` | 3290 | `c9dc273d17a356f7c551e86d1b534b19ec8db2c09be1b660a4f82d05d6d6ed77` |
 | `.gitignore` | 885 | `ef2df2e38b6ccf9af7295cb26bd630a71101fef2ffed5eae26c51b23eb09440c` |
@@ -210,6 +211,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `docs/adr/ADR-0012-timeline-persistence-and-drive-backup.md` | 7929 | `9fa9f9c28ee1f16641b4fe874c706cdaae4b75aa550637d8d9c6c9ec4ae02af9` |
 | `docs/adr/ADR-0013-block-on-unknown-shift-time.md` | 445 | `5c7b32feb0d1b6e418d9dc09144ed5aa6b87e991b1900e548467234c96235cd4` |
 | `docs/adr/ADR-0014-multi-source-multi-period-review.md` | 1376 | `ddad342731c19761300348cf7e7590ab7253e9b4836c93baad4bb72a949285db` |
+| `docs/ci/SELF_HOSTED_WINDOWS_RUNNER.md` | 3532 | `2b660bec432720b722ab01e337d5fadca3763d5de531222367f99b278f6a923e` |
 | `docs/google-workspace-setup.html` | 5829 | `69bec594a366e629476a68f6c56726aad265ec227626c90bf4b9445d5bbe6cb9` |
 | `docs/wiki/ARCHITECTURE.md` | 2497 | `983ca3b8f7959c48972089643d0fa0ee7f9e4e757311e3a70306c4d23b308968` |
 | `docs/wiki/CODING_STANDARDS.md` | 2058 | `97d31c48ff09dce90cba2ff513136a94f2abde37eb2249dd0bbc804b1f569ffb` |
