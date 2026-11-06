@@ -151,6 +151,19 @@ void main() {
       );
     });
 
+    test('blocks an empty event title', () {
+      final preview = adapter.preview(
+        GeneratorEventBatch(
+          batchId: 'batch-001',
+          records: [validRecord(title: ' ')],
+        ),
+      );
+
+      expect(preview.hasBlockingIssues, isTrue);
+      expect(preview.candidates, isEmpty);
+      expect(preview.issues.single.code, 'EVENT_TITLE_REQUIRED');
+    });
+
     test('blocks an empty batch', () {
       final preview = adapter.preview(
         const GeneratorEventBatch(batchId: 'batch-001', records: []),
