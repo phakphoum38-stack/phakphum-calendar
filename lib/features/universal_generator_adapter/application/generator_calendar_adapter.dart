@@ -25,6 +25,17 @@ class GeneratorCalendarAdapter {
       return GeneratorAdapterPreview(candidates: candidates, issues: issues);
     }
 
+    if (batch.records.isEmpty) {
+      issues.add(
+        const GeneratorAdapterIssue(
+          code: 'EMPTY_BATCH',
+          message: 'Generator batch must contain at least one source record.',
+          severity: GeneratorAdapterIssueSeverity.blocking,
+        ),
+      );
+      return GeneratorAdapterPreview(candidates: candidates, issues: issues);
+    }
+
     final seenIds = <String>{};
     for (final record in batch.records) {
       final recordId = record.sourceRecordId.trim();
@@ -63,13 +74,14 @@ class GeneratorCalendarAdapter {
         continue;
       }
 
-      final start = DateTime.tryParse(record.startIso8601);
-      final end = DateTime.tryParse(record.endIso8601);
+      final start = _parseExplicitIso8601DateTime(record.startIso8601);
+      final end = _parseExplicitIso8601DateTime(record.endIso8601);
       if (start == null || end == null) {
         issues.add(
           GeneratorAdapterIssue(
             code: 'INVALID_EVENT_DATETIME',
-            message: 'Start and end must be valid ISO-8601 date-times.',
+            message:
+                'Start and end must be valid ISO-8601 date-times with an explicit timezone offset or Z.',
             severity: GeneratorAdapterIssueSeverity.blocking,
             sourceRecordId: recordId,
           ),
@@ -90,7 +102,8 @@ class GeneratorCalendarAdapter {
 
       candidates.add(
         CalendarEventCandidate(
-          syncId: 'universal-generator:$batchId:$recordId',
+          syncId:
+              'universal-generator:${Uri.encodeComponent(batchId)}:${Uri.encodeComponent(recordId)}',
           title: title,
           start: start,
           end: end,
@@ -102,4 +115,15 @@ class GeneratorCalendarAdapter {
 
     return GeneratorAdapterPreview(candidates: candidates, issues: issues);
   }
+}
+
+DateTime? _parseExplicitIso8601DateTime(String value) {
+  final normalized = value.trim();
+  final hasExplicitTimezone = RegExp(
+    r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$',
+  ).hasMatch(normalized);
+  if (!hasExplicitTimezone) {
+    return null;
+  }
+  return DateTime.tryParse(normalized);
 }
