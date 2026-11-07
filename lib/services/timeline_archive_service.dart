@@ -113,6 +113,40 @@ class TimelineArchiveService {
     return documents;
   }
 
+  /// Reads the stable account scope and migrates legacy email-scoped revisions
+  /// forward without deleting or modifying the legacy records.
+  Future<List<RosterRevisionDocument>> readRevisionsWithLegacyAccountScope({
+    required String accountId,
+    required String fileId,
+    String? legacyAccountId,
+    void Function(Object error)? onMigrationError,
+  }) async {
+    final current = await readRevisions(accountId: accountId, fileId: fileId);
+    final legacyId = legacyAccountId?.trim() ?? '';
+    if (legacyId.isEmpty ||
+        legacyId.toLowerCase() == accountId.trim().toLowerCase()) {
+      return current;
+    }
+
+    final legacy = await readRevisions(accountId: legacyId, fileId: fileId);
+    final merged = <String, RosterRevisionDocument>{
+      for (final revision in legacy) revision.revisionId: revision,
+      for (final revision in current) revision.revisionId: revision,
+    };
+    final currentIds = current.map((revision) => revision.revisionId).toSet();
+    for (final revision in legacy) {
+      if (currentIds.contains(revision.revisionId)) continue;
+      try {
+        await putRevision(accountId: accountId, fileId: fileId, document: revision);
+      } on Object catch (error) {
+        onMigrationError?.call(error);
+      }
+    }
+    final result = merged.values.toList()
+      ..sort((left, right) => left.modifiedAt.compareTo(right.modifiedAt));
+    return result;
+  }
+
   Future<void> saveCheckpoint({
     required String accountId,
     required String fileId,
