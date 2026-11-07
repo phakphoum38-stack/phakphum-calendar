@@ -221,7 +221,9 @@ class AppController extends ChangeNotifier implements ControllerState {
   String? timelineWarning;
   List<String> sheetTitles = [];
   Set<String> pinnedToolIds = {...defaultPinnedToolIds};
-  bool shiftTimelineEnabled = false;
+  // Keep Google Calendar audit history enabled by default; callers can still
+  // disable it explicitly for a session when the user requests that.
+  bool shiftTimelineEnabled = true;
   bool initialized = false;
   bool busy = false;
   bool recentSheetHistoryLoaded = false;
