@@ -265,9 +265,8 @@ class CalendarService implements LegacyCalendarGateway {
   static String summaryFor(Shift shift) =>
       CalendarEventMatcher.calendarTitle(shift.displayName);
 
-  /// Keeps one canonical Timeline section on a managed shift event.
-  /// Detailed historical entries remain available as separate Timeline events;
-  /// the source shift description must not accumulate repeated copies on sync.
+  /// Keeps one canonical Timeline section and appends each audit entry once.
+  /// Sync updates preserve this section, while roster comparisons ignore it.
   static String withTimelineRecord(String existingDescription, String record) {
     const marker = '--- Timeline ---';
     final markerIndex = existingDescription.indexOf(marker);
