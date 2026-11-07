@@ -38,11 +38,22 @@ class RosterAssignmentTimeline {
   ];
 }
 
-String rosterPositionKey(Shift shift) =>
-    '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
-    '${shift.code.trim().toLowerCase()}|'
-    '${shift.sourceSpreadsheetId ?? ''}|${shift.sourceSheetId ?? ''}|'
-    '${shift.sheetTitle.trim().toLowerCase()}|${shift.cell.trim().toUpperCase()}';
+String rosterPositionKey(Shift shift) {
+  final spreadsheetId = shift.sourceSpreadsheetId;
+  final sheetId = shift.sourceSheetId;
+  if (spreadsheetId != null && sheetId != null) {
+    final column = RegExp(r'^[A-Za-z]+').firstMatch(shift.cell)?.group(0) ??
+        shift.cell.trim().toUpperCase();
+    return '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
+        '${shift.code.trim().toLowerCase()}|$spreadsheetId|$sheetId|'
+        '${shift.rowLabel.trim().toLowerCase()}|${column.toUpperCase()}';
+  }
+  // Keep the legacy key for local/older snapshots without a stable sheet ID.
+  return '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
+      '${shift.code.trim().toLowerCase()}|'
+      '${shift.sheetTitle.trim().toLowerCase()}|'
+      '${shift.cell.trim().toUpperCase()}';
+}
 
 Map<String, RosterAssignmentTimeline> buildRosterAssignmentTimelines(
   Iterable<RosterRevisionShifts> revisions,
