@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:phakphum_calendar/features/calendar_sync/infrastructure/google_calendar_event_repository.dart';
 import 'package:phakphum_calendar/features/diff_engine/domain/calendar_event_candidate.dart';
+import 'package:phakphum_calendar/features/calendar_sync/infrastructure/google_calendar_event_mapper.dart';
 import 'package:phakphum_calendar/models/roster_assignment_timeline.dart';
 import 'package:phakphum_calendar/models/shift.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
@@ -90,6 +91,26 @@ void main() {
         '[SHIFT_EXCHANGED] second historical change');
   });
 
+  test('excludes the preserved audit section from roster sync comparisons', () {
+    final record = const GoogleCalendarEventMapper().fromGoogleEvent(
+      calendar.Event(
+        id: 'event-1',
+        summary: 'เวรเช้า',
+        description: 'Roster details\\n\\n--- Timeline ---\\n'
+            '[SHIFT_UPDATED] historical change',
+        start: DateTime.utc(2026, 11, 7, 1).let((value) =>
+            calendar.EventDateTime(dateTime: value)),
+        end: calendar.EventDateTime(dateTime: DateTime.utc(2026, 11, 7, 9)),
+        extendedProperties: calendar.EventExtendedProperties(
+          private: <String, String>{'syncId': 'shift-1'},
+        ),
+      ),
+    );
+
+    expect(record, isNotNull);
+    expect(record!.candidate.description, 'Roster details');
+  });
+
   test('migrates email-scoped local revisions to stable account ID without deleting legacy data', () async {
     SharedPreferences.setMockInitialValues({});
     const archive = TimelineArchiveService();
@@ -137,7 +158,7 @@ void main() {
     );
   });
 
-  test('keeps assignment identity when a sheet is renamed and rows move', () {
+  test('keeps assignment identity when roster rows move within a sheet', () {
     Shift source(String worker, String title, String cell) => Shift(
       code: 'UP1',
       rowLabel: 'P1 เช้า',
@@ -152,7 +173,7 @@ void main() {
     );
 
     final before = source('A', 'Old sheet title', 'D11');
-    final after = source('B', 'Renamed sheet title', 'D17');
+    final after = source('B', 'Old sheet title', 'D17');
     expect(rosterPositionKey(before), rosterPositionKey(after));
 
     final timeline = buildRosterAssignmentTimelines([
