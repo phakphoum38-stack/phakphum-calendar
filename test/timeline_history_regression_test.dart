@@ -20,7 +20,7 @@ void main() {
   test('appends Timeline records and keeps earlier entries idempotently', () {
     final first = CalendarService.withTimelineRecord(
       'Roster details',
-      '[SHIFT_UPDATED] first change\\nผู้แก้ไข: A\\nรายละเอียด: แก้ไขเวร',
+      '[SHIFT_UPDATED] first change\nผู้แก้ไข: A\nรายละเอียด: แก้ไขเวร',
     );
     final second = CalendarService.withTimelineRecord(
       first,
