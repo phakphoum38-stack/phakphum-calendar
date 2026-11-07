@@ -117,9 +117,11 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
     final markerIndex = existing.indexOf(marker);
     if (markerIndex < 0) return desiredDescription;
 
-    final desired = desiredDescription?.trimRight() ?? '';
-    final desiredMarkerIndex = desired.indexOf(marker);
-    final baseDescription = desiredMarkerIndex < 0
+    final desired = desiredDescription?.trimRight();
+    final desiredMarkerIndex = desired?.indexOf(marker) ?? -1;
+    final baseDescription = desired == null || desired.isEmpty
+        ? existing.substring(0, markerIndex).trimRight()
+        : desiredMarkerIndex < 0
         ? desired
         : desired.substring(0, desiredMarkerIndex).trimRight();
     final timelineSection = existing.substring(markerIndex).trimRight();
