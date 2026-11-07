@@ -38,11 +38,17 @@ class RosterAssignmentTimeline {
   ];
 }
 
-String rosterPositionKey(Shift shift) =>
-    '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
-    '${shift.code.trim().toLowerCase()}|'
-    '${shift.sourceSpreadsheetId ?? ''}|${shift.sourceSheetId ?? ''}|'
-    '${shift.sheetTitle.trim().toLowerCase()}|${shift.cell.trim().toUpperCase()}';
+String rosterPositionKey(Shift shift) {
+  // Drive XLSX revision exports do not carry Google sheet IDs. Use the
+  // worksheet title and section label (not the mutable row number) so the
+  // archived and live snapshots still resolve to the same roster position.
+  final column = RegExp(r'^[A-Za-z]+').firstMatch(shift.cell)?.group(0) ??
+      shift.cell.trim().toUpperCase();
+  return '${shift.start.toIso8601String()}|${shift.end.toIso8601String()}|'
+      '${shift.code.trim().toLowerCase()}|'
+      '${shift.sheetTitle.trim().toLowerCase()}|'
+      '${shift.rowLabel.trim().toLowerCase()}|${column.toUpperCase()}';
+}
 
 Map<String, RosterAssignmentTimeline> buildRosterAssignmentTimelines(
   Iterable<RosterRevisionShifts> revisions,
