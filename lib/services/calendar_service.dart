@@ -281,7 +281,7 @@ class CalendarService implements LegacyCalendarGateway {
     final existingTimeline = markerIndex < 0
         ? ''
         : existingDescription.substring(markerIndex + marker.length).trim();
-    if (existingTimeline.split('\n').contains(record.trim())) {
+    if (existingTimeline.contains(record.trim())) {
       return existingDescription.trimRight();
     }
     final entries = <String>[
