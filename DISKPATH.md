@@ -353,7 +353,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/calendar_sync/domain/calendar_sync_run_result.dart` | 1784 | `7791cbefe9c365885b22a46d47ef2c46ff4062d5c1710a96e63229e8c28892d7` |
 | `lib/features/calendar_sync/domain/calendar_sync_summary.dart` | 957 | `493a52594fa1ae6166192799c583da55a3f13e9494046825e9b9ec9315e2513e` |
 | `lib/features/calendar_sync/infrastructure/google_calendar_event_mapper.dart` | 2436 | `13b8730c3942e1474796d0565336b4b995e6195ee06612941c1e0542c0f16abf` |
-| `lib/features/calendar_sync/infrastructure/google_calendar_event_repository.dart` | 4857 | `e71396df51b0096dfb8d70af43178404010481d3adff9827ec90ebf6ee51f7dc` |
+| `lib/features/calendar_sync/infrastructure/google_calendar_event_repository.dart` | 4804 | `a2769c10178a12df4abbeb6be50b7d0f8d728f4f73c3acc24acae144cdabd2c3` |
 | `lib/features/calendar_sync/presentation/controllers/calendar_sync_controller.dart` | 5286 | `b81a7c0ee316abbf7da741d00f371c2d1292c740af1469261c5b930889387411` |
 | `lib/features/calendar_sync/presentation/screens/calendar_sync_screen.dart` | 8750 | `704d080b3d3e2eed572ef28fd1edf96e32e2eb79b5295531691ab84e3408db2a` |
 | `lib/features/calendar_sync/presentation/screens/controlled_calendar_sync_screen.dart` | 3340 | `c0fc7ce3b26ae3c643bc60b2ddaa8682bad6616e2cf6512f1762be1c4d31d48c` |
