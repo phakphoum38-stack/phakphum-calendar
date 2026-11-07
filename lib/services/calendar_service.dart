@@ -273,7 +273,7 @@ class CalendarService implements LegacyCalendarGateway {
     var baseDescription = markerIndex < 0
         ? existingDescription
         : existingDescription.substring(0, markerIndex);
-    while (baseDescription.endsWith(r'\\n')) {
+    while (baseDescription.endsWith(r'\n')) {
       baseDescription = baseDescription.substring(0, baseDescription.length - 2);
     }
     baseDescription = baseDescription.trimRight();
@@ -285,18 +285,18 @@ class CalendarService implements LegacyCalendarGateway {
         : existingDescription
             .substring(markerIndex + marker.length)
             .replaceAll(marker, '')
-            .replaceAll(RegExp(r'\\n{3,}'), '\\n\\n')
+            .replaceAll(RegExp(r'\n{3,}'), '\n\n')
             .trim();
     final normalizedRecord = record.trim();
     final entries = existingTimeline.contains(normalizedRecord)
         ? existingTimeline
         : existingTimeline.isEmpty
         ? normalizedRecord
-        : '$existingTimeline\\n\\n$normalizedRecord';
+        : '$existingTimeline\n\n$normalizedRecord';
 
     return baseDescription.isEmpty
-        ? '$marker\\n$entries'
-        : '$baseDescription\\n\\n$marker\\n$entries';
+        ? '$marker\n$entries'
+        : '$baseDescription\n\n$marker\n$entries';
   }
 
   static String descriptionFor(Shift shift) {
