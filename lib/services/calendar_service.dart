@@ -274,15 +274,23 @@ class CalendarService implements LegacyCalendarGateway {
     var baseDescription = markerIndex < 0
         ? existingDescription
         : existingDescription.substring(0, markerIndex);
-    // Remove malformed literal escape sequences written by older versions,
-    // then trim real line endings before rebuilding the canonical section.
-    while (baseDescription.endsWith(r'\n')) {
+    while (baseDescription.endsWith(r'\\n')) {
       baseDescription = baseDescription.substring(0, baseDescription.length - 2);
     }
     baseDescription = baseDescription.trimRight();
+    final existingTimeline = markerIndex < 0
+        ? ''
+        : existingDescription.substring(markerIndex + marker.length).trim();
+    if (existingTimeline.split('\\n').contains(record.trim())) {
+      return existingDescription.trimRight();
+    }
+    final entries = <String>[
+      if (existingTimeline.isNotEmpty) existingTimeline,
+      record.trim(),
+    ].join('\\n');
     return baseDescription.isEmpty
-        ? '$marker\n$record'
-        : '$baseDescription\n\n$marker\n$record';
+        ? '$marker\\n$entries'
+        : '$baseDescription\\n\\n$marker\\n$entries';
   }
 
   static String descriptionFor(Shift shift) {
