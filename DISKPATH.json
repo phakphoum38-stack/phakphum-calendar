@@ -2858,8 +2858,8 @@
     },
     {
       "path": "lib/services/calendar_service.dart",
-      "size": 13777,
-      "sha256": "5df065248d727a453f5a5e413f7ebc66011b4904bd2db9441922742af8a4975a"
+      "size": 13767,
+      "sha256": "57ac5c2d7d637716a8db5566ba1d4606c78074efb3be385cb875b327a4edf3de"
     },
     {
       "path": "lib/services/drive_archive_service.dart",
@@ -3233,8 +3233,8 @@
     },
     {
       "path": "test/calendar_relationship_description_test.dart",
-      "size": 3992,
-      "sha256": "ce8aad308c5ab770b1cd496c3e2e85019c447216aa3065d9e3c4f4d5396aae57"
+      "size": 4060,
+      "sha256": "5d6ed0c6ad0d3c0f8e0049f837de305171b650663ef35e63bf782ba7c344872c"
     },
     {
       "path": "test/calendar_service_managed_event_test.dart",
