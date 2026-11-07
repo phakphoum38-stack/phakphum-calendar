@@ -159,21 +159,27 @@ void main() {
   });
 
   test('keeps assignment identity when roster rows move within a sheet', () {
-    Shift source(String worker, String title, String cell) => Shift(
+    Shift source(
+      String worker,
+      String cell, {
+      bool hasGoogleSheetMetadata = false,
+    }) => Shift(
       code: 'UP1',
       rowLabel: 'P1 เช้า',
       assignedName: worker,
       start: DateTime(2026, 11, 10, 8),
       end: DateTime(2026, 11, 10, 16),
-      sheetTitle: title,
+      sheetTitle: 'Old sheet title',
       cell: cell,
       category: ShiftCategory.own,
-      sourceSpreadsheetId: 'spreadsheet-1',
-      sourceSheetId: 42,
+      sourceSpreadsheetId:
+          hasGoogleSheetMetadata ? 'spreadsheet-1' : null,
+      sourceSheetId: hasGoogleSheetMetadata ? 42 : null,
     );
 
-    final before = source('A', 'Old sheet title', 'D11');
-    final after = source('B', 'Old sheet title', 'D17');
+    // Drive XLSX exports have no Google sheet ID; the live Sheets snapshot does.
+    final before = source('A', 'D11');
+    final after = source('B', 'D17', hasGoogleSheetMetadata: true);
     expect(rosterPositionKey(before), rosterPositionKey(after));
 
     final timeline = buildRosterAssignmentTimelines([
