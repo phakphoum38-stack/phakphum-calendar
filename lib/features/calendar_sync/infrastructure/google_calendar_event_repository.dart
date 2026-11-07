@@ -70,7 +70,7 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
   Future<String> createEvent(CalendarEventCandidate candidate) async {
     final request = _mapper.toGoogleEvent(candidate);
 
-    final created = await _calendarApi.events.insert(request, _calendarId);
+    final created = await calendarApi.events.insert(request, _calendarId);
 
     final providerEventId = created.id?.trim();
 
@@ -91,20 +91,20 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
     final normalizedEventId = _requireProviderEventId(providerEventId);
 
     // Read the provider copy before replacing it so audit history survives sync.
-    final existing = await _calendarApi.events.get(_calendarId, normalizedEventId);
+    final existing = await calendarApi.events.get(_calendarId, normalizedEventId);
     final request = _mapper.toGoogleEvent(candidate);
     request.description = _preserveTimelineSection(
       desiredDescription: candidate.description,
       existingDescription: existing.description,
     );
-    await _calendarApi.events.update(request, _calendarId, normalizedEventId);
+    await calendarApi.events.update(request, _calendarId, normalizedEventId);
   }
 
   @override
   Future<void> deleteEvent({required String providerEventId}) async {
     final normalizedEventId = _requireProviderEventId(providerEventId);
 
-    await _calendarApi.events.delete(_calendarId, normalizedEventId);
+    await calendarApi.events.delete(_calendarId, normalizedEventId);
   }
 
   String? _preserveTimelineSection({
