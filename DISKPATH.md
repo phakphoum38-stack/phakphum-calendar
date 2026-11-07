@@ -23,7 +23,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 ## Scope
 
 - Manifest scope: `git-tracked-regular-files`
-- Tracked files: `783`
+- Tracked files: `784`
 - Excluded paths: `DISKPATH.json`, `DISKPATH.md`
 
 ## Repository Paths
@@ -275,7 +275,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `l10n.yaml` | 151 | `c3ce52cbd012e898f809811d21f21ead3bb3afd08b49a4efe4da74080248664d` |
 | `lib/app.dart` | 7679 | `599df85fd9c6a6abaa17e5646dd59969ef67bbe5a9d722030c1c5d4c83247ce1` |
 | `lib/bootstrap/app_bootstrap.dart` | 380 | `cada71fb830d954d0bd4df8e8892b7e0b62a5844a01d00daf1cd0007c9f23cb0` |
-| `lib/controller/app_controller.dart` | 105952 | `1422324cd6d0f7a7d49171d50b3e6a794225022dcdcb04e4b3e0b682ce63b516` |
+| `lib/controller/app_controller.dart` | 106643 | `2b96146c9eb9ff2198e5d9b03780400208ee25bf62d7e901f54d00a88bb9224e` |
 | `lib/core/di/app_dependencies.dart` | 21906 | `4075fdbcb457fd20199b251966063c71408d27ce8a8301bbfce9f160dff36b14` |
 | `lib/core/google/authorized_google_client_factory.dart` | 971 | `8a5504571f4d8e93d096d3f3bb3140564e58729510ac66c021a95361b2d362c8` |
 | `lib/core/google/google_scopes.dart` | 629 | `437eaa6b551e7fcfc6993603d2acb6c3a5be6818d0289ed2b20b0fc1af2d29b2` |
@@ -352,8 +352,8 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/calendar_sync/domain/calendar_sync_protocol.dart` | 3228 | `aaaef0c69bf0008a81723931d26005072aa221b1342ad8320d56ed1806650af7` |
 | `lib/features/calendar_sync/domain/calendar_sync_run_result.dart` | 1784 | `7791cbefe9c365885b22a46d47ef2c46ff4062d5c1710a96e63229e8c28892d7` |
 | `lib/features/calendar_sync/domain/calendar_sync_summary.dart` | 957 | `493a52594fa1ae6166192799c583da55a3f13e9494046825e9b9ec9315e2513e` |
-| `lib/features/calendar_sync/infrastructure/google_calendar_event_mapper.dart` | 2023 | `759a4e910f4830bf4a90c7e4f932cc0997f16039e0dc27d55b5d5ae99b6bbe62` |
-| `lib/features/calendar_sync/infrastructure/google_calendar_event_repository.dart` | 3615 | `c649e3f3899cc61c7cb86a693c6b4ccbda7a2eaa1a8402610b96cb1961ae6c27` |
+| `lib/features/calendar_sync/infrastructure/google_calendar_event_mapper.dart` | 2436 | `13b8730c3942e1474796d0565336b4b995e6195ee06612941c1e0542c0f16abf` |
+| `lib/features/calendar_sync/infrastructure/google_calendar_event_repository.dart` | 4857 | `e71396df51b0096dfb8d70af43178404010481d3adff9827ec90ebf6ee51f7dc` |
 | `lib/features/calendar_sync/presentation/controllers/calendar_sync_controller.dart` | 5286 | `b81a7c0ee316abbf7da741d00f371c2d1292c740af1469261c5b930889387411` |
 | `lib/features/calendar_sync/presentation/screens/calendar_sync_screen.dart` | 8750 | `704d080b3d3e2eed572ef28fd1edf96e32e2eb79b5295531691ab84e3408db2a` |
 | `lib/features/calendar_sync/presentation/screens/controlled_calendar_sync_screen.dart` | 3340 | `c0fc7ce3b26ae3c643bc60b2ddaa8682bad6616e2cf6512f1762be1c4d31d48c` |
@@ -590,7 +590,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/models/app_settings.dart` | 4167 | `6ff84106068b5a2680a470cbe4b71bd1d40eab2590733df3bfc4b3f708f87ce6` |
 | `lib/models/audit_entry.dart` | 1973 | `7c0f67f220a98d699cb03e6d4be843a5e5df9f411553cd73fc9292494c63b096` |
 | `lib/models/calendar_busy_period.dart` | 552 | `ef2dc05ae45a0a17f74478b7931deae7f740cdeef56fd6c106cb84e2389d0dd6` |
-| `lib/models/roster_assignment_timeline.dart` | 2548 | `d28a83bdc6408cc29723ba1099f4c49a40ccc3fc05f9f3e30db3e1a125b6d259` |
+| `lib/models/roster_assignment_timeline.dart` | 2861 | `68e8f73edb64f7375dd6630738461378f90f425a3ba8e3069c7b59f60eea9833` |
 | `lib/models/roster_period.dart` | 452 | `6075bd0d304ed6a242aaff73ea9276ab43227312ad4ff24f76b09f7916071f32` |
 | `lib/models/roster_reference_comparison.dart` | 1888 | `94f9afc5588eacfbfb57ec07f105d1b06f65b30a5a777817cabeda93475c810f` |
 | `lib/models/saved_sheet.dart` | 3324 | `6698d929b467a4decaee950205f2db63ccb020cfa3e490b68007f45c0839e520` |
@@ -599,7 +599,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/models/swap_request.dart` | 1253 | `1cb1b80512e3ceb84f2e55e5321bcd59d91275d28fc4c7343af56cd8a95b75d4` |
 | `lib/models/tool_definition.dart` | 4983 | `15339590972d63e803fb492a294cc40d8dc6ccd880888e9f4fbfbfc282db6dbc` |
 | `lib/services/calendar_color_service.dart` | 3013 | `3d4899b6b91683002069c7371b199e3f0519bdd84a87db2986d063b5cd474f03` |
-| `lib/services/calendar_service.dart` | 13337 | `336e8bad2c642153122535ce10d32aab56c05ac08e35835f24b4aa71cce92a45` |
+| `lib/services/calendar_service.dart` | 13552 | `dd245f8c0e4726b4668d76ddcabcb739d9afd4ffc99a1df3f9e06c05e99257f7` |
 | `lib/services/drive_archive_service.dart` | 2913 | `37ce39a437c4c889b98d413ddd6de4f6e2f9499766531ffad6803ba7dd16e570` |
 | `lib/services/drive_ownership_service.dart` | 9290 | `e30489316965e91f008baf31d6fe2f1f3c592643257399117462e125c2d6f9e1` |
 | `lib/services/google_api_client.dart` | 1384 | `0d04e46fc86a024cc6a6b1c5b4ecb1238d3e18db9f5273ced7e85cdb18f94b96` |
@@ -611,10 +611,10 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/services/sheets_service.dart` | 9460 | `c9f24d050fa2427ba4304250dbc0110fd26bf0401732f0b61396118068ac83f5` |
 | `lib/services/shift_alert_service.dart` | 9323 | `681366fa6eaf18b1d1d940b1a68058ea4138855e473bd769111e158d11c958b1` |
 | `lib/services/shift_color_service.dart` | 3429 | `8385c92e56d2438944daaa9286de441944896467fd3f2f010b5dd98a31cbcc70` |
-| `lib/services/shift_parser.dart` | 14188 | `9eea16e52dfbc63cb2dc6bb0732c1f439f586543915ec6ee3022b491900bb411` |
+| `lib/services/shift_parser.dart` | 14290 | `40af44573162a5874ba7202ac80cad4d4d9ec1c388e244527ec3d5affcf703a6` |
 | `lib/services/shift_time_service.dart` | 2193 | `612c7b2f23bb5c5405ff64455cb9a1172a0ac3e4a5a852b6b43eca9e16d31495` |
 | `lib/services/swap_request_service.dart` | 1857 | `84df2fac3ba6319c7fbbd7e16a757aeeac3041b2cedf6d3bbb926dc361b48f45` |
-| `lib/services/timeline_archive_service.dart` | 5595 | `fbfbead93d8383584b3cc52b57fff74131331754f3ee94385ae47400053cecb7` |
+| `lib/services/timeline_archive_service.dart` | 7002 | `234d2405d82f0497b88aaf04121c98111e6ed7331c4387e016779e5c0b0f7c32` |
 | `lib/shared/presentation/app_status_page.dart` | 2355 | `632e9de1c6f386b0ef04fdc15e0870c0ac633859493fa2acea07e8c7926dabfd` |
 | `lib/ui/app_shell.dart` | 213564 | `cb6562e19af894ce9a10f97b2880efa38c7d22ffde18b3b915764758d41887d8` |
 | `lib/ui/audit_log_page.dart` | 2201 | `eec96b9ad15d43454beadf1f446ac3a421d4e17d8f59fba2244a19e7d2a13d95` |
@@ -771,6 +771,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `test/tenant_guard_test.dart` | 1901 | `342ec8e11672a12ee348a3ea16596c77d5a4472899d6465b8ea704dfdc00a4c1` |
 | `test/thai_roster_every_single_date_test.dart` | 2593 | `5d712ef2716dc267d64146d1b6378665141cee79cf6259737a7202d56023e5ca` |
 | `test/timeline_archive_service_test.dart` | 3703 | `fdf8af1c9b3a40f796f422a847f16291b9b314cbd4359096f1b3dbef3ec9efb2` |
+| `test/timeline_history_regression_test.dart` | 6897 | `a12ee0c32500587e8fe4e5d44497d6906b1bd59efe74ebe4be9286ee958b142c` |
 | `test/universal_generator_adapter_test.dart` | 5894 | `827d9df009f6c1e27468a4a716c45aa66b24976aa5d9c0017d96ea85d2a317ca` |
 | `test/v2/access_control_test.dart` | 598 | `e34ab8a283d9b35b1e8d7a43725cacea5660eebb0bc5ca7a70889e302d496997` |
 | `test/v2/calendar_diff_engine_test.dart` | 4909 | `50935bd3117a6a1ca4e6fdf44720bcf3e3a492c27b782f5b4a833da737b3df28` |

@@ -9,7 +9,7 @@
     "DISKPATH.json",
     "DISKPATH.md"
   ],
-  "file_count": 783,
+  "file_count": 784,
   "files": [
     {
       "path": ".ai/memory/architecture.md",
@@ -1238,8 +1238,8 @@
     },
     {
       "path": "lib/controller/app_controller.dart",
-      "size": 105952,
-      "sha256": "1422324cd6d0f7a7d49171d50b3e6a794225022dcdcb04e4b3e0b682ce63b516"
+      "size": 106643,
+      "sha256": "2b96146c9eb9ff2198e5d9b03780400208ee25bf62d7e901f54d00a88bb9224e"
     },
     {
       "path": "lib/core/di/app_dependencies.dart",
@@ -1623,13 +1623,13 @@
     },
     {
       "path": "lib/features/calendar_sync/infrastructure/google_calendar_event_mapper.dart",
-      "size": 2023,
-      "sha256": "759a4e910f4830bf4a90c7e4f932cc0997f16039e0dc27d55b5d5ae99b6bbe62"
+      "size": 2436,
+      "sha256": "13b8730c3942e1474796d0565336b4b995e6195ee06612941c1e0542c0f16abf"
     },
     {
       "path": "lib/features/calendar_sync/infrastructure/google_calendar_event_repository.dart",
-      "size": 3615,
-      "sha256": "c649e3f3899cc61c7cb86a693c6b4ccbda7a2eaa1a8402610b96cb1961ae6c27"
+      "size": 4857,
+      "sha256": "e71396df51b0096dfb8d70af43178404010481d3adff9827ec90ebf6ee51f7dc"
     },
     {
       "path": "lib/features/calendar_sync/presentation/controllers/calendar_sync_controller.dart",
@@ -2813,8 +2813,8 @@
     },
     {
       "path": "lib/models/roster_assignment_timeline.dart",
-      "size": 2548,
-      "sha256": "d28a83bdc6408cc29723ba1099f4c49a40ccc3fc05f9f3e30db3e1a125b6d259"
+      "size": 2861,
+      "sha256": "68e8f73edb64f7375dd6630738461378f90f425a3ba8e3069c7b59f60eea9833"
     },
     {
       "path": "lib/models/roster_period.dart",
@@ -2858,8 +2858,8 @@
     },
     {
       "path": "lib/services/calendar_service.dart",
-      "size": 13337,
-      "sha256": "336e8bad2c642153122535ce10d32aab56c05ac08e35835f24b4aa71cce92a45"
+      "size": 13552,
+      "sha256": "dd245f8c0e4726b4668d76ddcabcb739d9afd4ffc99a1df3f9e06c05e99257f7"
     },
     {
       "path": "lib/services/drive_archive_service.dart",
@@ -2918,8 +2918,8 @@
     },
     {
       "path": "lib/services/shift_parser.dart",
-      "size": 14188,
-      "sha256": "9eea16e52dfbc63cb2dc6bb0732c1f439f586543915ec6ee3022b491900bb411"
+      "size": 14290,
+      "sha256": "40af44573162a5874ba7202ac80cad4d4d9ec1c388e244527ec3d5affcf703a6"
     },
     {
       "path": "lib/services/shift_time_service.dart",
@@ -2933,8 +2933,8 @@
     },
     {
       "path": "lib/services/timeline_archive_service.dart",
-      "size": 5595,
-      "sha256": "fbfbead93d8383584b3cc52b57fff74131331754f3ee94385ae47400053cecb7"
+      "size": 7002,
+      "sha256": "234d2405d82f0497b88aaf04121c98111e6ed7331c4387e016779e5c0b0f7c32"
     },
     {
       "path": "lib/shared/presentation/app_status_page.dart",
@@ -3715,6 +3715,11 @@
       "path": "test/timeline_archive_service_test.dart",
       "size": 3703,
       "sha256": "fdf8af1c9b3a40f796f422a847f16291b9b314cbd4359096f1b3dbef3ec9efb2"
+    },
+    {
+      "path": "test/timeline_history_regression_test.dart",
+      "size": 6897,
+      "sha256": "a12ee0c32500587e8fe4e5d44497d6906b1bd59efe74ebe4be9286ee958b142c"
     },
     {
       "path": "test/universal_generator_adapter_test.dart",
