@@ -7,10 +7,9 @@ import 'google_calendar_event_mapper.dart';
 
 class GoogleCalendarEventRepository implements CalendarEventRepository {
   GoogleCalendarEventRepository({
-    required calendar.CalendarApi calendarApi,
+    required this.calendarApi,
     required String calendarId,
-  }) : _calendarApi = calendarApi,
-       _calendarId = calendarId.trim(),
+  }) : _calendarId = calendarId.trim(),
        _mapper = const GoogleCalendarEventMapper() {
     if (_calendarId.isEmpty) {
       throw ArgumentError.value(
@@ -21,7 +20,7 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
     }
   }
 
-  final calendar.CalendarApi _calendarApi;
+  final calendar.CalendarApi calendarApi;
   final String _calendarId;
   final GoogleCalendarEventMapper _mapper;
 
@@ -38,7 +37,7 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
     String? pageToken;
 
     do {
-      final response = await _calendarApi.events.list(
+      final response = await calendarApi.events.list(
         _calendarId,
         timeMin: timeMin.toUtc(),
         timeMax: timeMax.toUtc(),
