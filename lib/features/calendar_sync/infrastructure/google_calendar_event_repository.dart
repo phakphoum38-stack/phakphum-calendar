@@ -7,9 +7,10 @@ import 'google_calendar_event_mapper.dart';
 
 class GoogleCalendarEventRepository implements CalendarEventRepository {
   GoogleCalendarEventRepository({
-    required this._calendarApi,
+    required calendar.CalendarApi calendarApi,
     required String calendarId,
-  }) : _calendarId = calendarId.trim(),
+  }) : _calendarApi = calendarApi,
+       _calendarId = calendarId.trim(),
        _mapper = const GoogleCalendarEventMapper() {
     if (_calendarId.isEmpty) {
       throw ArgumentError.value(
