@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:phakphum_calendar/features/calendar_sync/infrastructure/google_calendar_event_repository.dart';
-import 'package:phakphum_calendar/features/diff_engine/domain/calendar_event_candidate.dart';
 import 'package:phakphum_calendar/features/calendar_sync/infrastructure/google_calendar_event_mapper.dart';
+import 'package:phakphum_calendar/features/diff_engine/domain/calendar_event_candidate.dart';
 import 'package:phakphum_calendar/models/roster_assignment_timeline.dart';
 import 'package:phakphum_calendar/models/shift.dart';
 import 'package:phakphum_calendar/services/calendar_service.dart';
@@ -48,8 +48,8 @@ void main() {
             'id': 'event-1',
             'summary': 'เวรเช้า',
             'description':
-                'Old roster details\\n\\n--- Timeline ---\\n'
-                '[SHIFT_UPDATED] first historical change\\n'
+                'Old roster details\n\n--- Timeline ---\n'
+                '[SHIFT_UPDATED] first historical change\n'
                 '[SHIFT_EXCHANGED] second historical change',
           }),
           200,
@@ -86,8 +86,8 @@ void main() {
 
     expect(requests.map((request) => request.method), ['GET', 'PUT']);
     expect(updatedEvent?['description'],
-        'New roster details\\n\\n--- Timeline ---\\n'
-        '[SHIFT_UPDATED] first historical change\\n'
+        'New roster details\n\n--- Timeline ---\n'
+        '[SHIFT_UPDATED] first historical change\n'
         '[SHIFT_EXCHANGED] second historical change');
   });
 
@@ -96,10 +96,9 @@ void main() {
       calendar.Event(
         id: 'event-1',
         summary: 'เวรเช้า',
-        description: 'Roster details\\n\\n--- Timeline ---\\n'
+        description: 'Roster details\n\n--- Timeline ---\n'
             '[SHIFT_UPDATED] historical change',
-        start: DateTime.utc(2026, 11, 7, 1).let((value) =>
-            calendar.EventDateTime(dateTime: value)),
+        start: calendar.EventDateTime(dateTime: DateTime.utc(2026, 11, 7, 1)),
         end: calendar.EventDateTime(dateTime: DateTime.utc(2026, 11, 7, 9)),
         extendedProperties: calendar.EventExtendedProperties(
           private: <String, String>{'syncId': 'shift-1'},
