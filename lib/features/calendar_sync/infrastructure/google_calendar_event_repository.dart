@@ -90,8 +90,13 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
   }) async {
     final normalizedEventId = _requireProviderEventId(providerEventId);
 
+    // Read the provider copy before replacing it so audit history survives sync.
+    final existing = await _calendarApi.events.get(_calendarId, normalizedEventId);
     final request = _mapper.toGoogleEvent(candidate);
-
+    request.description = _preserveTimelineSection(
+      desiredDescription: candidate.description,
+      existingDescription: existing.description,
+    );
     await _calendarApi.events.update(request, _calendarId, normalizedEventId);
   }
 
@@ -100,6 +105,26 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
     final normalizedEventId = _requireProviderEventId(providerEventId);
 
     await _calendarApi.events.delete(_calendarId, normalizedEventId);
+  }
+
+  String? _preserveTimelineSection({
+    required String? desiredDescription,
+    required String? existingDescription,
+  }) {
+    const marker = '--- Timeline ---';
+    final existing = existingDescription?.trimRight() ?? '';
+    final markerIndex = existing.indexOf(marker);
+    if (markerIndex < 0) return desiredDescription;
+
+    final desired = desiredDescription?.trimRight() ?? '';
+    final desiredMarkerIndex = desired.indexOf(marker);
+    final baseDescription = desiredMarkerIndex < 0
+        ? desired
+        : desired.substring(0, desiredMarkerIndex).trimRight();
+    final timelineSection = existing.substring(markerIndex).trimRight();
+    return baseDescription.isEmpty
+        ? timelineSection
+        : '$baseDescription\\n\\n$timelineSection';
   }
 
   int _compareRecords(CalendarEventRecord left, CalendarEventRecord right) {
