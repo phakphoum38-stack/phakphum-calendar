@@ -44,7 +44,7 @@ void main() {
     expect(description, contains('ประเภท: เวรของตัวเอง'));
   });
 
-  test('replaces an existing Timeline block instead of appending duplicates', () {
+  test('appends a new Timeline record without removing previous history', () {
     const base = 'รายละเอียดเวรเดิม';
     const first = '[SHIFT_UPDATED] 2026-10-31T10:00:00 | ผู้แก้ไข: A\nเปลี่ยนผู้ปฏิบัติงาน';
     const second = '[SHIFT_UPDATED] 2026-10-31T10:05:00 | ผู้แก้ไข: A\nเปลี่ยนผู้ปฏิบัติงาน';
@@ -55,10 +55,11 @@ void main() {
     expect(twice, startsWith(base));
     expect('\n--- Timeline ---'.allMatches(twice), hasLength(1));
     expect(twice, contains(second));
-    expect(twice, isNot(contains(first)));
+    expect(twice, contains(first));
+    expect(twice, contains(second));
   });
 
-  test('collapses legacy repeated Timeline blocks without changing base text', () {
+  test('collapses repeated legacy markers while preserving all history', () {
     const legacy = 'รายละเอียดเดิม\n\n--- Timeline ---\nรายการเก่า'
         '\n\n--- Timeline ---\nรายการเก่าซ้ำ';
     const latest = 'รายการล่าสุด';
