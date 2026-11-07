@@ -124,7 +124,7 @@ class GoogleCalendarEventRepository implements CalendarEventRepository {
     final timelineSection = existing.substring(markerIndex).trimRight();
     return baseDescription.isEmpty
         ? timelineSection
-        : '$baseDescription\\n\\n$timelineSection';
+        : '$baseDescription\n\n$timelineSection';
   }
 
   int _compareRecords(CalendarEventRecord left, CalendarEventRecord right) {
