@@ -1628,8 +1628,8 @@
     },
     {
       "path": "lib/features/calendar_sync/infrastructure/google_calendar_event_repository.dart",
-      "size": 4804,
-      "sha256": "a2769c10178a12df4abbeb6be50b7d0f8d728f4f73c3acc24acae144cdabd2c3"
+      "size": 4800,
+      "sha256": "2837a436d912a361667e91d9306d7bd79f5f86fcc6311c471f7372bc1304d368"
     },
     {
       "path": "lib/features/calendar_sync/presentation/controllers/calendar_sync_controller.dart",
