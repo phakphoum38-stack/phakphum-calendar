@@ -894,7 +894,8 @@ class AppController extends ChangeNotifier implements ControllerState {
           timelineWarning = null;
           try {
             var skippedRevisionCount = 0;
-            final accountId = auth.account?.email.trim();
+            final accountId = auth.account?.id.trim();
+            final legacyAccountId = auth.account?.email.trim();
             const archive = TimelineArchiveService();
             var archivedRevisions = <RosterRevisionDocument>[];
 
@@ -902,9 +903,21 @@ class AppController extends ChangeNotifier implements ControllerState {
             // network failure must not hide history already saved on this device.
             if (accountId != null && accountId.isNotEmpty) {
               try {
-                archivedRevisions = await archive.readRevisions(
+                archivedRevisions = await archive.readRevisionsWithLegacyAccountScope(
                   accountId: accountId,
+                  legacyAccountId: legacyAccountId,
                   fileId: spreadsheetId,
+                  onMigrationError: (migrationError) {
+                    final message =
+                        'ย้ายคลัง Timeline จากอีเมลไปยังรหัสบัญชี Google ไม่สำเร็จ: '
+                        '$migrationError';
+                    timelineWarning = message;
+                    unawaited(_addAudit(
+                      'sheet.timeline.archive.migration.failed',
+                      message,
+                      false,
+                    ));
+                  },
                 );
               } on Object catch (archiveReadError) {
                 final archiveWarning =
