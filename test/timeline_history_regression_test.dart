@@ -20,7 +20,7 @@ void main() {
   test('appends Timeline records and keeps earlier entries idempotently', () {
     final first = CalendarService.withTimelineRecord(
       'Roster details',
-      '[SHIFT_UPDATED] first change',
+      '[SHIFT_UPDATED] first change\\nผู้แก้ไข: A\\nรายละเอียด: แก้ไขเวร',
     );
     final second = CalendarService.withTimelineRecord(
       first,
@@ -32,6 +32,7 @@ void main() {
     );
 
     expect(second, contains('[SHIFT_UPDATED] first change'));
+    expect(second, contains('รายละเอียด: แก้ไขเวร'));
     expect(second, contains('[SHIFT_EXCHANGED] second change'));
     expect(RegExp('--- Timeline ---').allMatches(second), hasLength(1));
     expect(duplicate, second);
