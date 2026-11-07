@@ -54,7 +54,6 @@ void main() {
 
     expect(twice, startsWith(base));
     expect('\n--- Timeline ---'.allMatches(twice), hasLength(1));
-    expect(twice, contains(second));
     expect(twice, contains(first));
     expect(twice, contains(second));
   });
@@ -66,7 +65,11 @@ void main() {
 
     final result = CalendarService.withTimelineRecord(legacy, latest);
 
-    expect(result, 'รายละเอียดเดิม\n\n--- Timeline ---\nรายการล่าสุด');
+    expect(
+      result,
+      'รายละเอียดเดิม\n\n--- Timeline ---\n'
+      'รายการเก่า\n\nรายการเก่าซ้ำ\n\nรายการล่าสุด',
+    );
   });
 
   test('same time with a different shift title is not treated as existing', () {
