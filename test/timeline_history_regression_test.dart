@@ -69,7 +69,7 @@ void main() {
     addTearDown(client.close);
 
     final repository = GoogleCalendarEventRepository(
-      _calendarApi: calendar.CalendarApi(client),
+      calendarApi: calendar.CalendarApi(client),
       calendarId: 'primary',
     );
     await repository.updateEvent(
