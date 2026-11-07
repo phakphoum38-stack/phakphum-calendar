@@ -3718,8 +3718,8 @@
     },
     {
       "path": "test/timeline_history_regression_test.dart",
-      "size": 6895,
-      "sha256": "53df280348cefb0d2f97049b5b6c1f04287ad8df971dc3684811d98f8c06bdfc"
+      "size": 7106,
+      "sha256": "70edb635d2697459620e1bd100a986a544b756c5ad9f18749143c8ab632e0e1d"
     },
     {
       "path": "test/universal_generator_adapter_test.dart",
