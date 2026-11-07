@@ -182,6 +182,8 @@ class ShiftParser
             cell: '${_columnName(entry.key + 1)}${rowIndex + 1}',
             category: colorMatch?.category ?? rule.category,
             sourceColorValue: sourceColor,
+            sourceSpreadsheetId: snapshot.spreadsheetId,
+            sourceSheetId: snapshot.sheetId,
           );
           found.putIfAbsent(shift.sourceKey, () => shift);
         }
