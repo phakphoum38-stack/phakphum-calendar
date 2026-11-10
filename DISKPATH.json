@@ -3068,8 +3068,8 @@
     },
     {
       "path": "lib/ui/preview_changes.dart",
-      "size": 15753,
-      "sha256": "e3d69bd1c0cd2ab12c6696420d5a50dd3e3d4d280a92c42988b8a4e5dd26f523"
+      "size": 15772,
+      "sha256": "5de8b3ab625b1198ac12ade289f1cdee43c4068f3f7776e181276440578fb1ae"
     },
     {
       "path": "linux/.gitignore",
