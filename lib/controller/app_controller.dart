@@ -1531,11 +1531,15 @@ class AppController extends ChangeNotifier implements ControllerState {
 
   Future<void> syncCalendar({required bool userConfirmed}) async {
     if (!userConfirmed) {
-      throw StateError('ต้องยืนยันการซิงก์จากหน้าตรวจตัวอย่างก่อนบันทึก Google Calendar');
+      throw StateError(
+        'ต้องยืนยันการซิงก์จากหน้าตรวจตัวอย่างก่อนบันทึก Google Calendar',
+      );
     }
     final preparedWorkflow = _pendingCalendarWorkflow;
     if (preparedWorkflow == null) {
-      throw StateError('ยังไม่มีแผนซิงก์ที่เตรียมไว้ กรุณาตรวจตัวอย่างก่อน');
+      throw StateError(
+        'ยังไม่มีแผนซิงก์ที่เตรียมไว้ กรุณาตรวจตัวอย่างก่อน',
+      );
     }
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
     if (pendingAlertCount > 0) {
