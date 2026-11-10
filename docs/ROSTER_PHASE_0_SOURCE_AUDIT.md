@@ -207,3 +207,9 @@ This list is a source inventory only. The tests have not been executed locally i
 ## 7. Current corrective work
 
 The follow-up PR based on this audit removes the automatic Calendar write after roster reads, requires explicit confirmation and a prepared workflow before `AppController.syncCalendar` executes, updates both existing confirmation-dialog callers (`AppShell` and `PreviewChangesPage`), and adds a regression test. The first CI attempt caught the missing `PreviewChangesPage` argument at static analysis; that call site has since been updated. The latest generated-manifest head still requires a fresh completed CI run before merge.
+
+## 8. CI evidence for this corrective PR
+
+- The first static-analysis run found one remaining caller in `lib/ui/preview_changes.dart` that did not pass the new confirmation argument. That caller was updated to pass confirmation only after its existing confirmation dialog returns true.
+- The current branch also runs the generated `DISKPATH` manifest workflow. That workflow may add a follow-up manifest commit; therefore the final check state must always be read from the final PR head SHA, not an earlier pre-manifest commit.
+- No merge is permitted while the final head has missing, pending, cancelled, failed, or otherwise unverified required checks.
