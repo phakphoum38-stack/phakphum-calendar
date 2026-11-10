@@ -68,6 +68,19 @@ These findings are source observations, not a claim that every path in the appli
 
 **Risk:** the monthly parser is useful and should be preserved, but its layout assumptions and date policy must become explicit profile rules. Do not replace it with the simpler Excel row importer.
 
+### Additional partial profile foundations confirmed
+
+- `ImportProfile` is a domain entity with an ID, name, column mappings, and timestamps. `ImportService` is an abstract contract that accepts an `ImportProfile`, but the repository tree inspected here contains no concrete import-profile repository or durable profile manager.
+- `MonthlyRosterTemplateRepository` is already persisted in SharedPreferences and migrates format version 1 into version 2. Its current data is limited to period start/end and grouped row labels; it is not the complete source/layout/date/time profile requested in the roadmap.
+- `RosterLayoutProfile` remains a separate data-only model. The three partial models must be reconciled into one compatible profile boundary rather than creating a fourth profile system.
+
+### Additional shift-rule duplication confirmed
+
+- `MonthlyRosterShiftAdapter._ruleForLabel` in `lib/features/shift_parser/application/monthly_roster_section_parser.dart` contains hard-coded times and aliases for P1-P4, IPD, CT-IPD, CT-ER, ER, GEN, and 14-floor duty.
+- The legacy `ShiftParser._ruleForLabel` in `lib/services/shift_parser.dart` contains a second hard-coded mapping for several of the same labels.
+- `ShiftCatalog.known` in `lib/features/shift_parser/domain/shift_catalog.dart` is a third static category/period-to-time catalog. Its production call sites still need tracing.
+- These are overlapping rule sources. Phase 3 must consolidate them behind the selected profile and existing ShiftTemplate boundary while retaining legacy compatibility fixtures.
+
 ### 3.2 Shift-time configuration
 
 - `ShiftTemplate` is persistent and editable; its repository stores the template list under `shift_tools.shift_templates.v1`.
@@ -83,6 +96,7 @@ These findings are source observations, not a claim that every path in the appli
 ### 3.3 Source providers and account identity
 
 - The main app supports a local file source through `LocalRosterSource` and Google Sheets sources saved with an owner Google account ID.
+- `LocalRosterFileService` supports XLSX, CSV, TSV, and TXT; its picker reads file bytes into memory and returns a `LocalRosterDocument`. It does not persist the file bytes or a durable file reference. `AppController.signOut` clears the in-memory local-source label and loaded roster state, so this local source cannot currently be reselected after restart/sign-out through the inspected path.
 - `LocalRosterFileService` reads XLSX, CSV, TSV, and TXT bytes into an in-memory `LocalRosterDocument`; it does not persist the selected file bytes or a durable file reference. `AppController.signOut` clears the in-memory local source label and loaded roster state. Therefore local-source reuse after restart/sign-out is not implemented by this path.
 - The dashboard can list owned Google Sheets, select several, choose a source by URL, and activate a saved source.
 - The Excel import page has a local `.xlsx` picker and a Google Sheets import path.
@@ -100,6 +114,7 @@ These findings are source observations, not a claim that every path in the appli
 - Before the current follow-up change, `AppController.loadRoster` had a legacy `autoSync` path that called prepare and write directly without the UI confirmation dialog.
 - Before the current follow-up change, `AppController.syncCalendar` could create a prepared workflow on demand when no previously prepared workflow existed. That allowed callers to bypass the explicit UI preparation/confirmation sequence.
 - The separate `CalendarSyncController`/screen path should be audited for production call sites; its controller method can execute without a prior preview.
+- The inspected `AppShell` and `AppDependencies` composition files do not directly reference `CalendarSyncController` or `CalendarSyncProtocolService`; the latter's full-repository call-site trace remains open. Its protocol adapter currently passes only create/update candidates into a service that owns a fresh diff, so delete/skip command semantics are not faithfully preserved. Do not wire this adapter into production until its request/plan contract is corrected and tested.
 - `CalendarSyncProtocolService` converts only create/update commands to desired events; the handling of delete/skip commands needs a call-site and contract audit before that protocol is used for production deletion workflows.
 
 **Risk:** every path to a provider write must be routed through one preview/validation/confirmation gate. A read, import, analysis, profile change, or preview must never write Calendar as a side effect.
@@ -191,4 +206,4 @@ This list is a source inventory only. The tests have not been executed locally i
 
 ## 7. Current corrective work
 
-The follow-up PR based on this audit removes the automatic Calendar write after roster reads, requires explicit confirmation and a prepared workflow before `AppController.syncCalendar` executes, updates the existing confirmation-dialog caller, and adds a regression test. This is not considered complete until CI passes and the change is merged and verified on `main`.
+The follow-up PR based on this audit removes the automatic Calendar write after roster reads, requires explicit confirmation and a prepared workflow before `AppController.syncCalendar` executes, updates both existing confirmation-dialog callers (`AppShell` and `PreviewChangesPage`), and adds a regression test. The first CI attempt caught the missing `PreviewChangesPage` argument at static analysis; that call site has since been updated. The latest generated-manifest head still requires a fresh completed CI run before merge.
