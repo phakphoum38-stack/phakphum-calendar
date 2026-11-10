@@ -213,3 +213,4 @@ The follow-up PR based on this audit removes the automatic Calendar write after 
 - The first static-analysis run found one remaining caller in `lib/ui/preview_changes.dart` that did not pass the new confirmation argument. That caller was updated to pass confirmation only after its existing confirmation dialog returns true.
 - The current branch also runs the generated `DISKPATH` manifest workflow. That workflow may add a follow-up manifest commit; therefore the final check state must always be read from the final PR head SHA, not an earlier pre-manifest commit.
 - No merge is permitted while the final head has missing, pending, cancelled, failed, or otherwise unverified required checks.
+- The DISKPATH workflow can advance the PR head after the first PR workflows have started. Always inspect the final PR head SHA after manifest generation and ensure checks are attached to that exact SHA; results from a pre-manifest SHA do not prove the final head is green.
