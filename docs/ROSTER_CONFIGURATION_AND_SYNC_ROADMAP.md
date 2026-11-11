@@ -292,3 +292,7 @@ For every PR:
 ## 16. Current documentation status
 
 This document records the agreed target behavior and implementation sequence. It does not claim that the features have been implemented. The first execution task is Phase 0 source-level audit, followed by implementation PRs in dependency order.
+
+## Phase 0 source audit
+
+The initial source-level findings are recorded in [Roster Phase 0 Source Audit](ROSTER_PHASE_0_SOURCE_AUDIT.md). The audit is intentionally marked in progress: the targeted files and test inventory have been inspected, but full call-site tracing and a fresh test baseline remain open. The first corrective implementation closes the legacy automatic Calendar-write path and requires an explicit confirmation signal plus a prepared workflow. Do not treat Phase 0 as complete until its remaining verification items are closed.

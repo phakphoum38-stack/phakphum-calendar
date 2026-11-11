@@ -348,7 +348,7 @@ class _PreviewChangesPageState extends State<PreviewChangesPage> {
     setState(() => loading = true);
     try {
       if (forceAll && widget.desiredCandidates == null) {
-        await widget.controller.syncCalendar();
+        await widget.controller.syncCalendar(userConfirmed: true);
       } else {
         final candidates = [for (final i in indices) _candidateSource[i]];
         if (candidates.isEmpty) throw StateError('ไม่มีรายการสำหรับการซิงก์');

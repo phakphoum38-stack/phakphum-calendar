@@ -742,7 +742,9 @@ class _AppShellState extends State<AppShell> {
       widget.controller.cancelCalendarSyncPreparation();
       return;
     }
-    final synced = await _performWithResult(widget.controller.syncCalendar);
+    final synced = await _performWithResult(
+      () => widget.controller.syncCalendar(userConfirmed: true),
+    );
     if (!synced && widget.controller.pendingAlertCount > 0) {
       await _showConflictWarningDialog();
     }

@@ -9,7 +9,7 @@
     "DISKPATH.json",
     "DISKPATH.md"
   ],
-  "file_count": 806,
+  "file_count": 807,
   "files": [
     {
       "path": ".ai/memory/architecture.md",
@@ -873,13 +873,18 @@
     },
     {
       "path": "docs/ROSTER_CONFIGURATION_AND_SYNC_ROADMAP.md",
-      "size": 18030,
-      "sha256": "563b8e564dd8a64054d846f3d6a11f3750647e9ed00f4a7fd243d8ca618a6ffe"
+      "size": 18580,
+      "sha256": "f818d6ed511f7c91a2304672196be5982f218459b91ebfb8a4d64c7f41212975"
     },
     {
       "path": "docs/ROSTER_KNOWLEDGE_BASE_ARCHITECTURE_TH.md",
       "size": 6665,
       "sha256": "b5bc3b8d2a58fb1ce43ec53d38215742053840d4d47d1518006437a17235219f"
+    },
+    {
+      "path": "docs/ROSTER_PHASE_0_SOURCE_AUDIT.md",
+      "size": 24137,
+      "sha256": "159a59129c4162998d3fa1984b1886abb03a1d438054f07962e57e31f4e52cde"
     },
     {
       "path": "docs/SCE_3_0_DELIVERY_ROADMAP.md",
@@ -1313,8 +1318,8 @@
     },
     {
       "path": "lib/controller/app_controller.dart",
-      "size": 108519,
-      "sha256": "a2221d08f1a90a1134f78602988a5f869934470a84e45378f74af0c933a1c36d"
+      "size": 109091,
+      "sha256": "00d517e4cf5c988fe282d39c29a76382c346c81c80efe5d6341e79b94505bbf1"
     },
     {
       "path": "lib/core/di/app_dependencies.dart",
@@ -3033,8 +3038,8 @@
     },
     {
       "path": "lib/ui/app_shell.dart",
-      "size": 213564,
-      "sha256": "cb6562e19af894ce9a10f97b2880efa38c7d22ffde18b3b915764758d41887d8"
+      "size": 213604,
+      "sha256": "8959198f0064a1505cfedfe85b73f445798cdb1345666692d79ede0cede4a282"
     },
     {
       "path": "lib/ui/audit_log_page.dart",
@@ -3063,8 +3068,8 @@
     },
     {
       "path": "lib/ui/preview_changes.dart",
-      "size": 15753,
-      "sha256": "e3d69bd1c0cd2ab12c6696420d5a50dd3e3d4d280a92c42988b8a4e5dd26f523"
+      "size": 15772,
+      "sha256": "5de8b3ab625b1198ac12ade289f1cdee43c4068f3f7776e181276440578fb1ae"
     },
     {
       "path": "linux/.gitignore",
@@ -3293,8 +3298,8 @@
     },
     {
       "path": "test/app_controller_runtime_gate_test.dart",
-      "size": 599,
-      "sha256": "3abc2531cd233e74f21bb5266fb42fec1cee268236fe9447568dbce4d84e420a"
+      "size": 1046,
+      "sha256": "d7374ec2ccf0322986928b6d61b0b0d7e0678e9351411c23d6275d84bc5dfd45"
     },
     {
       "path": "test/app_dependencies_test.dart",

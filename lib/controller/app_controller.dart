@@ -1080,23 +1080,14 @@ class AppController extends ChangeNotifier implements ControllerState {
       }
     });
     _scheduleAutoRefresh();
-    // Optionally perform automatic prepare+sync when enabled.
+    // A roster read must never write to Google Calendar. Keep compatibility
+    // with legacy autoSync settings, but require the normal preview and the
+    // explicit confirmation dialog for every Calendar mutation.
     if (allowAutomaticCalendarSync && settings.autoSync && auth.isSignedIn) {
-      try {
-        if (pendingAlertCount == 0) {
-          await prepareCalendarSync();
-          await syncCalendar();
-        } else {
-          await _addAudit(
-            'auto.sync.skipped',
-            'ข้ามการซิงก์อัตโนมัติเนื่องจากมีแจ้งเตือนค้าง $pendingAlertCount รายการ',
-            true,
-          );
-        }
-      } catch (e) {
-        // Log and continue — do not fail the load flow if sync fails.
-        await _addAudit('auto.sync.failed', 'Auto sync failed: $e', false);
-      }
+      final message = pendingAlertCount > 0
+          ? 'ข้ามการซิงก์อัตโนมัติเนื่องจากมีแจ้งเตือนค้าง $pendingAlertCount รายการ'
+          : 'ยังไม่เขียน Google Calendar อัตโนมัติ; กรุณาตรวจตัวอย่างและยืนยันการซิงก์ด้วยตนเอง';
+      await _addAudit('auto.sync.requires_confirmation', message, true);
     }
   }
 
@@ -1538,7 +1529,18 @@ class AppController extends ChangeNotifier implements ControllerState {
     });
   }
 
-  Future<void> syncCalendar() async {
+  Future<void> syncCalendar({required bool userConfirmed}) async {
+    if (!userConfirmed) {
+      throw StateError(
+        'ต้องยืนยันการซิงก์จากหน้าตรวจตัวอย่างก่อนบันทึก Google Calendar',
+      );
+    }
+    final preparedWorkflow = _pendingCalendarWorkflow;
+    if (preparedWorkflow == null) {
+      throw StateError(
+        'ยังไม่มีแผนซิงก์ที่เตรียมไว้ กรุณาตรวจตัวอย่างก่อน',
+      );
+    }
     if (shifts.isEmpty) throw StateError('กรุณาอ่านตารางเวรก่อน');
     if (pendingAlertCount > 0) {
       throw StateError(
@@ -1552,8 +1554,7 @@ class AppController extends ChangeNotifier implements ControllerState {
         throw StateError('ไม่พบแหล่งข้อมูลเวรของรอบนี้');
       }
       final periods = _activeRosterPeriods();
-      final workflow =
-          _pendingCalendarWorkflow ?? await _createPreparedCalendarWorkflow();
+      final workflow = preparedWorkflow;
       _pendingCalendarWorkflow = null;
       try {
         if (settings.archiveOriginal && sourceUrl.isNotEmpty) {
