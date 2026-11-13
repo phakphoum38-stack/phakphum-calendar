@@ -61,9 +61,7 @@ A history entry records:
 - failed count;
 - final status.
 
-The production dependency setup uses `SharedPreferencesSyncHistoryRepository`
-to persist sync history locally on the device. This is not server-side storage
-or cross-device synchronization.
+The current repository is in-memory only. Durable local storage is the next step.
 
 ## Safety
 
