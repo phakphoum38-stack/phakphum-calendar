@@ -9,6 +9,32 @@ status are maintained in:
 
 แอป Flutter สำหรับอ่านตารางเวรจาก Google Sheets แบบ read-only ตรวจรายการก่อนบันทึก และเพิ่มเวรที่ยืนยันแล้วลง Google Calendar รองรับ UI บน Web, Android, iOS, Windows, macOS และ Linux
 
+## Quick preview (Web)
+
+This repository builds a Flutter web version of the app and includes a GitHub Actions
+workflow that publishes the `build/web` output to GitHub Pages on the `gh-pages`
+branch when pushed to `main`.
+
+- Expected Pages URL (after first successful deploy):
+  https://phakphoum38-stack.github.io/phakphum-calendar
+
+- To trigger a deploy manually, push to `main` or run the `Build Flutter Web` workflow
+  from the Actions tab.
+
+- To build and preview locally:
+
+```bash
+flutter pub get
+flutter build web --release
+cd build/web
+# serve locally (Python)
+python3 -m http.server 8080
+# then open http://localhost:8080
+```
+
+If your environment doesn't have Flutter installed, the repository also contains
+a GitHub Actions workflow that builds and deploys the web app automatically.
+
 - แอปไม่ฝังลิงก์ชีต บัญชี Google, OAuth Client ID, token หรือผลลัพธ์ตารางเวรไว้ในซอร์สโค้ด
 - มีช่อง **ชื่อที่ต้องค้นหา** ซึ่งเริ่มต้นว่าง ใช้เฉพาะรอบใช้งาน และใช้ชื่อโปรไฟล์ Google เป็นชื่อสำรอง
 - ช่องชีต ชื่อ เดือน และปีเริ่มต้นว่าง ไม่มีค่าของผู้ใช้ฝังในแอปหรือ repository ผู้ใช้เลือกเดือนและปี ค.ศ. เองก่อนอ่าน
@@ -555,13 +581,11 @@ dart run flutter_launcher_icons
 
 ## Workflows
 
-- `Validate Flutter` — `flutter analyze` และ `flutter test`
-- `Build Android APK` — release APK สำหรับทดสอบและ SHA-256
-- `Build iOS IPA (Unsigned)` — unsigned IPA และ SHA-256
-- `Build and Deploy Web` — Web artifact และ GitHub Pages
+- `Auto Detect CI` — capability detection และ Dart/Flutter quality checks เฉพาะที่จำเป็น
 - `Build Windows` — Windows x64 ZIP พร้อม SHA-256
-- `Build macOS` — macOS application ZIP พร้อม SHA-256
-- `Build Linux` — Linux x64 TAR.GZ พร้อม SHA-256
+- `Build and Deploy Web` — Web artifact และ GitHub Pages
+- `Final Gate` — ตรวจหลักฐานของ Auto Detect CI, Windows และ Web สำหรับ commit เดียวกัน
+- `Repair Google Sheets picker` — workflow แก้ไขเฉพาะกิจสำหรับฟิกซ์ที่เกี่ยวข้อง
 
 ทุก workflow รองรับ **Run workflow** และจะทำงานอัตโนมัติเมื่อไฟล์ที่เกี่ยวข้องถูก push เข้า `main`
 

@@ -1,0 +1,74 @@
+name: Generate DISKPATH
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "DISKPATH.json"
+      - "DISKPATH.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: generate-diskpath-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-and-validate:
+    name: Generate and validate DISKPATH
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Generate DISKPATH
+        run: |
+          set -euo pipefail
+          python3 tools/diskpath/generate_diskpath.py
+
+      - name: Validate DISKPATH
+        run: |
+          set -euo pipefail
+          python3 tools/diskpath/validate_diskpath.py
+
+      - name: Check generated files
+        run: |
+          set -euo pipefail
+          git diff --check
+
+      - name: Enforce DISKPATH synchronization
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- DISKPATH.json DISKPATH.md; then
+            echo "DISKPATH ENFORCEMENT: PASS"
+            echo "Generated manifests are synchronized with the repository."
+            exit 0
+          fi
+
+          echo "DISKPATH ENFORCEMENT: FAIL"
+          echo
+          echo "DISKPATH.json and/or DISKPATH.md are out of date."
+          echo
+          echo "Run:"
+          echo "  python3 tools/diskpath/generate_diskpath.py"
+          echo
+          echo "Then commit the generated files."
+          echo
+          git diff -- DISKPATH.json DISKPATH.md
+          exit 1
