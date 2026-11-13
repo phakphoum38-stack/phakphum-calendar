@@ -1,17 +1,19 @@
 # GitHub Actions workflows
 
-The active delivery surface is intentionally reduced to **two targets only**:
+The active build and delivery surface covers **Windows, Web, Android, iOS, and Linux**:
 
+- `ci-auto-detect.yml` — capability detection plus selective Dart/Flutter quality checks.
 - `windows.yml` — Windows x64 release ZIP + SHA-256 checksum.
 - `web.yml` — Flutter Web release + GitHub Pages deployment.
-- `owner-generated-v6x6.yml` — owner-generated capability detection and release-surface guard.
-- `final-gate.yml` — final verification that Windows, Web, and the capability gate all passed for the same `main` commit.
+- `android.yml` — Android release APK build artifact.
+- `ios.yml` — unsigned iOS release app build artifact.
+- `linux.yml` — Linux x64 release bundle archive.
+- `final-gate.yml` — requires Auto Detect CI, Windows, and Web for the same `main` commit; Android, iOS, and Linux are best-effort and may be skipped with a recorded reason.
 
-Android, iOS, macOS, Linux, Laravel/backend validation, broad repository
-validation, coverage gates, integration-test gates, and platform-specific
-release pipelines are **not active delivery gates**. Their source directories
-may remain in the Flutter repository for now, but they must not be required to
-merge or deploy the supported targets.
+macOS, Laravel/backend validation, broad repository validation, coverage
+gates, and integration-test gates are not active delivery gates. The Android,
+iOS, and Linux workflows build artifacts; mobile store distribution and signing
+are not configured.
 
 ## Support policy
 
@@ -21,22 +23,23 @@ For the current stabilization phase:
 | --- | --- | --- |
 | Windows x64 | Supported | `windows.yml` |
 | Web / GitHub Pages | Supported | `web.yml` |
-| Android | Paused | No active workflow |
-| iOS | Paused | No active workflow |
+| Capability detection | Supported | `ci-auto-detect.yml` |
+| Final evidence gate | Supported | `final-gate.yml` |
+| Android | Build supported | `android.yml` |
+| iOS | Unsigned build supported | `ios.yml` |
 | macOS | Paused | No active workflow |
-| Linux | Paused | No active workflow |
+| Linux x64 | Build supported | `linux.yml` |
 | Backend/Laravel | Paused | No active workflow |
 
-**Do not add a new platform workflow automatically.** A paused platform can
-return only through an explicit decision and a separately verified workflow.
+Mobile artifacts are CI builds, not store-ready packages: Android currently
+uses the debug signing configuration, and iOS is built without code signing.
 
 ## Owner-generated v6^6 capability policy
 
-`owner-generated-v6x6.yml` is the lightweight source-of-truth guard for the
-current delivery surface. It detects whether the repository contains the
-Flutter/Dart project and whether the supported Windows/Web surfaces exist.
-It records paused platforms explicitly and treats `integration_test/` as
-optional.
+`ci-auto-detect.yml` is the lightweight source-of-truth guard for the current
+delivery surface. It detects whether the repository contains the Flutter/Dart
+project and whether platform source directories exist. It treats
+`integration_test/` as optional.
 
 The capability gate is intentionally independent of Dart formatting, static
 analysis, coverage generation, and platform release builds. It must not mutate
@@ -46,11 +49,10 @@ source files and must not auto-format code.
 
 `final-gate.yml` is the final evidence gate for `main`.
 
-It is triggered when the active Windows, Web, or owner-generated capability
-workflow completes. It verifies that all three workflows have a successful
-completed run for the **same commit SHA** before reporting `FINAL PASS`.
-It also verifies that the active repository structure remains Windows + Web
-and that Android/iOS/macOS/Linux workflows remain paused.
+It is triggered when an active platform build completes on `main`. It verifies
+that Auto Detect CI and Windows, Web, Android, iOS, and Linux all have
+successful completed runs for the **same commit SHA** before reporting
+`FINAL PASS`. A failed platform build fails the final gate.
 
 This prevents a green result from one platform being mistaken for a complete
 release result and avoids bringing back the old formatter/coverage failure
@@ -61,8 +63,9 @@ chain.
 - `GOOGLE_WEB_CLIENT_ID` — used by the Web deployment when Google Sign-In is enabled.
 - `GOOGLE_SERVER_CLIENT_ID` — optional server OAuth client used by the Windows build and Web build.
 
-Platform-specific OAuth secrets for iOS/macOS are not required by the active
-workflows.
+`GOOGLE_IOS_CLIENT_ID` may be configured for the iOS build. OAuth secrets are
+optional for compilation; without them, Google sign-in is not configured for
+the resulting artifact.
 
 ## Active delivery gates
 
@@ -81,31 +84,34 @@ from `main`.
 
 ### Final
 
-The final gate combines the evidence from Windows, Web, and the owner-generated
-capability gate for one exact commit. The intended release sequence is:
+The final gate combines required quality and core delivery evidence for one exact
+commit. Optional platform artifacts are reported separately and do not block the
+core result when unavailable or behind:
 
-**Clean → Capability-aware CI → Stable → Windows PASS → Website PASS → Final PASS → Merge → Main Verified**
+**Clean → Capability-aware CI → Windows PASS + Web PASS → optional Android/iOS/Linux PASS or SKIPPED → Final PASS**
 
 ## Failure-containment policy
 
-The supported delivery workflows must remain independent:
+The platform build workflows remain independent:
 
-1. A paused platform must not block Windows or Web delivery.
+1. Auto Detect CI, Windows, and Web are required release evidence.
+2. Android, iOS, and Linux are optional artifact evidence. Their workflows do not run on pull requests; they run on relevant pushes to `main` or by manual dispatch. The final gate waits up to 10 minutes for optional targets, then records any still missing or unsuccessful target as `SKIPPED`.
+3. Store-signing credentials must not be required for iOS or Android compile checks.
 2. Missing `integration_test/` must never be treated as a CI failure for the
    supported targets.
-3. Coverage artifacts are not required by the Windows/Web release workflows.
-4. Formatting, analysis, unit tests, and coverage remain developer-side checks
-   unless a dedicated validation workflow is intentionally restored.
+3. Coverage artifacts are not required by any platform build workflow.
+4. Formatting and coverage remain developer-side checks. Auto Detect CI and
+   Windows run analysis and unit tests.
 5. A workflow must not auto-commit generated formatting changes during a
    release gate. Formatting changes must be committed explicitly by the
    developer or a dedicated maintenance job.
-6. Capability detection must not mutate the source tree or introduce a new
+7. Capability detection must not mutate the source tree or introduce a new
    platform automatically.
-7. The final gate must compare results using the same commit SHA.
+8. The final gate must compare required evidence using the same commit SHA.
+9. Skipped optional targets must be visible in the job log with a reason; skipping
+   an optional target must never hide a failure in required quality, Windows, or Web checks.
 
 ## Simplification policy
 
-Keep Actions focused on **Windows + Web deployment** until the project has a
-clear reason to re-enable another platform. The goal is a small, deterministic
-release surface rather than a large matrix of intermittently maintained
-platform checks.
+Keep each platform in a separate workflow so a native build failure is clearly
+attributed and artifacts can be downloaded independently.

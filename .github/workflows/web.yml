@@ -3,34 +3,42 @@ name: Build and Deploy Web
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
     paths:
       - "lib/**"
       - "assets/**"
+      - "android/**"
+      - "ios/**"
+      - "linux/**"
       - "windows/**"
       - "web/**"
       - "test/**"
       - "integration_test/**"
       - "pubspec.yaml"
       - "pubspec.lock"
+      - "DISKPATH.json"
+      - "DISKPATH.md"
       - ".github/workflows/**"
   push:
     branches: [main]
     paths:
       - "lib/**"
       - "assets/**"
+      - "android/**"
+      - "ios/**"
+      - "linux/**"
       - "windows/**"
       - "web/**"
       - "test/**"
       - "integration_test/**"
       - "pubspec.yaml"
       - "pubspec.lock"
+      - "DISKPATH.json"
+      - "DISKPATH.md"
       - ".github/workflows/**"
 
+# Read-only by default. The deploy job grants only the permissions Pages needs.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages-${{ github.workflow }}-${{ github.ref }}
@@ -41,6 +49,8 @@ jobs:
     name: Build Flutter web
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -49,6 +59,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.47.2
           channel: stable
           cache: true
 
@@ -57,7 +68,10 @@ jobs:
 
       - name: Build web release
         env:
-          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          # Web OAuth Client IDs are public identifiers, not client secrets.
+          # Prefer the repository secret when configured; otherwise use the
+          # owner's existing Google Web OAuth client for GitHub Pages.
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID || '667656026445-pffm0rtkaiunhfujgfv52dlfb6pbtnm2.apps.googleusercontent.com' }}
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
@@ -82,22 +96,25 @@ jobs:
           retention-days: 14
 
       - name: Upload GitHub Pages artifact
-        if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: build/web
 
   deploy-pages:
     name: Deploy GitHub Pages
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build-web
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

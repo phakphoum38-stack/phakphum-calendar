@@ -27,6 +27,9 @@ class MonthlyRosterAssignment {
     required this.date,
     required this.sourceCell,
     this.backgroundColor,
+    this.spreadsheetId,
+    this.sheetId,
+    this.sheetTitle,
   });
 
   final String sectionTitle;
@@ -36,6 +39,26 @@ class MonthlyRosterAssignment {
   final DateTime date;
   final String sourceCell;
   final String? backgroundColor;
+  final String? spreadsheetId;
+  final int? sheetId;
+  final String? sheetTitle;
+
+  String get sourceIdentityKey => spreadsheetId != null && sheetId != null
+      ? '$spreadsheetId|$sheetId|${sourceCell.toUpperCase()}'
+      : sourceCell.toUpperCase();
+
+  /// Opens the exact Google Sheets tab and cell when stable source metadata
+  /// is available. Local imports intentionally have no fabricated URL.
+  String? get sourceUrl {
+    final fileId = spreadsheetId;
+    final tabId = sheetId;
+    final cell = sourceCell.trim();
+    if (fileId == null || fileId.isEmpty || tabId == null || cell.isEmpty) {
+      return null;
+    }
+    return 'https://docs.google.com/spreadsheets/d/$fileId/edit'
+        '#gid=$tabId&range=$cell';
+  }
 }
 
 class MonthlyRosterParseReport {
@@ -85,6 +108,9 @@ class MonthlyRosterParseReport {
             ),
             sourceCell: shift.cell,
             backgroundColor: shift.sourceColorHex,
+            spreadsheetId: shift.sourceSpreadsheetId,
+            sheetId: shift.sourceSheetId,
+            sheetTitle: shift.sheetTitle,
           ),
         );
       }
@@ -152,7 +178,18 @@ class MonthlyRosterParseReport {
             return normalizedQuery.isEmpty ||
                 sectionMatches ||
                 assignment.rowLabel.toLowerCase().contains(normalizedQuery) ||
-                assignment.workerName.toLowerCase().contains(normalizedQuery);
+                assignment.workerName.toLowerCase().contains(normalizedQuery) ||
+                assignment.sourceCell.toLowerCase().contains(normalizedQuery) ||
+                (assignment.sheetTitle ?? '').toLowerCase().contains(
+                  normalizedQuery,
+                ) ||
+                (assignment.spreadsheetId ?? '').toLowerCase().contains(
+                  normalizedQuery,
+                ) ||
+                (assignment.sheetId?.toString() ?? '').contains(
+                  normalizedQuery,
+                ) ||
+                'row ${assignment.rowIndex + 1}'.contains(normalizedQuery);
           })
           .toList(growable: false);
       if (filteredAssignments.isEmpty) continue;

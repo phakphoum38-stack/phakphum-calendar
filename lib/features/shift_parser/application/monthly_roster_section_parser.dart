@@ -1,5 +1,7 @@
 import '../domain/a1_notation.dart';
 import '../domain/monthly_roster_section.dart';
+import '../../../models/shift.dart';
+import '../../../services/shift_color_service.dart';
 import '../domain/shift_parser_input.dart';
 import '../domain/thai_roster_period_parser.dart';
 
@@ -58,7 +60,7 @@ class MonthlyRosterSectionParser {
       DateTime start;
       DateTime end;
       try {
-        final period = _parsePeriod('$title ${input.sheetTitle}');
+        final period = _tryParsePeriod(title) ?? _parsePeriod(input.sheetTitle);
         start = period.start;
         end = period.end;
       } on FormatException {
@@ -96,6 +98,9 @@ class MonthlyRosterSectionParser {
                 columnIndex: entry.key,
               ),
               backgroundColor: workerCell?.backgroundColor?.hex,
+              spreadsheetId: input.spreadsheetId,
+              sheetId: input.sheetId,
+              sheetTitle: input.sheetTitle,
             ),
           );
         }
@@ -157,6 +162,14 @@ class MonthlyRosterSectionParser {
         start: DateTime(year, month, 1),
         end: DateTime(year, month + 1, 0),
       );
+    }
+  }
+
+  ThaiRosterPeriod? _tryParsePeriod(String text) {
+    try {
+      return _parsePeriod(text);
+    } on FormatException {
+      return null;
     }
   }
 
@@ -265,14 +278,25 @@ class MonthlyRosterSectionParser {
     required int headerRow,
   }) {
     final candidates = <String>[];
-    for (var row = headerRow - 1; row >= 0 && row >= headerRow - 5; row--) {
-      final texts = (cellsByRow[row] ?? const [])
+    // Search back to the previous date grid, not a fixed number of rows.
+    // Real workbooks often place section labels and merged headings far above
+    // the date row, especially after inserted explanatory rows.
+    for (var row = headerRow - 1; row >= 0; row--) {
+      final rowCells = cellsByRow[row] ?? const [];
+      if (_daysByColumn(rowCells).length >= 7) break;
+      final texts = rowCells
           .map((cell) => cell.text?.toString().trim())
           .whereType<String>()
           .where((text) => text.isNotEmpty)
           .toList();
       candidates.addAll(texts);
     }
+
+    // An explicit month/range heading is authoritative even when the sheet
+    // tab was named for a different month. Prefer the closest valid heading.
+    final dated = candidates.where((text) => _tryParsePeriod(text) != null);
+    if (dated.isNotEmpty) return dated.first;
+
     final periodTitle = candidates.where((text) => text.contains('ประจำเดือน'));
     if (periodTitle.isNotEmpty) return periodTitle.first;
     final descriptive = candidates.where(
@@ -286,4 +310,196 @@ class MonthlyRosterSectionParser {
     final normalized = value.replaceAll(RegExp(r'\s+'), '');
     return normalized == 'วันที่' || normalized == 'เวร';
   }
+}
+
+
+/// Converts recognizable monthly-grid assignments into calendar shifts.
+/// This is the fallback when the legacy row parser cannot recognize a sheet.
+class MonthlyRosterShiftAdapter {
+  const MonthlyRosterShiftAdapter();
+
+  List<Shift> parseForWorkers(
+    MonthlyRosterParseReport report, {
+    required Iterable<String> targetNames,
+  }) {
+    final targets = targetNames
+        .map(_compact)
+        .where((value) => value.length >= 2)
+        .toSet();
+    if (targets.isEmpty) return const [];
+
+    final shiftsByKey = <String, Shift>{};
+    for (final assignment in report.assignments) {
+      final worker = assignment.workerName.trim();
+      final normalizedWorker = _compact(worker);
+      if (worker.isEmpty || !targets.any(normalizedWorker.contains)) {
+        continue;
+      }
+
+      final rule = _ruleForLabel(assignment.rowLabel);
+      if (rule == null) continue;
+
+      final date = assignment.date;
+      final start = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        rule.startHour,
+        rule.startMinute,
+      );
+      var end = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        rule.endHour,
+        rule.endMinute,
+      );
+      if (!end.isAfter(start)) end = end.add(const Duration(days: 1));
+
+      final sourceColor = _colorValue(assignment.backgroundColor);
+      final colorMatch = ShiftColorService.classify(sourceColor);
+      final shift = Shift(
+        code: rule.code,
+        rowLabel: assignment.rowLabel,
+        assignedName: worker,
+        start: start,
+        end: end,
+        sheetTitle: assignment.sheetTitle ?? assignment.sectionTitle,
+        cell: assignment.sourceCell,
+        category: colorMatch?.category ?? rule.category,
+        sourceColorValue: sourceColor,
+        sourceSpreadsheetId: assignment.spreadsheetId,
+        sourceSheetId: assignment.sheetId,
+      );
+      shiftsByKey.putIfAbsent(shift.sourceIdentityKey, () => shift);
+    }
+
+    return shiftsByKey.values.toList()
+      ..sort((left, right) => left.start.compareTo(right.start));
+  }
+
+  _MonthlyShiftRule? _ruleForLabel(String label) {
+    final value = label
+        .toUpperCase()
+        .replaceAll(RegExp(r'[\s.\-_]+'), '');
+    if (value == 'ER' || value == 'CT') {
+      return _MonthlyShiftRule(
+        code: 'U$value',
+        startHour: 8,
+        startMinute: 0,
+        endHour: 16,
+        endMinute: 0,
+      );
+    }
+    if (value == 'GEN') {
+      return const _MonthlyShiftRule(
+        code: 'UG',
+        startHour: 7,
+        startMinute: 30,
+        endHour: 12,
+        endMinute: 0,
+        category: ShiftCategory.clinic,
+      );
+    }
+    if (value.contains('14ชั้น')) {
+      return const _MonthlyShiftRule(
+        code: 'U14',
+        startHour: 7,
+        startMinute: 0,
+        endHour: 8,
+        endMinute: 0,
+      );
+    }
+
+    final p = RegExp(r'^P([1-4])(เช้า|บ่าย|ดึก)$').firstMatch(value);
+    if (p != null) {
+      final base = 'P${p.group(1)}';
+      return switch (p.group(2)) {
+        'เช้า' => _MonthlyShiftRule(
+          code: 'U$base',
+          startHour: 8,
+          startMinute: 0,
+          endHour: 16,
+          endMinute: 0,
+        ),
+        'บ่าย' => _MonthlyShiftRule(
+          code: 'A$base',
+          startHour: 16,
+          startMinute: 0,
+          endHour: 0,
+          endMinute: 0,
+        ),
+        'ดึก' => _MonthlyShiftRule(
+          code: 'N$base',
+          startHour: 0,
+          startMinute: 0,
+          endHour: 8,
+          endMinute: 0,
+        ),
+        _ => null,
+      };
+    }
+
+    for (final base in const ['CTIPD', 'CTER', 'IPD', 'ER']) {
+      if (!value.startsWith(base)) continue;
+      final period = value.substring(base.length);
+      if (period == 'เช้า') {
+        return _MonthlyShiftRule(
+          code: 'U$base',
+          startHour: 8,
+          startMinute: 0,
+          endHour: 16,
+          endMinute: 0,
+        );
+      }
+      if (period == 'บ่าย') {
+        final overnight = base != 'ER';
+        return _MonthlyShiftRule(
+          code: 'A$base',
+          startHour: 16,
+          startMinute: 0,
+          endHour: overnight ? 8 : 0,
+          endMinute: 0,
+        );
+      }
+      if (period == 'ดึก' && base == 'ER') {
+        return const _MonthlyShiftRule(
+          code: 'NER',
+          startHour: 0,
+          startMinute: 0,
+          endHour: 8,
+          endMinute: 0,
+        );
+      }
+    }
+    return null;
+  }
+
+  String _compact(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
+
+  int? _colorValue(String? hex) {
+    if (hex == null) return null;
+    final value = hex.trim().replaceFirst('#', '');
+    if (!RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(value)) return null;
+    return int.parse('FF$value', radix: 16);
+  }
+}
+
+class _MonthlyShiftRule {
+  const _MonthlyShiftRule({
+    required this.code,
+    required this.startHour,
+    required this.startMinute,
+    required this.endHour,
+    required this.endMinute,
+    this.category = ShiftCategory.own,
+  });
+
+  final String code;
+  final int startHour;
+  final int startMinute;
+  final int endHour;
+  final int endMinute;
+  final ShiftCategory category;
 }
