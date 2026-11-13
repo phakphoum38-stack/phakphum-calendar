@@ -123,19 +123,38 @@ class MonthlyRosterSectionParser {
 
   ThaiRosterPeriod _parsePeriod(String text) {
     try {
-      return periodParser.parse(text);
+      final period = periodParser.parse(text);
+
+      return ThaiRosterPeriod(
+        start: DateTime(
+          period.start.year,
+          period.start.month,
+          period.start.day,
+        ),
+        end: DateTime(period.end.year, period.end.month, period.end.day),
+      );
     } on FormatException {
       final monthPattern = _thaiMonths.keys.join('|');
       final match = RegExp(
         '($monthPattern)\\s*(?:พ\\.?\\s*ศ\\.?)?\\s*(\\d{2,4})',
       ).firstMatch(text);
+
       if (match == null) rethrow;
+
       var year = int.parse(match.group(2)!);
-      if (year < 100) year += 2500;
-      if (year >= 2400) year -= 543;
+
+      if (year < 100) {
+        year += 2500;
+      }
+
+      if (year >= 2400) {
+        year -= 543;
+      }
+
       final month = _thaiMonths[match.group(1)!]!;
+
       return ThaiRosterPeriod(
-        start: DateTime(year, month),
+        start: DateTime(year, month, 1),
         end: DateTime(year, month + 1, 0),
       );
     }
@@ -165,13 +184,16 @@ class MonthlyRosterSectionParser {
   }) {
     final result = <int, DateTime>{};
     final columns = daysByColumn.keys.toList()..sort();
+
     var cursor = DateTime(start.year, start.month, start.day);
 
     for (final column in columns) {
       final displayedDay = daysByColumn[column]!;
-      final resolved = _nextDateWithDay(
+
+      final resolved = _resolveNextRosterDate(
         displayedDay: displayedDay,
         cursor: cursor,
+        start: start,
         end: end,
       );
 
@@ -184,35 +206,47 @@ class MonthlyRosterSectionParser {
       }
 
       result[column] = resolved;
-      cursor = resolved.add(const Duration(days: 1));
+
+      // Treat roster dates as calendar dates, not elapsed 24-hour durations.
+      // Dart's local timezone has historical Bangkok offsets (e.g. year 1920),
+      // so resolved.add(const Duration(days: 1)) can produce a cursor such as
+      // 02/04/1920 00:17:56 while the next candidate is 02/04/1920 00:00:00.
+      // Reconstructing the next calendar date avoids that historical timezone
+      // comparison bug.
+      cursor = DateTime(resolved.year, resolved.month, resolved.day + 1);
     }
 
     return result;
   }
 
-  DateTime? _nextDateWithDay({
+  DateTime? _resolveNextRosterDate({
     required int displayedDay,
     required DateTime cursor,
+    required DateTime start,
     required DateTime end,
   }) {
     var monthCursor = DateTime(cursor.year, cursor.month);
     final lastMonth = DateTime(end.year, end.month);
 
     while (!monthCursor.isAfter(lastMonth)) {
-      final candidate = DateTime(
+      final daysInMonth = DateTime(
         monthCursor.year,
-        monthCursor.month,
-        displayedDay,
-      );
-      final isValidDay =
-          candidate.year == monthCursor.year &&
-          candidate.month == monthCursor.month &&
-          candidate.day == displayedDay;
+        monthCursor.month + 1,
+        0,
+      ).day;
 
-      if (isValidDay &&
-          !candidate.isBefore(cursor) &&
-          !candidate.isAfter(end)) {
-        return candidate;
+      if (displayedDay <= daysInMonth) {
+        final candidate = DateTime(
+          monthCursor.year,
+          monthCursor.month,
+          displayedDay,
+        );
+
+        if (!candidate.isBefore(cursor) &&
+            !candidate.isBefore(start) &&
+            !candidate.isAfter(end)) {
+          return candidate;
+        }
       }
 
       monthCursor = DateTime(monthCursor.year, monthCursor.month + 1);
