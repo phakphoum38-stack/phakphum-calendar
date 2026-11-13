@@ -23,7 +23,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 ## Scope
 
 - Manifest scope: `git-tracked-regular-files`
-- Tracked files: `807`
+- Tracked files: `811`
 - Excluded paths: `DISKPATH.json`, `DISKPATH.md`
 
 ## Repository Paths
@@ -202,6 +202,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `docs/PLATFORM_SUPPORT.md` | 2207 | `519f4deb785d0f8d972c541dae211d518d85efd11e0ce155385b6a885b4c43d3` |
 | `docs/PROJECT_AUDIT.md` | 23667 | `c833f9d4e5b55e994bf82a4656240e60bc75257407f917c9673995d62c4fc46f` |
 | `docs/REAL_ROSTER_PROFILE.md` | 1316 | `29c63cc02f2a49550489c35649dd265ec9114a9518c4d600ce4dad5be1913e5d` |
+| `docs/RESEARCH_OS_CALENDAR_BRIDGE.md` | 1892 | `d5dd642218b168bbeba4de296c8d8223c311d51abd6e84dc07744eeb8142e849` |
 | `docs/ROSTER_CONFIGURATION_AND_SYNC_ROADMAP.md` | 18580 | `f818d6ed511f7c91a2304672196be5982f218459b91ebfb8a4d64c7f41212975` |
 | `docs/ROSTER_KNOWLEDGE_BASE_ARCHITECTURE_TH.md` | 6665 | `b5bc3b8d2a58fb1ce43ec53d38215742053840d4d47d1518006437a17235219f` |
 | `docs/ROSTER_PHASE_0_SOURCE_AUDIT.md` | 24137 | `159a59129c4162998d3fa1984b1886abb03a1d438054f07962e57e31f4e52cde` |
@@ -354,7 +355,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/calendar_engine/domain/sync_id_factory.dart` | 908 | `bee76054664b076365ff62d85022f323f538c43b5b41cc82d70be92c3f14771f` |
 | `lib/features/calendar_engine/infrastructure/failed_sync_json_codec.dart` | 2993 | `1772f9ea46e2fbbf36d591f4e4ba6be3fb9d5ae79df55c143f5966a6fd8cb74c` |
 | `lib/features/calendar_engine/infrastructure/google_calendar_gateway.dart` | 439 | `ed6a7ed0d66aab3fe6364f14ff9b3521b36d792a14925ed9401124c1fa0e4fc6` |
-| `lib/features/calendar_engine/infrastructure/google_calendar_sync_gateway.dart` | 6176 | `6cf0bbd85edd7c2a7222bda0d36cb0a563c7b4b4f80b79c4e4279c066bfddd0f` |
+| `lib/features/calendar_engine/infrastructure/google_calendar_sync_gateway.dart` | 6712 | `59566ddcddde65bc8433efc42351e1026550cf23335ff9e5230d27cd50f2e836` |
 | `lib/features/calendar_engine/infrastructure/shared_preferences_failed_sync_repository.dart` | 1217 | `2ae9a13ef8b650360bf70089d4a686c10fa1a78f5b1701f5fdeb52a306d02b61` |
 | `lib/features/calendar_sync/application/calendar_sync_executor.dart` | 4087 | `8d736e0e83f5dc6ab69c7837c120fcc421b90452f5d7b7fe7787c3cead71b5a4` |
 | `lib/features/calendar_sync/application/calendar_sync_planner.dart` | 2981 | `093e3ef15357f1a7a0db93d7fd6f097bfc6aa6b02ca1d9b9e888816a4cd96522` |
@@ -554,7 +555,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/shift_exchange/presentation/pages/shift_exchange_page.dart` | 4094 | `fd5473594d17fec03331e548a3e1123335e888621b226255bab77d486c93f57e` |
 | `lib/features/shift_parser/application/hospital_roster_parser.dart` | 5495 | `8ca60d01705bb52e4faa478ad61c28a0f67d104291fd3165ef3e8dfd30f10168` |
 | `lib/features/shift_parser/application/monthly_roster_conversion_diagnostics.dart` | 2402 | `72edb75ec277cbb5dd5c173b4482faafa7e371fc788d1f46522e18e8dc531306` |
-| `lib/features/shift_parser/application/monthly_roster_section_parser.dart` | 14448 | `eee42617d106b45fa4e51bab81e4473d521e71c7843331cffd5c31b86212d94c` |
+| `lib/features/shift_parser/application/monthly_roster_section_parser.dart` | 15283 | `92872f317f80eb74d2e6a9279f9807e2577e7c3e1d5228778ab4952fb876a3d7` |
 | `lib/features/shift_parser/application/smart_roster_analyze_generator.dart` | 2821 | `1b395e6440350e48357a37ec285aa172b0f962fd180822ea67bef63f2116c1c0` |
 | `lib/features/shift_parser/application/snapshot_normalizer.dart` | 1809 | `ad12901e35e5e9f33ed815547ecc051d117e0e3fddcc9f5b0f567e99a16e36f6` |
 | `lib/features/shift_parser/domain/a1_notation.dart` | 631 | `264700bc1ec9e89932ad9f17dca3811b15595dd8c392f3cd44a5efa8b29d4746` |
@@ -599,6 +600,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/workflow/application/workflow_preview_builder.dart` | 3012 | `a3a146635221bbacaed2d90527cbf7e2d7ae252f3d6b74a8478ad52c59577122` |
 | `lib/features/workflow/domain/workflow_preview.dart` | 523 | `4f07b1d948587a69fc58e0eb7710954ed0870b82fec115857c8bef70c7b8e2fc` |
 | `lib/features/workflow/presentation/workflow_dashboard_screen.dart` | 3374 | `1de5b87be975bd9612bffe9b77b0bb101af54b19fb48e94309b30a458e45fbe9` |
+| `lib/integration/research_os_calendar_bridge_contract.dart` | 984 | `71b30e779061f56d5478e85f88c84bbb5bc2bb1eaad98fa5afefa7fdc8eb32dd` |
 | `lib/l10n/app_en.arb` | 8092 | `2d3571c2224f156c1dab295445831ab0e1d863c70faa64531e3b0262b7c7752c` |
 | `lib/l10n/app_localizations.dart` | 29851 | `df57e38383721b28ea459df427cdbe290b4d84e16d4131b7b8dc1dc1f563d60d` |
 | `lib/l10n/app_localizations_en.dart` | 12433 | `820389832f085f2abd9c1219476af6d90b9214bcfa1bbc568f5a2383467c04b4` |
@@ -716,6 +718,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `test/google_api_client_test.dart` | 2748 | `61c4ae92e4552b4555b2b1f3a0623fc85fc623cae0f2905c7cc04e1b791234ca` |
 | `test/google_auth_service_test.dart` | 855 | `7c020e73fe723f7a10809801b9a7fe5a8e40dee8dc2ce5795c10002b639bc84e` |
 | `test/google_calendar_sync_gateway_test.dart` | 3724 | `73f96f9b21fb7b5cb65eca3996f24cad06e16a16f2ce601b31ef32d5caf8bbec` |
+| `test/google_calendar_sync_gateway_timeout_test.dart` | 1261 | `97eb48cc601433f57e8805956cf8d02266e487af62f33d5b70e63eb51b190dd7` |
 | `test/google_calendar_workflow_integration_test.dart` | 16248 | `45eec9caa94922fcb15f8434d123fda377b1239e889a54519983c8fdb29d88d1` |
 | `test/google_employee_sync_service_test.dart` | 3691 | `266b6dd3b9a7e72df07735dd1bd9f47da626798b51292f5eb63e25c1e514d98f` |
 | `test/google_sheets_import_data_source_test.dart` | 9255 | `92034f1852cc24b119145efe005af8b0eaf0718b6dd771937e303580579e26e6` |
@@ -740,6 +743,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `test/off_after_cross_month_roster_boundary_test.dart` | 2733 | `10382634904a67541a8a39f4744a95d3cbccd3911f6226b6696d9439dd41747b` |
 | `test/plugin_registry_test.dart` | 1487 | `02d16914879b047c97f0d1c0d9929cc4ae4a3551ab3fde79d6361b8ff0853f29` |
 | `test/radiology_roster_structure_test.dart` | 4209 | `e526b10d9c6039756439032c4062739886780b735aeea99beff9e04119e1d843` |
+| `test/research_os_calendar_bridge_contract_test.dart` | 575 | `790db7d445e0ac17557f23088ca437b43eb9fb390363d9ef887aca5a4d8df718` |
 | `test/roster_assignment_timeline_test.dart` | 4152 | `76d802d9a75b2a5ce1341df913e5be662125cc28d80c94b8be07ec05a9cdcaf1` |
 | `test/roster_name_entry_test.dart` | 1534 | `15dc0da8acc3b28d6d8b81fc11cc4281ad068678c64f0754dcabd87136ee77c6` |
 | `test/roster_reference_comparison_test.dart` | 1607 | `d16ca98671685e19099f51a87e4cc023dae166057b3aa436ba5991a040749cc1` |

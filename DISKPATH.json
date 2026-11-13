@@ -9,7 +9,7 @@
     "DISKPATH.json",
     "DISKPATH.md"
   ],
-  "file_count": 807,
+  "file_count": 811,
   "files": [
     {
       "path": ".ai/memory/architecture.md",
@@ -872,6 +872,11 @@
       "sha256": "29c63cc02f2a49550489c35649dd265ec9114a9518c4d600ce4dad5be1913e5d"
     },
     {
+      "path": "docs/RESEARCH_OS_CALENDAR_BRIDGE.md",
+      "size": 1892,
+      "sha256": "d5dd642218b168bbeba4de296c8d8223c311d51abd6e84dc07744eeb8142e849"
+    },
+    {
       "path": "docs/ROSTER_CONFIGURATION_AND_SYNC_ROADMAP.md",
       "size": 18580,
       "sha256": "f818d6ed511f7c91a2304672196be5982f218459b91ebfb8a4d64c7f41212975"
@@ -1633,8 +1638,8 @@
     },
     {
       "path": "lib/features/calendar_engine/infrastructure/google_calendar_sync_gateway.dart",
-      "size": 6176,
-      "sha256": "6cf0bbd85edd7c2a7222bda0d36cb0a563c7b4b4f80b79c4e4279c066bfddd0f"
+      "size": 6712,
+      "sha256": "59566ddcddde65bc8433efc42351e1026550cf23335ff9e5230d27cd50f2e836"
     },
     {
       "path": "lib/features/calendar_engine/infrastructure/shared_preferences_failed_sync_repository.dart",
@@ -2633,8 +2638,8 @@
     },
     {
       "path": "lib/features/shift_parser/application/monthly_roster_section_parser.dart",
-      "size": 14448,
-      "sha256": "eee42617d106b45fa4e51bab81e4473d521e71c7843331cffd5c31b86212d94c"
+      "size": 15283,
+      "sha256": "92872f317f80eb74d2e6a9279f9807e2577e7c3e1d5228778ab4952fb876a3d7"
     },
     {
       "path": "lib/features/shift_parser/application/smart_roster_analyze_generator.dart",
@@ -2855,6 +2860,11 @@
       "path": "lib/features/workflow/presentation/workflow_dashboard_screen.dart",
       "size": 3374,
       "sha256": "1de5b87be975bd9612bffe9b77b0bb101af54b19fb48e94309b30a458e45fbe9"
+    },
+    {
+      "path": "lib/integration/research_os_calendar_bridge_contract.dart",
+      "size": 984,
+      "sha256": "71b30e779061f56d5478e85f88c84bbb5bc2bb1eaad98fa5afefa7fdc8eb32dd"
     },
     {
       "path": "lib/l10n/app_en.arb",
@@ -3442,6 +3452,11 @@
       "sha256": "73f96f9b21fb7b5cb65eca3996f24cad06e16a16f2ce601b31ef32d5caf8bbec"
     },
     {
+      "path": "test/google_calendar_sync_gateway_timeout_test.dart",
+      "size": 1261,
+      "sha256": "97eb48cc601433f57e8805956cf8d02266e487af62f33d5b70e63eb51b190dd7"
+    },
+    {
       "path": "test/google_calendar_workflow_integration_test.dart",
       "size": 16248,
       "sha256": "45eec9caa94922fcb15f8434d123fda377b1239e889a54519983c8fdb29d88d1"
@@ -3560,6 +3575,11 @@
       "path": "test/radiology_roster_structure_test.dart",
       "size": 4209,
       "sha256": "e526b10d9c6039756439032c4062739886780b735aeea99beff9e04119e1d843"
+    },
+    {
+      "path": "test/research_os_calendar_bridge_contract_test.dart",
+      "size": 575,
+      "sha256": "790db7d445e0ac17557f23088ca437b43eb9fb390363d9ef887aca5a4d8df718"
     },
     {
       "path": "test/roster_assignment_timeline_test.dart",
