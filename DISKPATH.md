@@ -238,7 +238,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `docs/flexible-workforce/README.md` | 3714 | `fa285199c8eddb2475c953c32caa8a19f459da1d620a61a7bab0d93eed2a874f` |
 | `docs/flexible-workforce/REQUIREMENTS.md` | 10724 | `127d90d9d82814cf048a0f8e5322566ee414a03d7ae1b71bed683f9fa6c34e02` |
 | `docs/flexible-workforce/ROADMAP.md` | 3793 | `88d15b3e4b142aed31dfd0f24cb6048319c264b68e9ca4bad0290bb85fd544ec` |
-| `docs/flexible-workforce/TRACEABILITY_MATRIX.md` | 36743 | `3b5d6360602120090e4df45963c7f8abb4119014ce629cbb83889f974b29c084` |
+| `docs/flexible-workforce/TRACEABILITY_MATRIX.md` | 36942 | `a1d4b224a8f3b8b012bae2d74628d85c43b135ada496722324b605d240570a35` |
 | `docs/google-workspace-setup.html` | 5829 | `69bec594a366e629476a68f6c56726aad265ec227626c90bf4b9445d5bbe6cb9` |
 | `docs/universal-generator-calendar-adapter.md` | 2286 | `956baeae8204bcc11b34e6b974fcf1e4767e34f47a5bf8153941f346552db363` |
 | `docs/wiki/ARCHITECTURE.md` | 2497 | `983ca3b8f7959c48972089643d0fa0ee7f9e4e757311e3a70306c4d23b308968` |
