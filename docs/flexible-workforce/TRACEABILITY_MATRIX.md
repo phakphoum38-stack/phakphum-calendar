@@ -332,7 +332,7 @@ The production import save callback is wired, not merely injectable in tests:
 
 - WF-009 remains **partial / UNKNOWN for full acceptance**: production confirmation and canonical schedule persistence are wired, but duplicate resolution against existing master data, row-level create/update/skip decisions, verified employee identity matching, and an immutable staged preview remain absent from the inspected flow.
 - WF-010 remains **UNKNOWN**: no end-to-end rollback/idempotency guarantee has been demonstrated. The save currently persists one canonical Schedule aggregate; it does not coordinate employee master-data writes in a transaction.
-- Existing focused tests include `test/import_summary_page_test.dart` and `test/canonical_import_calendar_vertical_slice_test.dart`; the latter proves no canonical Schedule is persisted before confirmation and persistence occurs after confirmation.
+- `test/import_excel_page_test.dart` proves the route's repository has no `imported` Schedule before the user taps `ยืนยันและบันทึกตารางเวร`, then verifies the saved Schedule after confirmation. `test/canonical_import_calendar_vertical_slice_test.dart` separately exercises canonical import-to-persistence, reload, validation, and subsequent schedule editing; it is not the confirmation-boundary test.
 
 ### Current PR-head CI recheck
 
