@@ -23,7 +23,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 ## Scope
 
 - Manifest scope: `git-tracked-regular-files`
-- Tracked files: `819`
+- Tracked files: `825`
 - Excluded paths: `DISKPATH.json`, `DISKPATH.md`
 
 ## Repository Paths
@@ -232,6 +232,12 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `docs/adr/ADR-0013-shift-transactions.md` | 2396 | `4fd1346703d7a2c30c4fc11efad905a0c6ea121bb4223e4fe5fcda7e51ab5080` |
 | `docs/adr/ADR-0014-multi-source-multi-period-review.md` | 1376 | `ddad342731c19761300348cf7e7590ab7253e9b4836c93baad4bb72a949285db` |
 | `docs/ci/SELF_HOSTED_WINDOWS_RUNNER.md` | 3532 | `2b660bec432720b722ab01e337d5fadca3763d5de531222367f99b278f6a923e` |
+| `docs/flexible-workforce/ACCEPTANCE_TESTS.md` | 5945 | `ebd6afc013524570c7a3b1b146e3f8ce20d15c7ef127d0f4b2fa2eb15f26eea8` |
+| `docs/flexible-workforce/ARCHITECTURE.md` | 6666 | `44a5d163d1102e53befd7af4d4b9d0758f341c8d10c0c281b6080a8f2cd64de0` |
+| `docs/flexible-workforce/DATA_MODEL.md` | 6394 | `f96249ce676d7e8e37f4b55c0ec248c6ac467da1c276f577b46df1bb011e560f` |
+| `docs/flexible-workforce/README.md` | 3714 | `fa285199c8eddb2475c953c32caa8a19f459da1d620a61a7bab0d93eed2a874f` |
+| `docs/flexible-workforce/REQUIREMENTS.md` | 10724 | `127d90d9d82814cf048a0f8e5322566ee414a03d7ae1b71bed683f9fa6c34e02` |
+| `docs/flexible-workforce/ROADMAP.md` | 3793 | `88d15b3e4b142aed31dfd0f24cb6048319c264b68e9ca4bad0290bb85fd544ec` |
 | `docs/google-workspace-setup.html` | 5829 | `69bec594a366e629476a68f6c56726aad265ec227626c90bf4b9445d5bbe6cb9` |
 | `docs/universal-generator-calendar-adapter.md` | 2286 | `956baeae8204bcc11b34e6b974fcf1e4767e34f47a5bf8153941f346552db363` |
 | `docs/wiki/ARCHITECTURE.md` | 2497 | `983ca3b8f7959c48972089643d0fa0ee7f9e4e757311e3a70306c4d23b308968` |
