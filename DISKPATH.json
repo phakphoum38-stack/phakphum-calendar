@@ -9,7 +9,7 @@
     "DISKPATH.json",
     "DISKPATH.md"
   ],
-  "file_count": 819,
+  "file_count": 826,
   "files": [
     {
       "path": ".ai/memory/architecture.md",
@@ -1020,6 +1020,41 @@
       "path": "docs/ci/SELF_HOSTED_WINDOWS_RUNNER.md",
       "size": 3532,
       "sha256": "2b660bec432720b722ab01e337d5fadca3763d5de531222367f99b278f6a923e"
+    },
+    {
+      "path": "docs/flexible-workforce/ACCEPTANCE_TESTS.md",
+      "size": 5945,
+      "sha256": "ebd6afc013524570c7a3b1b146e3f8ce20d15c7ef127d0f4b2fa2eb15f26eea8"
+    },
+    {
+      "path": "docs/flexible-workforce/ARCHITECTURE.md",
+      "size": 6666,
+      "sha256": "44a5d163d1102e53befd7af4d4b9d0758f341c8d10c0c281b6080a8f2cd64de0"
+    },
+    {
+      "path": "docs/flexible-workforce/DATA_MODEL.md",
+      "size": 6394,
+      "sha256": "f96249ce676d7e8e37f4b55c0ec248c6ac467da1c276f577b46df1bb011e560f"
+    },
+    {
+      "path": "docs/flexible-workforce/README.md",
+      "size": 3714,
+      "sha256": "fa285199c8eddb2475c953c32caa8a19f459da1d620a61a7bab0d93eed2a874f"
+    },
+    {
+      "path": "docs/flexible-workforce/REQUIREMENTS.md",
+      "size": 10724,
+      "sha256": "127d90d9d82814cf048a0f8e5322566ee414a03d7ae1b71bed683f9fa6c34e02"
+    },
+    {
+      "path": "docs/flexible-workforce/ROADMAP.md",
+      "size": 3793,
+      "sha256": "88d15b3e4b142aed31dfd0f24cb6048319c264b68e9ca4bad0290bb85fd544ec"
+    },
+    {
+      "path": "docs/flexible-workforce/TRACEABILITY_MATRIX.md",
+      "size": 36942,
+      "sha256": "a1d4b224a8f3b8b012bae2d74628d85c43b135ada496722324b605d240570a35"
     },
     {
       "path": "docs/google-workspace-setup.html",
