@@ -2848,8 +2848,8 @@
     },
     {
       "path": "lib/features/workflow/application/calendar_sync_coordinator.dart",
-      "size": 8955,
-      "sha256": "bffd7b3ed15b52245dcc48a59af9a6ab0ae9c3d9f49367242dadd58294efa09e"
+      "size": 10719,
+      "sha256": "ac59214f2751fe80d93bc2d9a4f9c9d4b9d298efdf0d8fdb0baa287bea4a5287"
     },
     {
       "path": "lib/features/workflow/application/calendar_workflow_facade.dart",
@@ -3488,8 +3488,8 @@
     },
     {
       "path": "test/google_calendar_workflow_integration_test.dart",
-      "size": 16248,
-      "sha256": "45eec9caa94922fcb15f8434d123fda377b1239e889a54519983c8fdb29d88d1"
+      "size": 18036,
+      "sha256": "0ca8ed61f1058c6cfc37cd3a53e67dee71caa983dbf9487dee6c53c67b064524"
     },
     {
       "path": "test/google_employee_sync_service_test.dart",

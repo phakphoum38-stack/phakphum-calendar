@@ -63,13 +63,35 @@ class CalendarSyncCoordinator {
             calendarId: calendarId,
           );
     final deduplicatedManaged = _deduplicateManaged(desired, managed);
+    // Past provider events are historical records, not omissions from the
+    // current schedule. Keep them in the desired set so the expanded lookback
+    // window cannot turn them into deletion requests. Current desired IDs are
+    // excluded so legitimate updates to past-dated assignments still work.
+    final today = DateTime.now();
+    final desiredIds = desired.map((candidate) => candidate.syncId).toSet();
+    final historical = deduplicatedManaged.where(
+      (event) =>
+          !desiredIds.contains(event.syncId) &&
+          // Duplicate managed copies are cleanup candidates, not historical
+          // records. Preserve genuine historical events only.
+          !event.syncId.startsWith('legacy:duplicate-managed:') &&
+          !event.start.isBefore(range.$1) &&
+          event.start.isBefore(today),
+    );
+    final effectiveDesired = <CalendarEventCandidate>[
+      ...desired,
+      ...historical.map(_candidateFromManaged),
+    ];
     final adopted = _adoptEquivalentLegacy(
-      desired,
+      effectiveDesired,
       deduplicatedManaged,
       legacy,
     );
     final existing = adopted.map(_candidateFromManaged).toList(growable: false);
-    final diff = diffEngine.compare(desired: desired, existing: existing);
+    final diff = diffEngine.compare(
+      desired: effectiveDesired,
+      existing: existing,
+    );
     final plan = _planBuilder.build(
       diff: diff,
       existingEvents: adopted,
@@ -125,9 +147,10 @@ class CalendarSyncCoordinator {
 
   (DateTime, DateTime) _range(List<CalendarEventCandidate> candidates) {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lookbackStart = _subtractCalendarMonths(today, 3);
     if (candidates.isEmpty) {
-      final start = DateTime(now.year, now.month, now.day);
-      return (start, start.add(const Duration(days: 1)));
+      return (lookbackStart, today.add(const Duration(days: 1)));
     }
     final starts = candidates.map((candidate) => candidate.start);
     final ends = candidates.map((candidate) => candidate.end);
@@ -137,7 +160,22 @@ class CalendarSyncCoordinator {
     final timeMax = ends.reduce(
       (left, right) => left.isAfter(right) ? left : right,
     );
-    return (timeMin, timeMax);
+    final currentWindowEnd = today.add(const Duration(days: 1));
+    return (
+      lookbackStart.isBefore(timeMin) ? lookbackStart : timeMin,
+      currentWindowEnd.isAfter(timeMax) ? currentWindowEnd : timeMax,
+    );
+  }
+
+  /// Subtracts calendar months while clamping month-end dates (for example,
+  /// May 31 minus three months becomes February 28/29, not March 3).
+  DateTime _subtractCalendarMonths(DateTime value, int months) {
+    final monthIndex = value.year * 12 + value.month - 1 - months;
+    final year = monthIndex ~/ 12;
+    final month = monthIndex % 12 + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    final day = value.day > lastDay ? lastDay : value.day;
+    return DateTime(year, month, day);
   }
 
   CalendarEventCandidate _candidateFromManaged(ManagedCalendarEvent event) {
