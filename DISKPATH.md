@@ -597,7 +597,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/universal_generator_adapter/application/generator_calendar_adapter.dart` | 4192 | `a9eed38da7c45cf6a8a9aa98be69b2eecd7e7e19fc10c283e22245496eccb88f` |
 | `lib/features/universal_generator_adapter/domain/generator_adapter_preview.dart` | 1169 | `f5d7422fa713ab7e7cabb8689088f46f56e98bde51f8407e810b8bfe0e95da0f` |
 | `lib/features/universal_generator_adapter/domain/generator_event_record.dart` | 811 | `b217540d117096f6cd2574657d474530c7f4c0f4c307b1d5a01540f5eea66d36` |
-| `lib/features/workflow/application/calendar_sync_coordinator.dart` | 10512 | `f26425cc41f37f5dfb05fd87df1f7db18b9df523c5c60167c7b1d6fea9934ab4` |
+| `lib/features/workflow/application/calendar_sync_coordinator.dart` | 10719 | `ac59214f2751fe80d93bc2d9a4f9c9d4b9d298efdf0d8fdb0baa287bea4a5287` |
 | `lib/features/workflow/application/calendar_workflow_facade.dart` | 5039 | `7d90a4ea47f9be941a807bd31abbe3343eb071ea7649f1a9722580e9a381ba09` |
 | `lib/features/workflow/application/calendar_workflow_factory.dart` | 1899 | `0639e6d9a6dc6d729540bc940931bb958dbb5e41f44d9c21373dbc04d8bc7b07` |
 | `lib/features/workflow/application/canonical_schedule_event_mapper.dart` | 3547 | `f8926cc6ccf3fa7ad55c1bb49fb919be69a78ff7bf91c19027f396ef3d125a76` |

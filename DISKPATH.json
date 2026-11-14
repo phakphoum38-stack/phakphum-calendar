@@ -2848,8 +2848,8 @@
     },
     {
       "path": "lib/features/workflow/application/calendar_sync_coordinator.dart",
-      "size": 10512,
-      "sha256": "f26425cc41f37f5dfb05fd87df1f7db18b9df523c5c60167c7b1d6fea9934ab4"
+      "size": 10719,
+      "sha256": "ac59214f2751fe80d93bc2d9a4f9c9d4b9d298efdf0d8fdb0baa287bea4a5287"
     },
     {
       "path": "lib/features/workflow/application/calendar_workflow_facade.dart",
