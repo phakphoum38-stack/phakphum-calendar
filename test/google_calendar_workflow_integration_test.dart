@@ -13,6 +13,7 @@ import 'package:phakphum_calendar/features/rules/domain/rule_context.dart';
 import 'package:phakphum_calendar/features/rules/domain/rule_severity.dart';
 import 'package:phakphum_calendar/features/rules/domain/rule_violation.dart';
 import 'package:phakphum_calendar/features/workflow/application/canonical_schedule_event_mapper.dart';
+import 'package:phakphum_calendar/domain/entities/schedule.dart';
 
 import 'support/canonical_schedule_fixture.dart';
 
@@ -302,6 +303,42 @@ void main() {
       expect(gateway.events, hasLength(desired.length));
     },
   );
+  test('three-month lookback preserves historical managed events', () async {
+    final gateway = _CalendarGateway();
+    final historical = ManagedCalendarEvent(
+      eventId: 'historical-managed-event',
+      syncId: 'sce-historical-event',
+      title: 'Historical shift',
+      start: DateTime(2026, 10, 1, 8),
+      end: DateTime(2026, 10, 1, 20),
+      description: 'Keep this event',
+    );
+    gateway.events.add(historical);
+    final dependencies = AppDependencies(
+      scheduleRules: const [],
+      syncHistoryRepository: _RecordingHistoryRepository(),
+      failedSyncRepository: _InMemoryFailedSyncRepository(),
+    );
+    final controller = dependencies.createShiftCalendarWorkflowController(
+      gateway,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.prepareSchedule(
+      Schedule(id: 'empty-schedule', name: 'No current assignments'),
+    );
+
+    final today = DateTime.now();
+    final expectedStart = DateTime(today.year, today.month - 3, today.day);
+    final preparation = controller.schedulePreparation!;
+    expect(gateway.lastTimeMin, expectedStart);
+    expect(preparation.timeMin, expectedStart);
+    expect(preparation.diff.toDelete, isEmpty);
+    expect(preparation.diff.unchanged.map((event) => event.syncId),
+        contains(historical.syncId));
+    expect(preparation.plan.operationCount, 0);
+  });
+
 }
 
 class _CalendarGateway
@@ -313,6 +350,8 @@ class _CalendarGateway
   final List<ManagedCalendarEvent> events = [];
   final List<ManagedCalendarEvent> legacyEvents;
   final Set<String> failingSyncIds = {};
+  DateTime? lastTimeMin;
+  DateTime? lastTimeMax;
   int executionCount = 0;
   int insertCount = 0;
   int updateCount = 0;
@@ -323,6 +362,8 @@ class _CalendarGateway
     required DateTime timeMax,
     String calendarId = 'primary',
   }) async {
+    lastTimeMin = timeMin;
+    lastTimeMax = timeMax;
     calls?.add('list');
     return List.unmodifiable(events);
   }
