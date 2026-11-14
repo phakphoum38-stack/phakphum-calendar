@@ -47,11 +47,6 @@ class CalendarSyncCoordinator {
   }) async {
     final desired = scheduleMapper.map(schedule);
     final range = _range(desired);
-    final managedStart = desired.isEmpty
-        ? null
-        : desired.map((candidate) => candidate.start).reduce(
-            (left, right) => left.isBefore(right) ? left : right,
-          );
     final managed = await _gateway.listManagedEvents(
       timeMin: range.$1,
       timeMax: range.$2,
@@ -71,11 +66,10 @@ class CalendarSyncCoordinator {
     // Events before the first event in the current schedule are historical
     // records, not omissions. Keep them in the desired set so the diff engine
     // cannot interpret the expanded lookback window as a deletion request.
+    final today = DateTime.now();
     final historical = deduplicatedManaged.where(
       (event) =>
-          event.start.isAfter(range.$1) || event.start.isAtSameMomentAs(range.$1)
-              ? managedStart == null || event.start.isBefore(managedStart)
-              : false,
+          !event.start.isBefore(range.$1) && event.start.isBefore(today),
     );
     final effectiveDesired = <CalendarEventCandidate>[
       ...desired,
@@ -159,9 +153,10 @@ class CalendarSyncCoordinator {
     final timeMax = ends.reduce(
       (left, right) => left.isAfter(right) ? left : right,
     );
+    final currentWindowEnd = today.add(const Duration(days: 1));
     return (
       lookbackStart.isBefore(timeMin) ? lookbackStart : timeMin,
-      timeMax,
+      currentWindowEnd.isAfter(timeMax) ? currentWindowEnd : timeMax,
     );
   }
 
