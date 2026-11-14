@@ -597,7 +597,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `lib/features/universal_generator_adapter/application/generator_calendar_adapter.dart` | 4192 | `a9eed38da7c45cf6a8a9aa98be69b2eecd7e7e19fc10c283e22245496eccb88f` |
 | `lib/features/universal_generator_adapter/domain/generator_adapter_preview.dart` | 1169 | `f5d7422fa713ab7e7cabb8689088f46f56e98bde51f8407e810b8bfe0e95da0f` |
 | `lib/features/universal_generator_adapter/domain/generator_event_record.dart` | 811 | `b217540d117096f6cd2574657d474530c7f4c0f4c307b1d5a01540f5eea66d36` |
-| `lib/features/workflow/application/calendar_sync_coordinator.dart` | 8955 | `bffd7b3ed15b52245dcc48a59af9a6ab0ae9c3d9f49367242dadd58294efa09e` |
+| `lib/features/workflow/application/calendar_sync_coordinator.dart` | 10512 | `f26425cc41f37f5dfb05fd87df1f7db18b9df523c5c60167c7b1d6fea9934ab4` |
 | `lib/features/workflow/application/calendar_workflow_facade.dart` | 5039 | `7d90a4ea47f9be941a807bd31abbe3343eb071ea7649f1a9722580e9a381ba09` |
 | `lib/features/workflow/application/calendar_workflow_factory.dart` | 1899 | `0639e6d9a6dc6d729540bc940931bb958dbb5e41f44d9c21373dbc04d8bc7b07` |
 | `lib/features/workflow/application/canonical_schedule_event_mapper.dart` | 3547 | `f8926cc6ccf3fa7ad55c1bb49fb919be69a78ff7bf91c19027f396ef3d125a76` |
@@ -725,7 +725,7 @@ This manifest is documentation/evidence only. It does not define runtime authori
 | `test/google_auth_service_test.dart` | 855 | `7c020e73fe723f7a10809801b9a7fe5a8e40dee8dc2ce5795c10002b639bc84e` |
 | `test/google_calendar_sync_gateway_test.dart` | 3724 | `73f96f9b21fb7b5cb65eca3996f24cad06e16a16f2ce601b31ef32d5caf8bbec` |
 | `test/google_calendar_sync_gateway_timeout_test.dart` | 1261 | `97eb48cc601433f57e8805956cf8d02266e487af62f33d5b70e63eb51b190dd7` |
-| `test/google_calendar_workflow_integration_test.dart` | 16248 | `45eec9caa94922fcb15f8434d123fda377b1239e889a54519983c8fdb29d88d1` |
+| `test/google_calendar_workflow_integration_test.dart` | 18036 | `0ca8ed61f1058c6cfc37cd3a53e67dee71caa983dbf9487dee6c53c67b064524` |
 | `test/google_employee_sync_service_test.dart` | 3691 | `266b6dd3b9a7e72df07735dd1bd9f47da626798b51292f5eb63e25c1e514d98f` |
 | `test/google_sheets_import_data_source_test.dart` | 9255 | `92034f1852cc24b119145efe005af8b0eaf0718b6dd771937e303580579e26e6` |
 | `test/hybrid_roster_ai_analyzer_test.dart` | 3945 | `eecebfa1228c97439fee3f15dc27bf92ade9c5916af79b24b166156e38895fcd` |
