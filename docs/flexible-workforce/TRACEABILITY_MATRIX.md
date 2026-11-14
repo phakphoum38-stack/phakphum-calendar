@@ -310,3 +310,57 @@ The 523-test result is suite-level evidence. It does not independently mark ever
 - No merge was performed.
 - Web build artifact was produced by CI, but the Pages deployment job was skipped.
 - No Calendar sync, schedule publication, or production deployment was performed.
+
+
+---
+
+## Production import wiring and current-head CI recheck — 2026-11-14
+
+### Production composition-root trace
+
+The production import save callback is wired, not merely injectable in tests:
+
+1. `lib/app.dart` registers `ImportExcelPage.routeName` and supplies `scheduleSaver: dependencies.saveImportedSchedule`.
+2. The same route supplies `importedScheduleFactory: dependencies.createImportedSchedule` and `scheduleControllerFactory: dependencies.createImportedScheduleController`.
+3. `lib/core/di/app_dependencies.dart` constructs the production `ScheduleRepository` as `SharedPreferencesScheduleRepository` by default. Its `saveImportedSchedule(Schedule)` delegates to `scheduleRepository.save(schedule)`.
+4. `lib/features/excel_import/presentation/pages/import_excel_page.dart` converts the imported rows into an in-memory Schedule, then passes the production `scheduleSaver` into `ImportSummaryPage`. This conversion is not itself a persistence operation.
+5. `lib/features/excel_import/presentation/pages/import_summary_page.dart` exposes the explicit `ยืนยันและบันทึกตารางเวร` button when the callback is present. The save is invoked only by that button; while saving it disables repeat taps; a failed result is shown and the action can be retried; a successful result disables the button.
+
+**Conclusion:** the production route supplies the callback and the visible summary confirmation is the normal save boundary. The earlier uncertainty about whether the production route supplies `scheduleSaver` is resolved. This does not establish that every alternate/custom route supplies it, nor does it add staged row-level decisions, an idempotency key, or a multi-entity rollback transaction.
+
+### Import requirement disposition update
+
+- WF-009 remains **partial / UNKNOWN for full acceptance**: production confirmation and canonical schedule persistence are wired, but duplicate resolution against existing master data, row-level create/update/skip decisions, verified employee identity matching, and an immutable staged preview remain absent from the inspected flow.
+- WF-010 remains **UNKNOWN**: no end-to-end rollback/idempotency guarantee has been demonstrated. The save currently persists one canonical Schedule aggregate; it does not coordinate employee master-data writes in a transaction.
+- Existing focused tests include `test/import_summary_page_test.dart` and `test/canonical_import_calendar_vertical_slice_test.dart`; the latter proves no canonical Schedule is persisted before confirmation and persistence occurs after confirmation.
+
+### Current PR-head CI recheck
+
+- PR: #86, still Draft/Open and mergeable at the time of recheck.
+- Branch head checked: `69748afa29fe34529de9e92729909ffd0279d10f`.
+- Base: `dae068b01847b3ca74cbd3ee41fb13aaa346d24e`; compare remains 11 ahead / 0 behind.
+- Auto Detect CI run `43603440055`: PASS. Static analysis PASS; unit test step PASS with **523 tests passed**. Integration tests SKIPPED.
+- Linux run `43603440061`: release build PASS.
+- Web run `43603440066`: web build and artifact upload PASS; GitHub Pages deploy SKIPPED.
+- DISKPATH run `43603440121`: generation and validation PASS; manifest auto-commit step completed.
+- Windows run `43603440073`: static analysis PASS; Flutter tests were still IN_PROGRESS at the last poll; Windows build/package steps had not started.
+- Android run `43603440129`: release APK build IN_PROGRESS at the last poll; verification/package/upload had not started.
+- iOS run `43603440082`: unsigned iOS build IN_PROGRESS at the last poll; verification/package/upload had not started.
+- Backend/PHP feature tests: SKIPPED / no PHP workflow evidence.
+- Reviews, review comments, and inline review threads: none returned at the recheck.
+- The 523-test result is attached to the exact PR head above through its PR-triggered workflow run. It is suite-level evidence, not proof every requirement is complete.
+
+### Remaining ordered gates
+
+1. Finish Windows, Android, and iOS workflows and record terminal conclusions against the exact head.
+2. Add import staging and explicit per-row identity/resolution decisions; reject or quarantine ambiguous employee/shift data rather than silently inventing master records or zero-duration shifts.
+3. Define and test cancellation, retry, idempotency, and rollback boundaries for import.
+4. Unify Hard / Soft / Unknown validation semantics and make validation policy explicit at save/approval boundaries.
+5. Complete export adapter inventory and offline-safe licensed Thai font packaging.
+6. Establish organization scope at persistence and backend query boundaries; add cross-tenant negative tests.
+7. Design revision-bound approval, explicit publication, and durable audit.
+8. Add and execute backend/PHP feature tests and integration tests.
+
+### Safety
+
+No application runtime source, database schema, user data, or Calendar data was changed by this recheck. No file was deleted, no PR was merged, and no deployment or Calendar synchronization was performed.
