@@ -9,7 +9,7 @@
     "DISKPATH.json",
     "DISKPATH.md"
   ],
-  "file_count": 825,
+  "file_count": 826,
   "files": [
     {
       "path": ".ai/memory/architecture.md",
@@ -1050,6 +1050,11 @@
       "path": "docs/flexible-workforce/ROADMAP.md",
       "size": 3793,
       "sha256": "88d15b3e4b142aed31dfd0f24cb6048319c264b68e9ca4bad0290bb85fd544ec"
+    },
+    {
+      "path": "docs/flexible-workforce/TRACEABILITY_MATRIX.md",
+      "size": 13708,
+      "sha256": "843d27963028c88a52a369858c87ef982f5132854c9e8fe081905932b0e4d127"
     },
     {
       "path": "docs/google-workspace-setup.html",
