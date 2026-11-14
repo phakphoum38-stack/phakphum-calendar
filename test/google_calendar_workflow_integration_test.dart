@@ -12,8 +12,8 @@ import 'package:phakphum_calendar/features/rules/domain/rule_category.dart';
 import 'package:phakphum_calendar/features/rules/domain/rule_context.dart';
 import 'package:phakphum_calendar/features/rules/domain/rule_severity.dart';
 import 'package:phakphum_calendar/features/rules/domain/rule_violation.dart';
-import 'package:phakphum_calendar/features/workflow/application/canonical_schedule_event_mapper.dart';
 import 'package:phakphum_calendar/domain/entities/schedule.dart';
+import 'package:phakphum_calendar/features/workflow/application/canonical_schedule_event_mapper.dart';
 
 import 'support/canonical_schedule_fixture.dart';
 
@@ -303,7 +303,9 @@ void main() {
       expect(gateway.events, hasLength(desired.length));
     },
   );
-  test('three-month lookback preserves historical managed events', () async {
+  test(
+    'three-month lookback preserves historical managed events',
+    () async {
     final gateway = _CalendarGateway();
     final historical = ManagedCalendarEvent(
       eventId: 'historical-managed-event',
@@ -329,16 +331,28 @@ void main() {
     );
 
     final today = DateTime.now();
-    final expectedStart = DateTime(today.year, today.month - 3, today.day);
+    final targetMonth = DateTime(today.year, today.month - 3, 1);
+    final lastDay = DateTime(
+      targetMonth.year,
+      targetMonth.month + 1,
+      0,
+    ).day;
+    final expectedStart = DateTime(
+      targetMonth.year,
+      targetMonth.month,
+      today.day > lastDay ? lastDay : today.day,
+    );
     final preparation = controller.schedulePreparation!;
     expect(gateway.lastTimeMin, expectedStart);
     expect(preparation.timeMin, expectedStart);
     expect(preparation.diff.toDelete, isEmpty);
-    expect(preparation.diff.unchanged.map((event) => event.syncId),
-        contains(historical.syncId));
+    expect(
+      preparation.diff.unchanged.map((event) => event.syncId),
+      contains(historical.syncId),
+    );
     expect(preparation.plan.operationCount, 0);
-  });
-
+    },
+  );
 }
 
 class _CalendarGateway
