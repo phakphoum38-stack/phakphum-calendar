@@ -84,3 +84,229 @@
 - Synthetic fixtures only in isolated tests.
 - No automatic publishing or Calendar synchronization from generation.
 - No merge or deployment without explicit authorization.
+
+
+---
+
+## Phase 0 deep audit — inspected on 2026-11-14
+
+### Exact source and CI references
+
+- Source baseline: `main` at `dae068b01847b3ca74cbd3ee41fb13aaa346d24e`.
+- Confirmed `main` was identical to this baseline at audit time.
+- Pull request validation commit: `5bfd985983a196a1c44b07ccc3d2292f19977212`.
+- GitHub Actions run IDs: DISKPATH `43602399745`; Windows `43602399788`; Android `43602399768`; iOS `43602399753`; Linux `43602399741`; Web `43602399779`; Auto Detect CI `43602399800`.
+- Test log evidence: Auto Detect CI job `132471022147` reports **523 tests passed**. Its Integration tests step was skipped.
+- Windows job `132470994774` reports Static analysis and Flutter tests completed successfully; Windows release build was still in progress at the last inspection.
+- Linux release build completed successfully.
+- Web release build and artifact upload completed successfully; the GitHub Pages deployment job was **skipped**.
+- Android APK and unsigned iOS builds were still in progress at the last inspection.
+- DISKPATH generation/validation completed successfully.
+- Backend/PHP test execution was not found in these workflow runs. Do not infer PHP PASS from Flutter tests.
+- The workflow-run evidence is tied to the PR validation commit above, not to a locally executed test command.
+
+### 1. Import controller → repository → confirmation boundary
+
+**Inspected source**
+- `lib/features/excel_import/presentation/controllers/excel_import_controller.dart`
+- `lib/features/excel_import/application/import_engine.dart`
+- `lib/features/excel_import/data/excel_reader_service.dart`
+- `lib/features/excel_import/presentation/pages/import_excel_page.dart`
+- `lib/features/excel_import/presentation/pages/column_mapping_page.dart`
+- `lib/features/excel_import/presentation/pages/import_summary_page.dart`
+- `lib/features/schedule/data/imported_schedule_adapter.dart`
+- `lib/domain/repositories/import_repository.dart`
+- `lib/domain/services/import_service.dart`
+
+**Verified behavior**
+- XLSX reader allows only `.xlsx`, enforces a 15 MiB limit, and previews at most 50 rows; the full worksheet is read for conversion.
+- Google Sheets uses a read-only data source and ownership verifier before worksheet rows enter the same conversion flow.
+- Header mapping is a suggestion and is editable. Required date, shift, and employee fields are validated. Duplicate detection is within the imported batch and currently emits a warning while retaining the duplicate record.
+- The summary page has an explicit `ยืนยันและบันทึกตารางเวร` action when a `scheduleSaver` callback is supplied. It saves the adapted canonical Schedule through the injected callback; failure is displayed and can be retried.
+- `ImportRepository` stores import profiles only; `ImportService` is an abstraction returning assignments. Neither interface itself establishes a staged import-job transaction.
+
+**Gaps / risks**
+- There is no first-class staged ImportJob with per-row create/update/skip decisions, immutable preview snapshot, idempotency key, or rollback record in the inspected flow.
+- Duplicate detection does not compare against existing employee/assignment records and does not provide an explicit resolution action.
+- The adapter creates Employee objects from imported display names, derives IDs from department/name, and defaults missing department to `Unassigned`; shift times that cannot be parsed become zero-duration values. This is compatibility behavior, not verified identity resolution. Do not treat imported display names as verified master employee identities.
+- The save callback is optional/injected; the page itself does not prove every application route supplies it. Confirm production route wiring before enabling bulk import as a guaranteed persistence workflow.
+- No transaction spans schedule persistence plus any employee master-data writes; avoid introducing such writes without a staged migration and recovery plan.
+
+**Verification**
+- Relevant Flutter test files exist: `test/excel_import_controller_test.dart`, `test/import_engine_test.dart`, `test/import_summary_page_test.dart`, `test/google_sheets_import_data_source_test.dart`, `test/canonical_import_calendar_vertical_slice_test.dart`.
+- CI log includes passing tests for all-row import with a 50-row preview and summary rendering. Whole Flutter unit suite: PASS (523 tests in Auto Detect CI log). Integration tests: SKIPPED. PHP tests: SKIPPED / no workflow evidence.
+- Requirement WF-009: partial existing implementation; acceptance remains UNKNOWN until full workflow and source-to-record decisions are tested.
+- Requirement WF-010: UNKNOWN; no complete rollback/idempotency evidence.
+
+### 2. Schedule / Employee / Shift repositories and codecs
+
+**Schedule**
+- `lib/domain/repositories/schedule_repository.dart`
+- `lib/features/schedule/data/shared_preferences_schedule_repository.dart`
+- `lib/features/schedule/data/schedule_json_codec.dart`
+- Canonical schedule repository uses schema key prefix `shift_tools.canonical_schedule.v1.`, an active pointer, and two alternating slots. It reads back and decodes the staged payload before changing the active pointer. Invalid JSON, wrong identity, unsupported schema, and storage failures are returned as controlled failures.
+- The codec is schema version 1 and persists the schedule, embedded departments/employees/shift types, months, days, assignments, remarks, locations, and holiday names. It rejects unknown references and duplicate IDs.
+- It does not persist schedule revision, approval, publication, or organization/tenant ownership in the inspected aggregate.
+
+**Employee**
+- `lib/domain/repositories/employee_repository.dart`
+- `lib/features/employees/infrastructure/shared_preferences_employee_repository.dart`
+- `lib/features/employees/infrastructure/employee_json_codec.dart`
+- Employee repository uses versioned two-slot storage with read-back before pointer swap, validates required fields and duplicate employee codes, and supports whole-directory `saveAll`.
+- Employee codec is format version 1. Employee requires a Department and a non-empty first name; position remains a string. No profession/skill/qualification references are persisted in this entity/codec.
+
+**Shift template**
+- `lib/domain/repositories/shift_template_repository.dart`
+- `lib/features/shift_templates/infrastructure/shared_preferences_shift_template_repository.dart`
+- `lib/features/shift_templates/infrastructure/shift_template_json_codec.dart`
+- Shift template codec is format version 1 and stores times as minutes, display/color, working hours, location, Calendar defaults, reminder, rate, active flag, and sort order.
+- Repository persists the full list under one SharedPreferences key and reads it back after write, but does not use the schedule/employee two-slot pointer strategy. A failed or interrupted single-key write has a different recovery profile.
+- Explicit timezone, effective date range, break intervals, qualification requirements, and immutable template version history are not present in this inspected entity/codec.
+
+**Compatibility tests**
+- `test/schedule_repository_test.dart`, `test/schedule_json_codec_test.dart`, and `test/employee_repository_test.dart` cover round-trip, malformed/unsupported payloads, active-slot failure preservation, and complete employee-directory save.
+- CI logs show schedule codec round-trip and unsupported-version tests passing; employee and schedule repository tests are included in the 523-test suite.
+- Shift template repository/codec focused test execution is not individually evidenced in the extracted log.
+- Do not change schema version 1 payloads in place. New fields need nullable/default-compatible decoding or a new explicit schema version with migration/rollback tests.
+
+### 3. Rule Engine — Hard / Soft / Unknown
+
+**Inspected source**
+- `lib/core/validation/rule_evaluator.dart`
+- `lib/features/rules/application/rule_engine.dart`
+- `lib/features/rules/application/schedule_validation_service.dart`
+- `lib/features/rules/domain/rule_result.dart`
+- `lib/features/rules/domain/rule_violation.dart`
+- `lib/features/rule_engine/application/rule_engine.dart`
+- `lib/features/rule_engine/domain/schedule_rule.dart`
+- `lib/features/rule_engine/domain/default_schedule_rules.dart`
+
+**Verified behavior**
+- Shared RuleEvaluator deduplicates rule IDs and preserves registration order.
+- The schedule rule engine exposes error and warning severities; `RuleResult.passed` is true when there are no errors, even if warnings exist.
+- The separate schedule-rule engine exposes info, warning, and blocking severities.
+- Default rules include invalid shift times and overlapping shifts as blocking, minimum rest and maximum weekly hours as warnings.
+- Existing rules cover useful checks but do not establish a unified severity/policy contract across both rule engines.
+
+**Gaps / risks**
+- No explicit UNKNOWN / NOT_EVALUATED / missing-input state exists in the inspected RuleResult or RuleViolation contracts.
+- No versioned rule-set snapshot or reproducibility identifier is exposed in these inspected types.
+- The inspected ScheduleController.saveSchedule() calls repository.save() directly; it does not enforce validation as a mandatory save/approval gate.
+- Warning vs blocking policy differs across the two rule engines. Do not consolidate or map severities until current callers and tests are traced.
+- Requirement WF-008: partial existing rule infrastructure; hard/soft/unknown acceptance remains UNKNOWN.
+
+### 4. Export and PDF / spreadsheet adapters
+
+**Inspected source**
+- `lib/domain/services/export_service.dart`
+- `lib/features/reports/domain/report_service.dart`
+- `lib/features/reports/domain/monthly_report_options.dart`
+- `lib/features/reports/infrastructure/monthly_schedule_pdf_service.dart`
+
+**Verified behavior**
+- Generic ExportService is an interface returning bytes from a Schedule; no concrete implementation was identified in the tracked paths inspected.
+- MonthlySchedulePdfService maps the canonical schedule to a report model and renders A4 PDF with orientation, language, summary, notes, legend, and department options.
+- Print/share is abstracted through ReportOutputGateway.
+- Thai fonts are fetched from a public GitHub raw URL at runtime by the default font loader.
+
+**Gaps / risks**
+- No evidence yet for prebuilt-template import/rendering, generated-page export, or a custom document designer.
+- No XLSX/CSV export adapter was identified in the relevant tracked-path inventory.
+- Runtime font download is a network dependency and can fail offline; bundle or cache fonts if offline/self-hosted behavior is required, subject to licensing.
+- Requirements WF-011 through WF-013 remain UNKNOWN beyond the existing PDF report capability.
+
+### 5. Organization API, permission, and tenant isolation
+
+**Inspected source**
+- `backend/routes/api.php`
+- `backend/app/Http/Controllers/Api/V1/OrganizationController.php`
+- `backend/database/migrations/2026_11_09_000002_create_organizations_and_memberships.php`
+- `backend/database/migrations/2026_11_09_000003_create_organization_shift_policies.php`
+- `lib/features/tenancy/application/tenant_guard.dart`
+- `lib/features/tenancy/domain/tenant.dart`
+
+**Verified behavior**
+- Organization API routes require Google account middleware. Membership list is scoped to the authenticated user.
+- Member listing requires active membership. Member addition and policy changes require owner/admin; non-member access is forbidden.
+- Organization creation and initial owner membership plus default shift policies are written in a DB transaction.
+- Backend tests cover owner creation, member addition, role-based policy denial, outsider denial, and unregistered account rejection.
+- TenantGuard checks tenant existence/status and compares context tenant ID with resource tenant ID.
+
+**Gaps / risks**
+- Organization schema is currently organizations + memberships + shift policies; the inspected migration does not define a nested department hierarchy or bind canonical Flutter employee/schedule repositories to organization IDs.
+- TenantGuard is a domain/application helper; the inspected backend organization endpoints authorize by organization membership, and local SharedPreferences repositories are not tenant-scoped.
+- No end-to-end proof was found that every workforce/schedule read/write enforces both organization and tenant scope.
+- Backend Feature tests were identified but not run in the observed GitHub Actions workflows. Backend/PHP status remains SKIPPED, not PASS.
+- Requirement WF-016 remains UNKNOWN for full end-to-end isolation.
+
+### 6. Approval, publication, and audit history
+
+**Inspected source**
+- `lib/features/audit/domain/audit_event.dart`
+- `lib/models/audit_entry.dart`
+- `lib/features/history/infrastructure/shared_preferences_sync_history_repository.dart`
+- `lib/services/roster_revision_service.dart`
+- `backend/app/Http/Controllers/Api/V1/OrganizationController.php` shift policy methods
+
+**Verified behavior**
+- AuditEvent and AuditRepository contracts exist, but no concrete AuditRepository implementation was identified in the inspected tracked paths.
+- AuditEntry supports backward-compatible local JSON fields for actor, entity, and state transition; AuditLogPage reads entries from AppController.
+- SharedPreferencesSyncHistoryRepository stores bounded Calendar sync history, not general workforce workflow audit.
+- RosterRevisionService reads Google Drive revisions only; it is not a schedule approval or publication service.
+- Organization shift policies configure whether selected shift-exchange workflows require approval; they do not represent approval of a schedule revision.
+
+**Gaps / risks**
+- No schedule-revision-bound approval lifecycle, explicit publish operation, or immutable workforce audit persistence was identified in the inspected source inventory.
+- Existing local audit entries are not evidence of server-enforced immutability or organization-scoped audit retrieval.
+- Requirement WF-014, WF-015, and WF-017 remain UNKNOWN.
+
+### 7. Test execution and CI evidence
+
+| Check | Result | Evidence |
+|---|---|---|
+| Flutter unit tests | PASS | Auto Detect CI job `132471022147`; log ends with 523 tests passed |
+| Flutter static analysis | PASS | Auto Detect CI job `132471022147`; static analysis step completed successfully |
+| Windows Flutter tests | PASS | Windows job `132470994774`; Flutter tests step completed successfully |
+| Windows release build | UNKNOWN / IN_PROGRESS at last check | Windows job `132470994774` |
+| Linux release build | PASS | Linux job `132470709377` completed successfully |
+| Web release build | PASS | Web job `132470968892` completed successfully |
+| GitHub Pages deployment | SKIPPED | Web deployment job `132471404207` conclusion skipped |
+| Android release build | UNKNOWN / IN_PROGRESS at last check | Android job `132471038762` |
+| iOS unsigned build | UNKNOWN / IN_PROGRESS at last check | iOS job `132471055355` |
+| Integration tests | SKIPPED | Auto Detect CI job `132471022147` |
+| Backend/PHP tests | SKIPPED / no run evidence | No PHP test job returned for this commit |
+| DISKPATH generation/validation | PASS | Run `43602399745` |
+
+The 523-test result is suite-level evidence. It does not independently mark every product requirement PASS. No local PowerShell test command was executed in this audit. No production Pages deployment occurred in the observed web run.
+
+### Updated requirement disposition
+
+- WF-009: existing XLSX/Google Sheets mapping, preview, conversion, and explicit schedule-save action are present; full import staging, duplicate decisions, and transaction semantics remain UNKNOWN.
+- WF-010: UNKNOWN; rollback/idempotency across import operations not established.
+- WF-011: existing PDF reporting only; template mode UNKNOWN.
+- WF-012: UNKNOWN; generated-page export not evidenced.
+- WF-013: UNKNOWN; custom design mode not evidenced.
+- WF-008: partial rule infrastructure; unified Hard/Soft/Unknown semantics UNKNOWN.
+- WF-016: partial organization membership authorization; end-to-end tenant isolation UNKNOWN.
+- WF-014 / WF-015 / WF-017: schedule approval, publication, and complete workflow audit UNKNOWN.
+- Existing schedule and employee repository round-trip/failure-preservation tests are included in the passing Flutter test suite; this is compatibility evidence, not a claim that new workforce requirements are complete.
+
+### Next engineering gates (ordered)
+
+1. Trace every production caller that supplies `scheduleSaver` and prove import cannot silently save or bypass the summary confirmation.
+2. Design import staging and per-row decisions without treating display names as verified employee identities; preserve the current canonical schedule adapter until a migration is approved.
+3. Add targeted tests for duplicate-vs-existing-record decisions, cancelled import, failed save, retry/idempotency, and no mutation before confirmation.
+4. Define a single versioned rule outcome contract with PASS / FAIL / UNKNOWN and hard/soft policy while retaining adapters for both existing engines.
+5. Define export capability boundaries and eliminate runtime network font dependency for offline output.
+6. Establish organization/tenant scope at repository and backend query boundaries before adding department/workforce CRUD.
+7. Implement revision-bound approval, explicit publication, and durable organization-scoped audit only after authorization and revision semantics are specified.
+8. Run PHP backend feature tests and integration tests; these remain SKIPPED in current CI evidence.
+9. Recheck all platform build workflows after completion; do not interpret in-progress jobs as PASS.
+
+## Safety and non-actions
+
+- No application runtime code, schema, or user data was changed during this audit.
+- No files were deleted.
+- No merge was performed.
+- Web build artifact was produced by CI, but the Pages deployment job was skipped.
+- No Calendar sync, schedule publication, or production deployment was performed.
