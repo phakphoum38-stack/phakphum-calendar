@@ -72,6 +72,9 @@ class CalendarSyncCoordinator {
     final historical = deduplicatedManaged.where(
       (event) =>
           !desiredIds.contains(event.syncId) &&
+          // Duplicate managed copies are cleanup candidates, not historical
+          // records. Preserve genuine historical events only.
+          !event.syncId.startsWith('legacy:duplicate-managed:') &&
           !event.start.isBefore(range.$1) &&
           event.start.isBefore(today),
     );
