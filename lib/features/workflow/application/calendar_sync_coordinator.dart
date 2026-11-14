@@ -63,13 +63,17 @@ class CalendarSyncCoordinator {
             calendarId: calendarId,
           );
     final deduplicatedManaged = _deduplicateManaged(desired, managed);
-    // Events before the first event in the current schedule are historical
-    // records, not omissions. Keep them in the desired set so the diff engine
-    // cannot interpret the expanded lookback window as a deletion request.
+    // Past provider events are historical records, not omissions from the
+    // current schedule. Keep them in the desired set so the expanded lookback
+    // window cannot turn them into deletion requests. Current desired IDs are
+    // excluded so legitimate updates to past-dated assignments still work.
     final today = DateTime.now();
+    final desiredIds = desired.map((candidate) => candidate.syncId).toSet();
     final historical = deduplicatedManaged.where(
       (event) =>
-          !event.start.isBefore(range.$1) && event.start.isBefore(today),
+          !desiredIds.contains(event.syncId) &&
+          !event.start.isBefore(range.$1) &&
+          event.start.isBefore(today),
     );
     final effectiveDesired = <CalendarEventCandidate>[
       ...desired,
